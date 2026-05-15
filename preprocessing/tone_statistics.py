@@ -1,4 +1,4 @@
-"""Count unique Mandarin character-to-pinyin tone cases in BabyLM JSONL."""
+"""Count unique Mandarin character-to-pinyin tone and length cases in JSONL."""
 
 from __future__ import annotations
 
@@ -54,6 +54,11 @@ def pinyin_tone_case(character: str, pinyin_with_tone: str) -> tuple[str, str, s
     return character, pinyin_with_tone.lower(), tone
 
 
+def pinyin_length(pinyin_with_tone: str) -> int:
+    """Return pinyin syllable length after removing a final tone digit."""
+    return len(TONE_RE.sub("", pinyin_with_tone))
+
+
 def iter_contextual_cases(text: str) -> Iterable[tuple[str, str, str]]:
     """Segment Chinese text with jieba and yield contextual pinyin cases.
 
@@ -91,22 +96,33 @@ def collect_unique_cases(input_path: Path, text_field: str) -> set[tuple[str, st
 
 
 def summarize(unique_cases: set[tuple[str, str, str]]) -> dict[str, Any]:
-    """Build counts and percentages for unique cases grouped by tone."""
-    counts = Counter(tone for _, _, tone in unique_cases)
-    total = sum(counts.values())
+    """Build counts and percentages for unique cases grouped by tone and length."""
+    tone_counts = Counter(tone for _, _, tone in unique_cases)
+    length_counts = Counter(pinyin_length(syllable) for _, syllable, _ in unique_cases)
+    total = len(unique_cases)
 
     tones = {}
     for tone in TONE_ORDER:
-        count = counts[tone]
+        count = tone_counts[tone]
         percentage = (count / total * 100) if total else 0.0
         tones[tone] = {
             "count": count,
             "percentage": round(percentage, 4),
         }
 
+    lengths = [
+        {
+            "length": length,
+            "count": count,
+            "percentage": round((count / total * 100) if total else 0.0, 4),
+        }
+        for length, count in sorted(length_counts.items())
+    ]
+
     return {
         "total_unique_cases": total,
         "tones": tones,
+        "lengths": lengths,
     }
 
 
@@ -119,7 +135,12 @@ def write_case_list(
     payload = {
         **summary,
         "unique_cases": [
-            {"character": char, "pinyin": syllable, "tone": tone}
+            {
+                "character": char,
+                "pinyin": syllable,
+                "tone": tone,
+                "length": pinyin_length(syllable),
+            }
             for char, syllable, tone in sorted(unique_cases)
         ],
     }
@@ -135,7 +156,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Segment JSONL text with jieba, convert to contextual pinyin, and "
-            "count unique Chinese character/pinyin cases by tone."
+            "count unique Chinese character/pinyin cases by tone and length."
         )
     )
     parser.add_argument("--input", type=Path, required=True)
@@ -172,7 +193,70 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+
 """
+10k_babylm_zho.jsonl
+{
+  "total_unique_cases": 5426,
+  "tones": {
+    "1": {
+      "count": 1370,
+      "percentage": 25.2488
+    },
+    "2": {
+      "count": 1352,
+      "percentage": 24.9171
+    },
+    "3": {
+      "count": 903,
+      "percentage": 16.6421
+    },
+    "4": {
+      "count": 1754,
+      "percentage": 32.3258
+    },
+    "blank": {
+      "count": 47,
+      "percentage": 0.8662
+    }
+  },
+  "lengths": [
+    {
+      "length": 1,
+      "count": 29,
+      "percentage": 0.5345
+    },
+    {
+      "length": 2,
+      "count": 1523,
+      "percentage": 28.0686
+    },
+    {
+      "length": 3,
+      "count": 2108,
+      "percentage": 38.85
+    },
+    {
+      "length": 4,
+      "count": 1449,
+      "percentage": 26.7048
+    },
+    {
+      "length": 5,
+      "count": 298,
+      "percentage": 5.4921
+    },
+    {
+      "length": 6,
+      "count": 19,
+      "percentage": 0.3502
+    }
+  ]
+}
+"""
+
+"""
+babylm_zho.jsonl
 {
   "total_unique_cases": 8231,
   "tones": {
