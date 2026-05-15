@@ -1,4 +1,4 @@
-"""Preprocess BabyLM Mandarin JSONL into word-preserving pinyin initials."""
+"""Preprocess BabyLM Mandarin JSONL into word-preserving pinyin initial codes."""
 
 from __future__ import annotations
 
@@ -66,25 +66,62 @@ def normalize_text(text: str) -> str:
     return text.strip()
 
 
-def chinese_word_to_initials(word: str) -> str:
-    """Convert one already-segmented Chinese word to one initials token.
+def split_tone3_syllable(syllable: str) -> tuple[str, int]:
+    """Return the plain pinyin syllable and its tone number.
 
-    The important representation choice is here: ``今天`` becomes ``jt`` rather
-    than ``j t``, preserving jieba's word boundary for later BPE training.
+    ``Style.TONE3`` writes tones as final digits, but neutral tone syllables have
+    no digit. Treat those digitless cases as fifth tone.
     """
-    syllables = pinyin(word, style=Style.NORMAL, heteronym=False, errors="ignore")
-    initials = [item[0][0].lower() for item in syllables if item and item[0]]
-    return "".join(initials)
+    match = re.fullmatch(r"([a-züv]+)([1-5]?)", syllable.lower())
+    if not match:
+        return syllable, 5
+
+    plain, tone = match.groups()
+    return plain, int(tone or "5")
+
+
+def length_digit_offset(syllable: str) -> int:
+    """Map pinyin syllable length to the requested 0-4 digit offset."""
+    return min(max(len(syllable), 1), 5) - 1
+
+
+def syllable_to_initial_code(syllable: str) -> str:
+    """Convert one pinyin syllable with tone into ``initial + digit``.
+
+    Tone controls initial casing and whether the digit starts from 0 or 5:
+    tones 1/3/5 use uppercase initials, while tones 2/4 use lowercase initials.
+    Syllable length then adds the 0-4 offset that makes the final digit.
+    """
+    plain, tone = split_tone3_syllable(syllable)
+    if not plain:
+        return ""
+
+    tone_offset = 5 if tone in {3, 4, 5} else 0
+    digit = tone_offset + length_digit_offset(plain)
+    initial = plain[0].upper() if tone in {1, 3, 5} else plain[0].lower()
+    return f"{initial}{digit}"
+
+
+def chinese_word_to_initial_codes(word: str) -> str:
+    """Convert one already-segmented Chinese word to one compact code token.
+
+    The important representation choice is preserved: jieba decides the word
+    boundary, and all syllable codes inside that word are concatenated. For
+    example, ``我们`` becomes ``W6M7`` rather than ``W6 M7``.
+    """
+    syllables = pinyin(word, style=Style.TONE3, heteronym=False, errors="ignore")
+    codes = [syllable_to_initial_code(item[0]) for item in syllables if item and item[0]]
+    return "".join(code for code in codes if code)
 
 
 def tokenize_chinese_span(text: str) -> Iterable[str]:
-    """Segment a contiguous Chinese span and emit one abbreviation per jieba word."""
+    """Segment a contiguous Chinese span and emit one code token per jieba word."""
     for word in jieba.cut(text, cut_all=False):
         word = word.strip()
         if not word:
             continue
         if CHINESE_RE.search(word):
-            token = chinese_word_to_initials(word)
+            token = chinese_word_to_initial_codes(word)
             if token:
                 yield token
 
@@ -148,7 +185,7 @@ def preprocess_file(input_path: Path, output_path: Path, preview_count: int) -> 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Convert BabyLM Mandarin JSONL text fields to pinyin-initial tokens."
+        description="Convert BabyLM Mandarin JSONL text fields to pinyin-initial code tokens."
     )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
