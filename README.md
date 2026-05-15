@@ -65,7 +65,7 @@ with whitespace boundaries for downstream tokenizer training.
 Train the default BPE tokenizer from the preprocessed 10k sample:
 
 ```powershell
-py preprocessing\train_sentencepiece.py
+py train_sentencepiece.py
 ```
 
 This writes:
@@ -80,10 +80,22 @@ pretokenization, and avoids splitting pinyin-code digits away from their letters
 Useful options:
 
 ```powershell
-py preprocessing\train_sentencepiece.py --vocab-size 4000 --model-name babylm_zho_pinyin_spm_4k
-py preprocessing\train_sentencepiece.py --model-type unigram --output-dir tokenizers\unigram
-py preprocessing\train_sentencepiece.py --input data\processed\10k_babylm_zho.txt data\processed\extra.txt
+py train_sentencepiece.py --vocab-size 4000 --model-name babylm_zho_pinyin_spm_4k
+py train_sentencepiece.py --model-type unigram --output-dir tokenizers\unigram
+py train_sentencepiece.py --input data\processed\10k_babylm_zho.txt data\processed\extra.txt
 ```
 
 `--hard-vocab-limit` is disabled by default so SentencePiece can still finish if
 the corpus cannot support the exact requested vocabulary size.
+
+## Create a tokenized dataset
+
+Build a chunked JSONL language-modeling dataset from the processed text and
+trained SentencePiece tokenizer:
+
+```powershell
+py create_dataset.py
+```
+
+This writes `data\datasets\10k_babylm_zho_spm.jsonl` by default. Each line has
+fixed-length `input_ids` and matching `labels` for causal language modeling.
