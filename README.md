@@ -4,13 +4,15 @@ Small utilities for working with the gated
 [`BabyLM-community/babylm-zho`](https://huggingface.co/datasets/BabyLM-community/babylm-zho)
 dataset.
 
-## Extract the data
+## Install dependencies
 
-Install the one dependency:
+Install the project dependencies:
 
 ```powershell
-py -m pip install datasets
+py -m pip install -r requirements.txt
 ```
+
+## Extract the data
 
 Accept the dataset terms on Hugging Face, then either log in:
 
@@ -27,20 +29,61 @@ $env:HF_TOKEN = "hf_..."
 Extract the training split to JSONL:
 
 ```powershell
-py extract_babylm_zho.py --output data/babylm_zho.jsonl
+py preprocessing\extract_babylm_zho.py --output data\babylm_zho.jsonl
 ```
 
 For a quick sample:
 
 ```powershell
-py extract_babylm_zho.py --max-docs 100 --output data/sample.jsonl
+py preprocessing\extract_babylm_zho.py --max-docs 100 --output data\sample.jsonl
 ```
 
 Useful filters:
 
 ```powershell
-py extract_babylm_zho.py --category child-books --script Hans --language zho
+py preprocessing\extract_babylm_zho.py --category child-books --script Hans --language zho
 ```
 
 By default the script writes each original dataset row as JSON. Add
 `--text-only` to keep just `doc_id` and `text`.
+
+## Preprocess the data
+
+Convert extracted Mandarin JSONL into the pinyin-initial code format used for
+tokenizer training:
+
+```powershell
+py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\processed\10k_babylm_zho.txt
+```
+
+The output file contains one preprocessed document per line. Chinese words are
+segmented with `jieba`, converted to compact pinyin-initial codes, and preserved
+with whitespace boundaries for downstream tokenizer training.
+
+## Train the SentencePiece tokenizer
+
+Train the default BPE tokenizer from the preprocessed 10k sample:
+
+```powershell
+py preprocessing\train_sentencepiece.py
+```
+
+This writes:
+
+- `tokenizers\babylm_zho_pinyin_spm.model`
+- `tokenizers\babylm_zho_pinyin_spm.vocab`
+
+The default tokenizer uses an 8,000-piece BPE vocabulary, preserves the
+preprocessing special tokens such as `<NUM>` and `<MATH>`, keeps whitespace-based
+pretokenization, and avoids splitting pinyin-code digits away from their letters.
+
+Useful options:
+
+```powershell
+py preprocessing\train_sentencepiece.py --vocab-size 4000 --model-name babylm_zho_pinyin_spm_4k
+py preprocessing\train_sentencepiece.py --model-type unigram --output-dir tokenizers\unigram
+py preprocessing\train_sentencepiece.py --input data\processed\10k_babylm_zho.txt data\processed\extra.txt
+```
+
+`--hard-vocab-limit` is disabled by default so SentencePiece can still finish if
+the corpus cannot support the exact requested vocabulary size.
