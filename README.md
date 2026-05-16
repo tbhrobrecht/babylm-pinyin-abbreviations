@@ -117,3 +117,66 @@ The default model uses 6 Transformer layers, 8 attention heads, 256 hidden
 dimensions, 128-token context windows, and the tokenizer's 8,000-token
 vocabulary. Use `--device cuda` on a CUDA-capable GPU, or `--device cpu` to force
 CPU training.
+
+## Upload the model to Hugging Face
+
+Log in first:
+
+```powershell
+huggingface-cli login
+```
+
+or set a token:
+
+```powershell
+$env:HF_TOKEN = "hf_..."
+```
+
+Then upload the best checkpoint and SentencePiece tokenizer:
+
+```powershell
+py upload_to_hf.py your-username/pinyin-code-gpt-small
+```
+
+For a private repo:
+
+```powershell
+py upload_to_hf.py your-username/pinyin-code-gpt-small --private
+```
+
+To inspect the files before uploading:
+
+```powershell
+py upload_to_hf.py your-username/pinyin-code-gpt-small --dry-run --staging-dir hf_upload
+```
+
+The upload script packages `best.pt`, `pytorch_model.bin`, `config.json`, the
+SentencePiece tokenizer, local inference code, and a generated Hugging Face model
+card. This model uses custom PyTorch code rather than the Transformers model API.
+
+## Convert to a Transformers model folder
+
+Convert the existing PyTorch checkpoint without retraining:
+
+```powershell
+py hf\convert_to_transformers.py
+```
+
+This writes `hf_pinyin_code_model\` with custom `trust_remote_code` files,
+`config.json`, `model.safetensors`, `tokenizer.model`, tokenizer metadata, and
+`generation_config.json`.
+
+Load it with:
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model = AutoModelForCausalLM.from_pretrained(
+    "hf_pinyin_code_model",
+    trust_remote_code=True,
+)
+tokenizer = AutoTokenizer.from_pretrained(
+    "hf_pinyin_code_model",
+    trust_remote_code=True,
+)
+```

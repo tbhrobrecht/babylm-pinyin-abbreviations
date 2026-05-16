@@ -1,5 +1,8 @@
 datasets>=2.19.0
+huggingface_hub>=0.23.0
 jieba>=0.42.1
 pypinyin>=0.51.0
+safetensors>=0.4.3
 sentencepiece>=0.2.0
 torch>=2.3.0
+transformers>=4.41.0

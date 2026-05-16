@@ -1,5 +1,8 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+hf_upload/
+hf_pinyin_code_model/
+hf_roundtrip_test/
 *.py[codz]
 *$py.class
 
