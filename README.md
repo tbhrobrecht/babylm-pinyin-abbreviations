@@ -99,3 +99,21 @@ py create_dataset.py
 
 This writes `data\datasets\10k_babylm_zho_spm.jsonl` by default. Each line has
 fixed-length `input_ids` and matching `labels` for causal language modeling.
+
+## Train the language model
+
+Train a compact GPT-style causal language model on the tokenized dataset:
+
+```powershell
+py train_model.py
+```
+
+This writes checkpoints to `models\pinyin-code-gpt-small`:
+
+- `last.pt`
+- `best.pt`
+
+The default model uses 6 Transformer layers, 8 attention heads, 256 hidden
+dimensions, 128-token context windows, and the tokenizer's 8,000-token
+vocabulary. Use `--device cuda` on a CUDA-capable GPU, or `--device cpu` to force
+CPU training.
