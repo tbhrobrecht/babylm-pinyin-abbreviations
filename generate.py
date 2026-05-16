@@ -4,12 +4,24 @@ from __future__ import annotations
 
 import argparse
 import random
+import re
+import sys
+import warnings
 from pathlib import Path
+
+warnings.filterwarnings(
+    "ignore",
+    message="pkg_resources is deprecated as an API.*",
+    category=UserWarning,
+)
 
 import torch
 from torch.nn import functional as F
 
 from train_model import ModelConfig, PinyinCodeLanguageModel
+
+
+CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
 
 
 def require_sentencepiece():
@@ -36,6 +48,20 @@ def preprocess_prompt(text: str) -> str:
 
     require_dependencies()
     return process_text(text)
+
+
+def prompt_contains_chinese(text: str) -> bool:
+    """Return true when a prompt contains Mandarin/Hanzi characters."""
+    return bool(CHINESE_RE.search(text))
+
+
+def prepare_prompt(text: str, raw_prompt: bool, code_prompt: bool) -> str:
+    """Preprocess Mandarin prompts while preserving explicit pinyin-code input."""
+    if code_prompt:
+        return text
+    if raw_prompt or prompt_contains_chinese(text):
+        return preprocess_prompt(text)
+    return text
 
 
 def load_model(checkpoint_path: Path, device: torch.device) -> PinyinCodeLanguageModel:
@@ -113,12 +139,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--prompt",
         default="",
-        help="Prompt in preprocessed pinyin-code format by default.",
+        help=(
+            "Prompt text. Mandarin/Hanzi input is automatically converted to "
+            "BabyLM pinyin-code; existing pinyin-code prompts still work."
+        ),
     )
     parser.add_argument(
         "--raw-prompt",
         action="store_true",
-        help="Treat --prompt as raw Mandarin text and preprocess it first.",
+        help="Treat --prompt as raw text and preprocess it first.",
+    )
+    parser.add_argument(
+        "--code-prompt",
+        action="store_true",
+        help="Treat --prompt as already-preprocessed pinyin-code text.",
     )
     parser.add_argument("--max-new-tokens", type=int, default=80)
     parser.add_argument("--temperature", type=float, default=0.9)
@@ -135,6 +169,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+
     if args.seed is not None:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -143,7 +180,7 @@ def main() -> None:
     spm = require_sentencepiece()
     processor = spm.SentencePieceProcessor(model_file=str(args.tokenizer))
 
-    prompt = preprocess_prompt(args.prompt) if args.raw_prompt else args.prompt
+    prompt = prepare_prompt(args.prompt, args.raw_prompt, args.code_prompt)
     input_ids = processor.encode(prompt, out_type=int) if prompt.strip() else []
     if not input_ids:
         start_id = processor.bos_id()
