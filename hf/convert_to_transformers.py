@@ -89,6 +89,9 @@ def copy_remote_code(output_dir: Path) -> None:
     """Copy custom modeling code into the saved model folder."""
     package_dir = output_dir / "hf"
     package_dir.mkdir(parents=True, exist_ok=True)
+    preprocessing_dir = output_dir / "preprocessing"
+    preprocessing_dir.mkdir(parents=True, exist_ok=True)
+    (preprocessing_dir / "__init__.py").write_text("", encoding="utf-8")
     for filename in (
         "__init__.py",
         "configuration_pinyin_code.py",
@@ -98,6 +101,7 @@ def copy_remote_code(output_dir: Path) -> None:
         shutil.copy2(Path("hf") / filename, package_dir / filename)
         if filename != "__init__.py":
             shutil.copy2(Path("hf") / filename, output_dir / filename)
+    shutil.copy2(Path("preprocessing") / "preprocess.py", preprocessing_dir / "preprocess.py")
 
 
 def patch_json(path: Path, updates: dict) -> None:
@@ -127,7 +131,10 @@ def convert(args: argparse.Namespace) -> None:
     copy_remote_code(args.output_dir)
     model.save_pretrained(args.output_dir, safe_serialization=args.safe_serialization)
 
-    tokenizer = PinyinCodeTokenizer(vocab_file=str(args.tokenizer))
+    tokenizer = PinyinCodeTokenizer(
+        vocab_file=str(args.tokenizer),
+        transliteration=args.transliteration,
+    )
     tokenizer.save_pretrained(args.output_dir)
     tokenizer_vocab = args.tokenizer.with_suffix(".vocab")
     if tokenizer_vocab.exists():
@@ -147,7 +154,9 @@ def convert(args: argparse.Namespace) -> None:
                 "AutoTokenizer": ["tokenization_pinyin_code.PinyinCodeTokenizer", None]
             },
             "model_max_length": config.block_size,
+            "pinyin_format": args.transliteration,
             "tokenizer_class": "PinyinCodeTokenizer",
+            "transliteration": args.transliteration,
         },
     )
     special_tokens_map = {
@@ -164,6 +173,7 @@ def convert(args: argparse.Namespace) -> None:
         "source_checkpoint": str(args.checkpoint),
         "epoch": checkpoint.get("epoch"),
         "global_step": checkpoint.get("global_step"),
+        "transliteration": args.transliteration,
         "validation_loss": checkpoint.get("validation_loss"),
     }
     (args.output_dir / "training_metadata.json").write_text(
@@ -180,6 +190,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", type=Path, default=default_checkpoint())
     parser.add_argument("--tokenizer", type=Path, default=DEFAULT_TOKENIZER)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument(
+        "--transliteration",
+        choices=("pinyin-code", "pinyin-initial", "hanzi"),
+        default="pinyin-code",
+        help="Preprocessing mode used to train this tokenizer/model.",
+    )
     parser.add_argument(
         "--safe-serialization",
         action="store_true",

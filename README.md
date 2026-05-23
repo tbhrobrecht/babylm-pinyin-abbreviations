@@ -49,7 +49,7 @@ By default the script writes each original dataset row as JSON. Add
 
 ## Preprocess the data
 
-Convert extracted Mandarin JSONL into the pinyin-initial code format used for
+Convert extracted Mandarin JSONL into the default pinyin-code format used for
 tokenizer training:
 
 ```powershell
@@ -57,7 +57,7 @@ py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\p
 ```
 
 The output file contains one preprocessed document per line. Chinese words are
-segmented with `jieba`, converted to compact pinyin-initial codes, and preserved
+segmented with `jieba`, converted to compact pinyin-code tokens, and preserved
 with whitespace boundaries for downstream tokenizer training.
 
 To create a lowercase pinyin-first-letter corpus instead, use:
@@ -68,6 +68,13 @@ py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\p
 
 For example, the default `pinyin-code` transliteration keeps tone/length casing
 such as `Z4g2`, while `pinyin-initial` emits `zg`.
+
+To keep the same preprocessing pipeline but leave Mandarin words as segmented
+Hanzi instead of pinyin, use:
+
+```powershell
+py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\processed\10k_babylm_zho_hanzi.txt --transliteration hanzi
+```
 
 ## Train the SentencePiece tokenizer
 
@@ -190,16 +197,31 @@ tokenizer = AutoTokenizer.from_pretrained(
 )
 ```
 
+Pass the same `--transliteration` value here that you used when preprocessing
+the training corpus. The exported tokenizer stores that value and applies it to
+raw Mandarin/Hanzi benchmark prompts before SentencePiece tokenization, so
+`lm_eval` can evaluate `pinyin-code`, `pinyin-initial`, or `hanzi` models with
+the matching input format.
+
 
 ## tldr pipeline
 python preprocessing/extract_babylm_zho.py 
+
 python preprocessing/preprocess.py --input data/nk_babylm_zho.jsonl --output data/processed/nk_babylm_zho.txt 
+
 python train_sentencepiece.py --input data/processed/nk_babylm_zho.txt --output-dir tokenizers --model-name babylm_zho_pinyin_spm --vocab-size 16000 
+
 python create_dataset.py --input data/processed/nk_babylm_zho.txt --output data/datasets/nk_babylm_zho_spm.jsonl --tokenizer tokenizers/[name.model] --block-size 512 --stride 512
+
 python train_model.py --dataset data/datasets/nk_spm.jsonl --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
 
-python hf/convert_to_transformers.py --checkpoint models/[model name]/best.pt --tokenizer tokenizers/[model name].model --output-dir hf_[model name]
+python hf/convert_to_transformers.py --checkpoint models/[model name]/best.pt --tokenizer tokenizers/[model name].model --output-dir hf_[model name] --transliteration pinyin-code
 
 hf upload [username]/[model name] [model saved directory]
+
+cd multilingual 
+
 bash scripts/zeroshot_model.sh --model_name [username]/[model name] --langs "zho" --revision main
-python -m lm_eval --model hf --model_args "pretrained=[username]/[model name],revision=main,trust_remate_code=True" --tasks zeroshot_zho --device cuda --output_path ../results/main --batch_size auto:10 --num_fewshot 0 --log_samples --include_path tasks/
+(bash scripts/zeroshot_model.sh --model_name YOUR_MODEL --langs "zho" --pinyin_format initials)
+
+python -m lm_eval --model hf --model_args "pretrained=[username]/[model name],revision=main,trust_remote_code=True" --tasks zeroshot_zho --device cuda --output_path ../results/main --batch_size auto:10 --num_fewshot 0 --log_samples --include_path tasks/

@@ -36,7 +36,7 @@ def require_sentencepiece():
     return spm
 
 
-def preprocess_prompt(text: str) -> str:
+def preprocess_prompt(text: str, transliteration: str) -> str:
     """Convert raw Mandarin text to the pinyin-code representation."""
     try:
         from preprocessing.preprocess import process_text, require_dependencies
@@ -47,7 +47,7 @@ def preprocess_prompt(text: str) -> str:
         ) from exc
 
     require_dependencies()
-    return process_text(text)
+    return process_text(text, transliteration)
 
 
 def prompt_contains_chinese(text: str) -> bool:
@@ -55,12 +55,17 @@ def prompt_contains_chinese(text: str) -> bool:
     return bool(CHINESE_RE.search(text))
 
 
-def prepare_prompt(text: str, raw_prompt: bool, code_prompt: bool) -> str:
+def prepare_prompt(
+    text: str,
+    raw_prompt: bool,
+    code_prompt: bool,
+    transliteration: str,
+) -> str:
     """Preprocess Mandarin prompts while preserving explicit pinyin-code input."""
     if code_prompt:
         return text
     if raw_prompt or prompt_contains_chinese(text):
-        return preprocess_prompt(text)
+        return preprocess_prompt(text, transliteration)
     return text
 
 
@@ -154,6 +159,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Treat --prompt as already-preprocessed pinyin-code text.",
     )
+    parser.add_argument(
+        "--transliteration",
+        choices=("pinyin-code", "pinyin-initial", "hanzi"),
+        default="pinyin-code",
+        help="Preprocessing mode to use for raw Mandarin prompts.",
+    )
     parser.add_argument("--max-new-tokens", type=int, default=80)
     parser.add_argument("--temperature", type=float, default=0.9)
     parser.add_argument("--top-k", type=int, default=50)
@@ -180,7 +191,12 @@ def main() -> None:
     spm = require_sentencepiece()
     processor = spm.SentencePieceProcessor(model_file=str(args.tokenizer))
 
-    prompt = prepare_prompt(args.prompt, args.raw_prompt, args.code_prompt)
+    prompt = prepare_prompt(
+        args.prompt,
+        args.raw_prompt,
+        args.code_prompt,
+        args.transliteration,
+    )
     input_ids = processor.encode(prompt, out_type=int) if prompt.strip() else []
     if not input_ids:
         start_id = processor.bos_id()

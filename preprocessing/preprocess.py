@@ -23,7 +23,7 @@ LABELS = {
 
 PUNCTUATION = set("。，、？！：；.,?!:;()[]“”\"'")
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]+")
-Transliteration = Literal["pinyin-code", "pinyin-initial"]
+Transliteration = Literal["pinyin-code", "pinyin-initial", "hanzi"]
 
 # Match protected markers before ordinary words so tokens like <ANSWER> survive
 # the later English/punctuation handling as a single vocabulary item.
@@ -136,6 +136,8 @@ def chinese_word_to_transliteration(word: str, transliteration: Transliteration)
         return chinese_word_to_initial_codes(word)
     if transliteration == "pinyin-initial":
         return chinese_word_to_initial_letters(word)
+    if transliteration == "hanzi":
+        return word
     raise ValueError(f"Unsupported transliteration: {transliteration}")
 
 
@@ -217,19 +219,19 @@ def preprocess_file(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Convert BabyLM Mandarin JSONL text fields to pinyin-initial code tokens."
+        description="Convert BabyLM Mandarin JSONL text fields to model-ready tokens."
     )
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--preview", type=int, default=3)
     parser.add_argument(
         "--transliteration",
-        choices=("pinyin-code", "pinyin-initial"),
+        choices=("pinyin-code", "pinyin-initial", "hanzi"),
         default="pinyin-code",
         help=(
             "Mandarin transliteration to emit: 'pinyin-code' keeps the original "
             "tone/length code, while 'pinyin-initial' emits lowercase pinyin "
-            "first letters only."
+            "first letters only, and 'hanzi' keeps segmented Mandarin as Hanzi."
         ),
     )
     return parser.parse_args()
