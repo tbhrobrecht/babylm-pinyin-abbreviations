@@ -8,7 +8,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Literal
 
 import jieba
 from pypinyin import Style, pinyin
@@ -23,6 +23,7 @@ LABELS = {
 
 PUNCTUATION = set("。，、？！：；.,?!:;()[]“”\"'")
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]+")
+Transliteration = Literal["pinyin-code", "pinyin-initial"]
 
 # Match protected markers before ordinary words so tokens like <ANSWER> survive
 # the later English/punctuation handling as a single vocabulary item.
@@ -102,6 +103,12 @@ def syllable_to_initial_code(syllable: str) -> str:
     return f"{initial}{digit}"
 
 
+def syllable_to_initial_letter(syllable: str) -> str:
+    """Convert one pinyin syllable with tone into its lowercase first letter."""
+    plain, _ = split_tone3_syllable(syllable)
+    return plain[:1].lower()
+
+
 def chinese_word_to_initial_codes(word: str) -> str:
     """Convert one already-segmented Chinese word to one compact code token.
 
@@ -114,26 +121,46 @@ def chinese_word_to_initial_codes(word: str) -> str:
     return "".join(code for code in codes if code)
 
 
-def tokenize_chinese_span(text: str) -> Iterable[str]:
+def chinese_word_to_initial_letters(word: str) -> str:
+    """Convert one already-segmented Chinese word to lowercase pinyin initials."""
+    syllables = pinyin(word, style=Style.TONE3, heteronym=False, errors="ignore")
+    initials = [
+        syllable_to_initial_letter(item[0]) for item in syllables if item and item[0]
+    ]
+    return "".join(initial for initial in initials if initial)
+
+
+def chinese_word_to_transliteration(word: str, transliteration: Transliteration) -> str:
+    """Convert one segmented Chinese word using the requested transliteration."""
+    if transliteration == "pinyin-code":
+        return chinese_word_to_initial_codes(word)
+    if transliteration == "pinyin-initial":
+        return chinese_word_to_initial_letters(word)
+    raise ValueError(f"Unsupported transliteration: {transliteration}")
+
+
+def tokenize_chinese_span(
+    text: str, transliteration: Transliteration = "pinyin-code"
+) -> Iterable[str]:
     """Segment a contiguous Chinese span and emit one code token per jieba word."""
     for word in jieba.cut(text, cut_all=False):
         word = word.strip()
         if not word:
             continue
         if CHINESE_RE.search(word):
-            token = chinese_word_to_initial_codes(word)
+            token = chinese_word_to_transliteration(word, transliteration)
             if token:
                 yield token
 
 
-def process_text(text: str) -> str:
+def process_text(text: str, transliteration: Transliteration = "pinyin-code") -> str:
     """Convert one raw document string into the final space-separated token line."""
     tokens: list[str] = []
     for part in TOKEN_RE.findall(normalize_text(text)):
         if part.startswith("<") and part.endswith(">"):
             tokens.append(part)
         elif CHINESE_RE.fullmatch(part):
-            tokens.extend(tokenize_chinese_span(part))
+            tokens.extend(tokenize_chinese_span(part, transliteration))
         elif part in PUNCTUATION:
             tokens.append(part)
         elif re.fullmatch(r"[A-Za-z]+", part):
@@ -156,7 +183,12 @@ def read_jsonl(path: Path) -> Iterable[dict[str, Any]]:
                 raise ValueError(f"Invalid JSON on line {line_number}: {exc}") from exc
 
 
-def preprocess_file(input_path: Path, output_path: Path, preview_count: int) -> int:
+def preprocess_file(
+    input_path: Path,
+    output_path: Path,
+    preview_count: int,
+    transliteration: Transliteration = "pinyin-code",
+) -> int:
     """Stream input documents to output while retaining a small preview buffer."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     written = 0
@@ -165,7 +197,7 @@ def preprocess_file(input_path: Path, output_path: Path, preview_count: int) -> 
     with output_path.open("w", encoding="utf-8", newline="\n") as out:
         for obj in read_jsonl(input_path):
             text = str(obj.get("text", ""))
-            processed = process_text(text)
+            processed = process_text(text, transliteration)
             out.write(processed)
             out.write("\n")
             written += 1
@@ -190,6 +222,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--preview", type=int, default=3)
+    parser.add_argument(
+        "--transliteration",
+        choices=("pinyin-code", "pinyin-initial"),
+        default="pinyin-code",
+        help=(
+            "Mandarin transliteration to emit: 'pinyin-code' keeps the original "
+            "tone/length code, while 'pinyin-initial' emits lowercase pinyin "
+            "first letters only."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -198,7 +240,7 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     args = parse_args()
-    count = preprocess_file(args.input, args.output, args.preview)
+    count = preprocess_file(args.input, args.output, args.preview, args.transliteration)
     print(f"Wrote {count:,} processed documents to {args.output}")
 
 

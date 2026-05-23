@@ -60,6 +60,15 @@ The output file contains one preprocessed document per line. Chinese words are
 segmented with `jieba`, converted to compact pinyin-initial codes, and preserved
 with whitespace boundaries for downstream tokenizer training.
 
+To create a lowercase pinyin-first-letter corpus instead, use:
+
+```powershell
+py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\processed\10k_babylm_zho_initials.txt --transliteration pinyin-initial
+```
+
+For example, the default `pinyin-code` transliteration keeps tone/length casing
+such as `Z4g2`, while `pinyin-initial` emits `zg`.
+
 ## Train the SentencePiece tokenizer
 
 Train the default BPE tokenizer from the preprocessed 10k sample:
@@ -186,8 +195,10 @@ tokenizer = AutoTokenizer.from_pretrained(
 python preprocessing/extract_babylm_zho.py 
 python preprocessing/preprocess.py --input data/nk_babylm_zho.jsonl --output data/processed/nk_babylm_zho.txt 
 python train_sentencepiece.py --input data/processed/nk_babylm_zho.txt --output-dir tokenizers --model-name babylm_zho_pinyin_spm --vocab-size 16000 
-python create_dataset.py --input data/processed/nk_babylm_zho.txt --tokenizer tokenizers/[name.model] --bloack-size 128 --stride 128
-python train_model.py --dataset data/datasets/nk_spm.jsonl --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embed 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
+python create_dataset.py --input data/processed/nk_babylm_zho.txt --output data/datasets/nk_babylm_zho_spm.jsonl --tokenizer tokenizers/[name.model] --block-size 512 --stride 512
+python train_model.py --dataset data/datasets/nk_spm.jsonl --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
+
+python hf/convert_to_transformers.py --checkpoint models/[model name]/best.pt --tokenizer tokenizers/[model name].model --output-dir hf_[model name]
 
 hf upload [username]/[model name] [model saved directory]
 bash scripts/zeroshot_model.sh --model_name [username]/[model name] --langs "zho" --revision main

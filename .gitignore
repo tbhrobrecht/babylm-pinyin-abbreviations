@@ -2,6 +2,7 @@
 __pycache__/
 hf_upload/
 hf_pinyin_code_model/
+hf_models/
 hf_roundtrip_test/
 *.py[codz]
 *$py.class
