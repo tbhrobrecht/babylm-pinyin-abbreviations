@@ -180,3 +180,15 @@ tokenizer = AutoTokenizer.from_pretrained(
     trust_remote_code=True,
 )
 ```
+
+
+## tldr pipeline
+python preprocessing/extract_babylm_zho.py 
+python preprocessing/preprocess.py --input data/nk_babylm_zho.jsonl --output data/processed/nk_babylm_zho.txt 
+python train_sentencepiece.py --input data/processed/nk_babylm_zho.txt --output-dir tokenizers --model-name babylm_zho_pinyin_spm --vocab-size 16000 
+python create_dataset.py --input data/processed/nk_babylm_zho.txt --tokenizer tokenizers/[name.model] --bloack-size 128 --stride 128
+python train_model.py --dataset data/datasets/nk_spm.jsonl --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embed 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
+
+hf upload [username]/[model name] [model saved directory]
+bash scripts/zeroshot_model.sh --model_name [username]/[model name] --langs "zho" --revision main
+python -m lm_eval --model hf --model_args "pretrained=[username]/[model name],revision=main,trust_remate_code=True" --tasks zeroshot_zho --device cuda --output_path ../results/main --batch_size auto:10 --num_fewshot 0 --log_samples --include_path tasks/
