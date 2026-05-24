@@ -134,6 +134,7 @@ def convert(args: argparse.Namespace) -> None:
     tokenizer = PinyinCodeTokenizer(
         vocab_file=str(args.tokenizer),
         transliteration=args.transliteration,
+        use_jieba=args.jieba,
     )
     tokenizer.save_pretrained(args.output_dir)
     tokenizer_vocab = args.tokenizer.with_suffix(".vocab")
@@ -155,8 +156,10 @@ def convert(args: argparse.Namespace) -> None:
             },
             "model_max_length": config.block_size,
             "pinyin_format": args.transliteration,
+            "jieba": args.jieba,
             "tokenizer_class": "PinyinCodeTokenizer",
             "transliteration": args.transliteration,
+            "use_jieba": args.jieba,
         },
     )
     special_tokens_map = {
@@ -173,7 +176,9 @@ def convert(args: argparse.Namespace) -> None:
         "source_checkpoint": str(args.checkpoint),
         "epoch": checkpoint.get("epoch"),
         "global_step": checkpoint.get("global_step"),
+        "jieba": args.jieba,
         "transliteration": args.transliteration,
+        "use_jieba": args.jieba,
         "validation_loss": checkpoint.get("validation_loss"),
     }
     (args.output_dir / "training_metadata.json").write_text(
@@ -195,6 +200,15 @@ def parse_args() -> argparse.Namespace:
         choices=("pinyin-code", "pinyin-initial", "hanzi"),
         default="pinyin-code",
         help="Preprocessing mode used to train this tokenizer/model.",
+    )
+    parser.add_argument(
+        "--jieba",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Whether the training corpus used jieba word segmentation. Pass "
+            "--no-jieba for character-level Chinese preprocessing."
+        ),
     )
     parser.add_argument(
         "--safe-serialization",

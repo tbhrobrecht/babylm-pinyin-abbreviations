@@ -60,6 +60,13 @@ The output file contains one preprocessed document per line. Chinese words are
 segmented with `jieba`, converted to compact pinyin-code tokens, and preserved
 with whitespace boundaries for downstream tokenizer training.
 
+To disable `jieba` and preprocess Chinese character-by-character instead, add
+`--no-jieba`:
+
+```powershell
+py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\processed\10k_babylm_zho_char.txt --no-jieba
+```
+
 To create a lowercase pinyin-first-letter corpus instead, use:
 
 ```powershell
@@ -201,7 +208,9 @@ Pass the same `--transliteration` value here that you used when preprocessing
 the training corpus. The exported tokenizer stores that value and applies it to
 raw Mandarin/Hanzi benchmark prompts before SentencePiece tokenization, so
 `lm_eval` can evaluate `pinyin-code`, `pinyin-initial`, or `hanzi` models with
-the matching input format.
+the matching input format. Also pass `--no-jieba` when converting a model trained
+on character-level Chinese preprocessing, so benchmark prompts use the same
+segmentation.
 
 
 ## tldr pipeline
@@ -216,6 +225,7 @@ python create_dataset.py --input data/processed/nk_babylm_zho.txt --output data/
 python train_model.py --dataset data/datasets/nk_spm.jsonl --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
 
 python hf/convert_to_transformers.py --checkpoint models/[model name]/best.pt --tokenizer tokenizers/[model name].model --output-dir hf_[model name] --transliteration pinyin-code
+(add --no-jieba here if the training corpus was preprocessed with --no-jieba)
 
 hf upload [username]/[model name] [model saved directory]
 

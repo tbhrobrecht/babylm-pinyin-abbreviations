@@ -51,6 +51,8 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         add_eos_token: bool = False,
         transliteration: str = "pinyin-code",
         pinyin_format: str | None = None,
+        use_jieba: bool = True,
+        jieba: bool | None = None,
         **kwargs,
     ) -> None:
         self.vocab_file = vocab_file
@@ -60,6 +62,7 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         self.transliteration = self._normalize_transliteration(
             pinyin_format or transliteration
         )
+        self.use_jieba = use_jieba if jieba is None else jieba
 
         kwargs.setdefault("unk_token", self._piece_or_none(self.sp_model.unk_id()))
         kwargs.setdefault("bos_token", self._piece_or_none(self.sp_model.bos_id()))
@@ -67,6 +70,8 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         kwargs.setdefault("pad_token", self._piece_or_none(self.sp_model.pad_id()))
         kwargs.setdefault("transliteration", self.transliteration)
         kwargs.setdefault("pinyin_format", self.transliteration)
+        kwargs.setdefault("use_jieba", self.use_jieba)
+        kwargs.setdefault("jieba", self.use_jieba)
         super().__init__(**kwargs)
 
     def _normalize_transliteration(self, value: str) -> str:
@@ -90,19 +95,32 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
             return self._fallback_process_text(text)
 
         require_dependencies()
-        return process_text(text, self.transliteration)
+        return process_text(text, self.transliteration, self.use_jieba)
 
     def _fallback_process_text(self, text: str) -> str:
-        try:
-            import jieba
-            from pypinyin import Style, pinyin
-        except ImportError as exc:
-            raise ImportError(
-                "Tokenizing raw Mandarin benchmark text requires jieba and pypinyin. "
-                "Install the model dependencies before running lm_eval."
-            ) from exc
+        if self.use_jieba:
+            try:
+                import jieba
+            except ImportError as exc:
+                raise ImportError(
+                    "Tokenizing raw Mandarin benchmark text with jieba segmentation "
+                    "requires jieba. Install the model dependencies before running "
+                    "lm_eval."
+                ) from exc
 
-        jieba.setLogLevel(logging.WARNING)
+            jieba.setLogLevel(logging.WARNING)
+        else:
+            jieba = None
+
+        if self.transliteration != "hanzi":
+            try:
+                from pypinyin import Style, pinyin
+            except ImportError as exc:
+                raise ImportError(
+                    "Tokenizing raw Mandarin benchmark text as pinyin requires pypinyin. "
+                    "Install the model dependencies before running lm_eval."
+                ) from exc
+
 
         def normalize_text(value: str) -> str:
             value = re.sub(r"\$\$.*?\$\$", " <MATH> ", value, flags=re.DOTALL)
@@ -171,7 +189,8 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
 
         def tokenize_chinese_span(value: str) -> list[str]:
             tokens = []
-            for word in jieba.cut(value, cut_all=False):
+            words = jieba.cut(value, cut_all=False) if self.use_jieba else value
+            for word in words:
                 word = word.strip()
                 if word and CHINESE_SPAN_RE.search(word):
                     token = convert_word(word)

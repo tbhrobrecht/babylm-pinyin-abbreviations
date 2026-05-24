@@ -36,7 +36,7 @@ def require_sentencepiece():
     return spm
 
 
-def preprocess_prompt(text: str, transliteration: str) -> str:
+def preprocess_prompt(text: str, transliteration: str, use_jieba: bool) -> str:
     """Convert raw Mandarin text to the pinyin-code representation."""
     try:
         from preprocessing.preprocess import process_text, require_dependencies
@@ -47,7 +47,7 @@ def preprocess_prompt(text: str, transliteration: str) -> str:
         ) from exc
 
     require_dependencies()
-    return process_text(text, transliteration)
+    return process_text(text, transliteration, use_jieba)
 
 
 def prompt_contains_chinese(text: str) -> bool:
@@ -60,12 +60,13 @@ def prepare_prompt(
     raw_prompt: bool,
     code_prompt: bool,
     transliteration: str,
+    use_jieba: bool,
 ) -> str:
     """Preprocess Mandarin prompts while preserving explicit pinyin-code input."""
     if code_prompt:
         return text
     if raw_prompt or prompt_contains_chinese(text):
-        return preprocess_prompt(text, transliteration)
+        return preprocess_prompt(text, transliteration, use_jieba)
     return text
 
 
@@ -165,6 +166,15 @@ def parse_args() -> argparse.Namespace:
         default="pinyin-code",
         help="Preprocessing mode to use for raw Mandarin prompts.",
     )
+    parser.add_argument(
+        "--jieba",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Use jieba word segmentation for raw Mandarin prompts. Disable with "
+            "--no-jieba for character-level preprocessing."
+        ),
+    )
     parser.add_argument("--max-new-tokens", type=int, default=80)
     parser.add_argument("--temperature", type=float, default=0.9)
     parser.add_argument("--top-k", type=int, default=50)
@@ -196,6 +206,7 @@ def main() -> None:
         args.raw_prompt,
         args.code_prompt,
         args.transliteration,
+        args.jieba,
     )
     input_ids = processor.encode(prompt, out_type=int) if prompt.strip() else []
     if not input_ids:

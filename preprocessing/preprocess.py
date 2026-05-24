@@ -142,10 +142,13 @@ def chinese_word_to_transliteration(word: str, transliteration: Transliteration)
 
 
 def tokenize_chinese_span(
-    text: str, transliteration: Transliteration = "pinyin-code"
+    text: str,
+    transliteration: Transliteration = "pinyin-code",
+    use_jieba: bool = True,
 ) -> Iterable[str]:
-    """Segment a contiguous Chinese span and emit one code token per jieba word."""
-    for word in jieba.cut(text, cut_all=False):
+    """Emit one token per jieba word or per Hanzi character."""
+    words = jieba.cut(text, cut_all=False) if use_jieba else text
+    for word in words:
         word = word.strip()
         if not word:
             continue
@@ -155,14 +158,18 @@ def tokenize_chinese_span(
                 yield token
 
 
-def process_text(text: str, transliteration: Transliteration = "pinyin-code") -> str:
+def process_text(
+    text: str,
+    transliteration: Transliteration = "pinyin-code",
+    use_jieba: bool = True,
+) -> str:
     """Convert one raw document string into the final space-separated token line."""
     tokens: list[str] = []
     for part in TOKEN_RE.findall(normalize_text(text)):
         if part.startswith("<") and part.endswith(">"):
             tokens.append(part)
         elif CHINESE_RE.fullmatch(part):
-            tokens.extend(tokenize_chinese_span(part, transliteration))
+            tokens.extend(tokenize_chinese_span(part, transliteration, use_jieba))
         elif part in PUNCTUATION:
             tokens.append(part)
         elif re.fullmatch(r"[A-Za-z]+", part):
@@ -190,6 +197,7 @@ def preprocess_file(
     output_path: Path,
     preview_count: int,
     transliteration: Transliteration = "pinyin-code",
+    use_jieba: bool = True,
 ) -> int:
     """Stream input documents to output while retaining a small preview buffer."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -199,7 +207,7 @@ def preprocess_file(
     with output_path.open("w", encoding="utf-8", newline="\n") as out:
         for obj in read_jsonl(input_path):
             text = str(obj.get("text", ""))
-            processed = process_text(text, transliteration)
+            processed = process_text(text, transliteration, use_jieba)
             out.write(processed)
             out.write("\n")
             written += 1
@@ -234,6 +242,16 @@ def parse_args() -> argparse.Namespace:
             "first letters only, and 'hanzi' keeps segmented Mandarin as Hanzi."
         ),
     )
+    parser.add_argument(
+        "--jieba",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Use jieba word segmentation for Chinese spans. Disable with "
+            "--no-jieba to emit one token per Hanzi character before "
+            "transliteration."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -242,7 +260,13 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     args = parse_args()
-    count = preprocess_file(args.input, args.output, args.preview, args.transliteration)
+    count = preprocess_file(
+        args.input,
+        args.output,
+        args.preview,
+        args.transliteration,
+        args.jieba,
+    )
     print(f"Wrote {count:,} processed documents to {args.output}")
 
 
