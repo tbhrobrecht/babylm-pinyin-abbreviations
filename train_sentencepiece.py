@@ -77,7 +77,7 @@ def train_tokenizer(args: argparse.Namespace) -> None:
         eos_piece="</s>",
         normalization_rule_name="identity",
         remove_extra_whitespaces=False,
-        split_by_whitespace=True,
+        split_by_whitespace=False,
         split_by_number=False,
         allow_whitespace_only_pieces=False,
     )
