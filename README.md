@@ -83,6 +83,19 @@ Hanzi instead of pinyin, use:
 py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\processed\10k_babylm_zho_hanzi.txt --transliteration hanzi
 ```
 
+## Export statistics as a LaTeX table
+
+Convert the tone and syllable-length statistics summary into a formatted
+academic table:
+
+```powershell
+py preprocessing\statistics_to_latex.py
+```
+
+This writes `tables\10k_statistics_table.tex`, a ready-to-include table using the
+LaTeX `booktabs` and `siunitx` packages. Override `--input`, `--output`,
+`--caption`, or `--label` when preparing another corpus or paper.
+
 ## Train the SentencePiece tokenizer
 
 Train the default BPE tokenizer from the preprocessed 10k sample:
