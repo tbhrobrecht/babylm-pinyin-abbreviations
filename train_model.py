@@ -62,6 +62,64 @@ class JsonlTokenDataset(Dataset):
         return self.examples[index]
 
 
+def binary_metadata_path(path: Path) -> Path:
+    """Return the sidecar metadata path for a binary chunk file."""
+    return path.with_suffix(path.suffix + ".meta.json")
+
+
+class BinaryTokenDataset(Dataset):
+    """Memory-map fixed-size int32 token chunks produced by create_dataset.py."""
+
+    def __init__(self, path: Path) -> None:
+        metadata_path = binary_metadata_path(path)
+        if not metadata_path.exists():
+            raise FileNotFoundError(f"Binary dataset metadata not found: {metadata_path}")
+
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if metadata.get("format") != "pinyin-code-chunks-v1":
+            raise ValueError(f"Unsupported binary dataset format in {metadata_path}")
+        if metadata.get("dtype") != "int32_le":
+            raise ValueError(f"Unsupported binary dataset dtype in {metadata_path}")
+
+        self.path = path
+        self.block_size = int(metadata["block_size"])
+        self.num_examples = int(metadata["num_examples"])
+        self.sequence_lengths = {self.block_size}
+        self.max_token_id = int(metadata.get("max_token_id", -1))
+
+        if self.num_examples <= 0:
+            raise ValueError(f"No examples found in {path}")
+
+        expected_bytes = self.num_examples * self.block_size * 4
+        actual_bytes = path.stat().st_size
+        if actual_bytes != expected_bytes:
+            raise ValueError(
+                f"Binary dataset size mismatch for {path}: "
+                f"expected={expected_bytes} bytes, actual={actual_bytes} bytes."
+            )
+
+        storage = torch.from_file(
+            str(path),
+            shared=False,
+            size=self.num_examples * self.block_size,
+            dtype=torch.int32,
+        )
+        self.examples = storage.view(self.num_examples, self.block_size)
+
+    def __len__(self) -> int:
+        return self.num_examples
+
+    def __getitem__(self, index: int) -> torch.Tensor:
+        return self.examples[index].to(torch.long)
+
+
+def load_token_dataset(path: Path) -> Dataset:
+    """Load a JSONL or binary token dataset."""
+    if binary_metadata_path(path).exists():
+        return BinaryTokenDataset(path)
+    return JsonlTokenDataset(path)
+
+
 class CausalSelfAttention(nn.Module):
     """Multi-head masked self-attention."""
 
@@ -189,7 +247,7 @@ def split_dataset(dataset: Dataset, validation_fraction: float, seed: int) -> tu
     return random_split(dataset, [train_size, validation_size], generator=generator)
 
 
-def validate_dataset_compatibility(dataset: JsonlTokenDataset, config: ModelConfig) -> None:
+def validate_dataset_compatibility(dataset: Dataset, config: ModelConfig) -> None:
     """Fail early when dataset chunks cannot be consumed by the model config."""
     if dataset.max_token_id >= config.vocab_size:
         raise ValueError(
@@ -389,7 +447,7 @@ def train(args: argparse.Namespace) -> None:
     device = resolve_device(args.device)
     configure_runtime(args, device)
 
-    dataset = JsonlTokenDataset(args.dataset)
+    dataset = load_token_dataset(args.dataset)
     config = ModelConfig(
         vocab_size=args.vocab_size,
         block_size=args.block_size,
@@ -401,7 +459,7 @@ def train(args: argparse.Namespace) -> None:
     validate_dataset_compatibility(dataset, config)
 
     if args.validation_dataset is not None:
-        valid_dataset = JsonlTokenDataset(args.validation_dataset)
+        valid_dataset = load_token_dataset(args.validation_dataset)
         validate_dataset_compatibility(valid_dataset, config)
         train_dataset = dataset
     else:
@@ -535,7 +593,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help=(
-            "Optional separate validation JSONL created from held-out documents. "
+            "Optional separate validation dataset created from held-out documents. "
             "When omitted, the training dataset is split randomly by chunk."
         ),
     )

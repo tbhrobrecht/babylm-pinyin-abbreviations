@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import struct
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -67,27 +68,37 @@ class ChunkWriter:
     """Write fixed-size chunks while keeping sliding-window state."""
 
     handle: object
+    output_format: str
     block_size: int
     stride: int
     include_labels: bool
     buffer: list[int]
     written: int = 0
     consumed_tokens: int = 0
+    max_token_id: int = -1
 
     def add_tokens(self, token_ids: Iterable[int]) -> None:
         for token_id in token_ids:
             self.consumed_tokens += 1
+            self.max_token_id = max(self.max_token_id, token_id)
             self.buffer.append(token_id)
             if len(self.buffer) == self.block_size:
                 self.write_chunk(self.buffer)
                 del self.buffer[: self.stride]
 
     def write_chunk(self, chunk: list[int]) -> None:
-        record = {"input_ids": list(chunk)}
-        if self.include_labels:
-            record["labels"] = list(chunk)
-        self.handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
-        self.handle.write("\n")
+        if self.output_format == "jsonl":
+            record = {"input_ids": list(chunk)}
+            if self.include_labels:
+                record["labels"] = list(chunk)
+            self.handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
+            self.handle.write("\n")
+        elif self.output_format == "bin":
+            if min(chunk) < 0 or max(chunk) > 2_147_483_647:
+                raise ValueError("Binary datasets require token ids in int32 range")
+            self.handle.write(struct.pack(f"<{len(chunk)}i", *chunk))
+        else:
+            raise ValueError(f"Unsupported dataset format: {self.output_format}")
         self.written += 1
 
     @property
@@ -108,6 +119,7 @@ class DatasetWriteStats:
 def make_chunk_writer(handle, args: argparse.Namespace) -> ChunkWriter:
     return ChunkWriter(
         handle=handle,
+        output_format=args.format,
         block_size=args.block_size,
         stride=args.stride,
         include_labels=args.include_labels,
@@ -115,13 +127,49 @@ def make_chunk_writer(handle, args: argparse.Namespace) -> ChunkWriter:
     )
 
 
+def binary_metadata_path(path: Path) -> Path:
+    """Return the sidecar metadata path for a binary chunk file."""
+    return path.with_suffix(path.suffix + ".meta.json")
+
+
+def write_binary_metadata(path: Path, writer: ChunkWriter, args: argparse.Namespace) -> None:
+    """Write metadata needed to memory-map a binary dataset."""
+    payload = {
+        "format": "pinyin-code-chunks-v1",
+        "dtype": "int32_le",
+        "num_examples": writer.written,
+        "block_size": args.block_size,
+        "stride": args.stride,
+        "include_labels": False,
+        "consumed_tokens": writer.consumed_tokens,
+        "dropped_tail_tokens": writer.dropped_tail_tokens,
+        "max_token_id": writer.max_token_id,
+    }
+    binary_metadata_path(path).write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def open_output(path: Path, output_format: str):
+    """Open an output dataset file in the mode required by the selected format."""
+    if output_format == "jsonl":
+        return path.open("w", encoding="utf-8", newline="\n")
+    if output_format == "bin":
+        return path.open("wb")
+    raise ValueError(f"Unsupported dataset format: {output_format}")
+
+
 def write_single_dataset(args: argparse.Namespace, processor) -> DatasetWriteStats:
     """Write all input documents into one chunked dataset."""
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    with args.output.open("w", encoding="utf-8", newline="\n") as out:
+    with open_output(args.output, args.format) as out:
         writer = make_chunk_writer(out, args)
         for document_ids in iter_document_token_ids(args.input, processor):
             writer.add_tokens(document_ids)
+
+    if args.format == "bin":
+        write_binary_metadata(args.output, writer, args)
 
     return DatasetWriteStats(
         train_examples=writer.written,
@@ -142,8 +190,8 @@ def write_train_validation_datasets(args: argparse.Namespace, processor) -> Data
     args.validation_output.parent.mkdir(parents=True, exist_ok=True)
 
     with (
-        args.output.open("w", encoding="utf-8", newline="\n") as train_out,
-        args.validation_output.open("w", encoding="utf-8", newline="\n") as valid_out,
+        open_output(args.output, args.format) as train_out,
+        open_output(args.validation_output, args.format) as valid_out,
     ):
         train_writer = make_chunk_writer(train_out, args)
         valid_writer = make_chunk_writer(valid_out, args)
@@ -151,6 +199,10 @@ def write_train_validation_datasets(args: argparse.Namespace, processor) -> Data
         for document_ids in iter_document_token_ids(args.input, processor):
             writer = valid_writer if rng.random() < args.validation_fraction else train_writer
             writer.add_tokens(document_ids)
+
+    if args.format == "bin":
+        write_binary_metadata(args.output, train_writer, args)
+        write_binary_metadata(args.validation_output, valid_writer, args)
 
     return DatasetWriteStats(
         train_examples=train_writer.written,
@@ -163,7 +215,10 @@ def write_train_validation_datasets(args: argparse.Namespace, processor) -> Data
 
 
 def write_dataset(args: argparse.Namespace) -> DatasetWriteStats:
-    """Tokenize processed text and write one JSON record per training chunk."""
+    """Tokenize processed text and write fixed-size chunk records."""
+    if args.format == "bin" and args.include_labels:
+        raise ValueError("--include-labels is only supported for --format jsonl")
+
     spm = require_sentencepiece()
     processor = spm.SentencePieceProcessor(model_file=str(args.tokenizer))
 
@@ -182,7 +237,7 @@ def write_dataset(args: argparse.Namespace) -> DatasetWriteStats:
 def parse_args() -> argparse.Namespace:
     """Parse command-line options for dataset creation."""
     parser = argparse.ArgumentParser(
-        description="Build a JSONL language-modeling dataset from processed pinyin-code text."
+        description="Build a chunked language-modeling dataset from processed pinyin-code text."
     )
     parser.add_argument(
         "--input",
@@ -201,7 +256,16 @@ def parse_args() -> argparse.Namespace:
         "--output",
         type=Path,
         default=Path("data/datasets/10k_babylm_zho_spm.jsonl"),
-        help="Output JSONL dataset path.",
+        help="Output dataset path.",
+    )
+    parser.add_argument(
+        "--format",
+        choices=("jsonl", "bin"),
+        default="jsonl",
+        help=(
+            "Dataset format. 'jsonl' is human-readable; 'bin' writes compact "
+            "int32 chunks plus a .meta.json sidecar for faster training loads."
+        ),
     )
     parser.add_argument(
         "--block-size",
@@ -228,7 +292,7 @@ def parse_args() -> argparse.Namespace:
         "--validation-output",
         type=Path,
         help=(
-            "Optional output JSONL for a document-level validation split. "
+            "Optional output path for a document-level validation split. "
             "When provided, --output receives only training documents."
         ),
     )
