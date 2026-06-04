@@ -188,6 +188,15 @@ can improve longer GPU runs after a startup compilation cost. Checkpoints omit
 optimizer state by default to reduce disk I/O; pass `--save-optimizer` if you
 need optimizer state for manual resuming.
 
+Use gradient accumulation when you want a larger effective batch size than fits
+comfortably in VRAM. The learning-rate schedule is applied per optimizer update,
+not per mini-batch; cosine decay is the default, with optional linear warmup and
+a nonzero floor:
+
+```powershell
+py train_model.py --dataset data\datasets\10k_train_spm.bin --validation-dataset data\datasets\10k_valid_spm.bin --device cuda --batch-size 64 --gradient-accumulation-steps 4 --warmup-steps 200 --min-learning-rate 3e-5
+```
+
 On a CUDA machine, such as a workstation with an RTX GPU, keep using
 `--device cuda`. If the startup line prints your CUDA device name, the CUDA fast
 paths are active.

@@ -22,6 +22,7 @@ from train_model import (
     ModelConfig,
     PinyinCodeLanguageModel,
     load_token_dataset,
+    learning_rate_for_step,
     split_dataset,
     train,
     validate_dataset_compatibility,
@@ -212,6 +213,41 @@ class PipelineSanityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "At least two"):
             split_dataset(dataset, validation_fraction=0.5, seed=1337)
 
+    def test_learning_rate_schedule_warmup_and_cosine_decay(self) -> None:
+        self.assertAlmostEqual(
+            learning_rate_for_step(
+                step=1,
+                total_steps=6,
+                base_lr=1.0,
+                min_lr=0.1,
+                warmup_steps=2,
+                schedule="cosine",
+            ),
+            0.5,
+        )
+        self.assertAlmostEqual(
+            learning_rate_for_step(
+                step=2,
+                total_steps=6,
+                base_lr=1.0,
+                min_lr=0.1,
+                warmup_steps=2,
+                schedule="cosine",
+            ),
+            1.0,
+        )
+        self.assertAlmostEqual(
+            learning_rate_for_step(
+                step=6,
+                total_steps=6,
+                base_lr=1.0,
+                min_lr=0.1,
+                warmup_steps=2,
+                schedule="cosine",
+            ),
+            0.1,
+        )
+
     def test_tiny_model_forward_has_finite_loss(self) -> None:
         model = PinyinCodeLanguageModel(
             ModelConfig(vocab_size=32, block_size=8, n_layer=1, n_head=2, n_embd=16)
@@ -239,6 +275,10 @@ class PipelineSanityTests(unittest.TestCase):
             epochs=1,
             batch_size=1,
             learning_rate=1e-3,
+            gradient_accumulation_steps=2,
+            lr_schedule="cosine",
+            warmup_steps=1,
+            min_learning_rate=1e-5,
             weight_decay=0.0,
             grad_clip=1.0,
             validation_fraction=0.5,
@@ -285,6 +325,10 @@ class PipelineSanityTests(unittest.TestCase):
             epochs=1,
             batch_size=1,
             learning_rate=1e-3,
+            gradient_accumulation_steps=2,
+            lr_schedule="cosine",
+            warmup_steps=1,
+            min_learning_rate=1e-5,
             weight_decay=0.0,
             grad_clip=1.0,
             validation_fraction=0.5,
@@ -311,6 +355,7 @@ class PipelineSanityTests(unittest.TestCase):
 
         checkpoint = torch.load(output_dir / "last.pt", map_location="cpu", weights_only=False)
         self.assertEqual(checkpoint["epoch"], 2)
+        self.assertEqual(checkpoint["global_step"], 4)
 
     def test_hf_model_derives_position_ids_from_attention_mask(self) -> None:
         if PinyinCodeConfig is None or PinyinCodeForCausalLM is None:

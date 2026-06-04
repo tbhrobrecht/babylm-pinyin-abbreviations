@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import random
 import time
 from dataclasses import asdict, dataclass
@@ -362,6 +363,53 @@ def build_optimizer(
         return torch.optim.AdamW(model.parameters(), **optimizer_kwargs)
 
 
+def validate_training_args(args: argparse.Namespace) -> None:
+    """Validate optimization options that interact with the training loop."""
+    if args.gradient_accumulation_steps <= 0:
+        raise ValueError("--gradient-accumulation-steps must be greater than zero")
+    if args.warmup_steps < 0:
+        raise ValueError("--warmup-steps must be greater than or equal to zero")
+    if args.min_learning_rate < 0:
+        raise ValueError("--min-learning-rate must be greater than or equal to zero")
+    if args.min_learning_rate > args.learning_rate:
+        raise ValueError("--min-learning-rate must be less than or equal to --learning-rate")
+    if args.log_every <= 0:
+        raise ValueError("--log-every must be greater than zero")
+
+
+def optimizer_steps_per_epoch(loader: DataLoader, gradient_accumulation_steps: int) -> int:
+    """Return the number of optimizer updates in one epoch."""
+    return math.ceil(len(loader) / gradient_accumulation_steps)
+
+
+def learning_rate_for_step(
+    step: int,
+    total_steps: int,
+    base_lr: float,
+    min_lr: float,
+    warmup_steps: int,
+    schedule: str,
+) -> float:
+    """Return the scheduled learning rate for a one-indexed optimizer step."""
+    if warmup_steps > 0 and step <= warmup_steps:
+        return base_lr * step / warmup_steps
+    if schedule == "constant":
+        return base_lr
+    if schedule != "cosine":
+        raise ValueError(f"Unsupported LR schedule: {schedule}")
+
+    decay_steps = max(1, total_steps - warmup_steps)
+    progress = min(max((step - warmup_steps) / decay_steps, 0.0), 1.0)
+    cosine_factor = 0.5 * (1.0 + math.cos(math.pi * progress))
+    return min_lr + (base_lr - min_lr) * cosine_factor
+
+
+def set_optimizer_lr(optimizer: torch.optim.Optimizer, learning_rate: float) -> None:
+    """Set every optimizer param group to the scheduled learning rate."""
+    for group in optimizer.param_groups:
+        group["lr"] = learning_rate
+
+
 def checkpoint_payload(
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
@@ -444,6 +492,7 @@ def train(args: argparse.Namespace) -> None:
     """Train the language model and write checkpoints."""
     random.seed(args.seed)
     torch.manual_seed(args.seed)
+    validate_training_args(args)
     device = resolve_device(args.device)
     configure_runtime(args, device)
 
@@ -481,6 +530,11 @@ def train(args: argparse.Namespace) -> None:
         pin_memory=device.type == "cuda",
         persistent_workers=args.num_workers > 0,
     )
+    steps_per_epoch = optimizer_steps_per_epoch(
+        train_loader,
+        args.gradient_accumulation_steps,
+    )
+    total_optimizer_steps = max(1, steps_per_epoch * args.epochs)
 
     amp_dtype = amp_dtype_from_name(args.amp_dtype)
     use_amp = args.amp and device.type == "cuda"
@@ -516,9 +570,15 @@ def train(args: argparse.Namespace) -> None:
         f"parameters={count_parameters(raw_model):,} "
         f"examples={len(dataset):,} "
         f"train_tokens_per_epoch={tokens_per_train_epoch:,} "
+        f"gradient_accumulation_steps={args.gradient_accumulation_steps} "
+        f"optimizer_steps_per_epoch={steps_per_epoch:,} "
+        f"total_optimizer_steps={total_optimizer_steps:,} "
         f"amp={use_amp} "
         f"amp_dtype={args.amp_dtype if use_amp else 'none'} "
         f"tf32={args.tf32 and device.type == 'cuda'} "
+        f"lr_schedule={args.lr_schedule} "
+        f"warmup_steps={args.warmup_steps} "
+        f"min_learning_rate={args.min_learning_rate:g} "
         f"compile={args.compile} "
         f"resume={args.resume or 'none'}"
     )
@@ -531,38 +591,80 @@ def train(args: argparse.Namespace) -> None:
 
     for epoch in range(start_epoch, args.epochs + 1):
         model.train()
-        for batch in train_loader:
+        optimizer.zero_grad(set_to_none=True)
+        accumulation_index = 0
+        pending_loss = 0.0
+        for batch_index, batch in enumerate(train_loader, start=1):
             batch = batch.to(device, non_blocking=device.type == "cuda")
-            optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
                 _, loss = model(batch, labels=batch)
             if loss is None:
                 raise RuntimeError("Training loss was not computed")
 
+            pending_loss += loss.item()
+            accumulation_index += 1
+            final_group_size = len(train_loader) % args.gradient_accumulation_steps
+            if final_group_size and batch_index > len(train_loader) - final_group_size:
+                accumulation_target = final_group_size
+            else:
+                accumulation_target = args.gradient_accumulation_steps
+            scaled_loss = loss / accumulation_target
             if scaler.is_enabled():
-                scaler.scale(loss).backward()
+                scaler.scale(scaled_loss).backward()
+            else:
+                scaled_loss.backward()
+
+            should_step = (
+                accumulation_index == accumulation_target
+                or batch_index == len(train_loader)
+            )
+            if not should_step:
+                tokens_since_log += batch.numel()
+                continue
+
+            next_step = global_step + 1
+            current_lr = learning_rate_for_step(
+                step=next_step,
+                total_steps=total_optimizer_steps,
+                base_lr=args.learning_rate,
+                min_lr=args.min_learning_rate,
+                warmup_steps=args.warmup_steps,
+                schedule=args.lr_schedule,
+            )
+            set_optimizer_lr(optimizer, current_lr)
+
+            step_completed = True
+            if scaler.is_enabled():
+                scale_before = scaler.get_scale()
                 scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(raw_model.parameters(), args.grad_clip)
                 scaler.step(optimizer)
                 scaler.update()
+                step_completed = scaler.get_scale() >= scale_before
             else:
-                loss.backward()
                 torch.nn.utils.clip_grad_norm_(raw_model.parameters(), args.grad_clip)
                 optimizer.step()
-            global_step += 1
             tokens_since_log += batch.numel()
 
-            if global_step % args.log_every == 0:
+            if step_completed:
+                global_step += 1
+
+            if step_completed and global_step % args.log_every == 0:
                 maybe_synchronize(device)
                 elapsed = max(time.perf_counter() - log_start, 1e-9)
                 tokens_per_second = tokens_since_log / elapsed
                 print(
                     f"epoch={epoch} step={global_step} "
-                    f"train_loss={loss.item():.4f} "
+                    f"train_loss={pending_loss / accumulation_index:.4f} "
+                    f"lr={current_lr:.6g} "
                     f"tokens_per_second={tokens_per_second:,.0f}"
                 )
                 tokens_since_log = 0
                 log_start = time.perf_counter()
+
+            optimizer.zero_grad(set_to_none=True)
+            accumulation_index = 0
+            pending_loss = 0.0
 
         valid_loss = evaluate(model, valid_loader, device, use_amp, amp_dtype)
         print(f"epoch={epoch} validation_loss={valid_loss:.4f}")
@@ -607,6 +709,30 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument(
+        "--gradient-accumulation-steps",
+        type=int,
+        default=1,
+        help="Number of mini-batches to accumulate before each optimizer step.",
+    )
+    parser.add_argument(
+        "--lr-schedule",
+        choices=("cosine", "constant"),
+        default="cosine",
+        help="Learning-rate schedule applied per optimizer step.",
+    )
+    parser.add_argument(
+        "--warmup-steps",
+        type=int,
+        default=0,
+        help="Number of optimizer steps used for linear LR warmup.",
+    )
+    parser.add_argument(
+        "--min-learning-rate",
+        type=float,
+        default=0.0,
+        help="Final LR for cosine decay.",
+    )
     parser.add_argument("--weight-decay", type=float, default=0.1)
     parser.add_argument("--grad-clip", type=float, default=1.0)
     parser.add_argument("--validation-fraction", type=float, default=0.05)
