@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -24,17 +22,10 @@ class CausalSelfAttention(nn.Module):
 
         self.n_head = config.n_head
         self.head_dim = config.n_embd // config.n_head
+        self.dropout_p = config.dropout
         self.qkv = nn.Linear(config.n_embd, 3 * config.n_embd)
         self.proj = nn.Linear(config.n_embd, config.n_embd)
-        self.attn_dropout = nn.Dropout(config.dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
-        self.register_buffer(
-            "mask",
-            torch.tril(torch.ones(config.block_size, config.block_size)).view(
-                1, 1, config.block_size, config.block_size
-            ),
-            persistent=False,
-        )
 
     def forward(self, x: torch.Tensor, attention_mask: torch.Tensor | None = None) -> torch.Tensor:
         batch_size, seq_len, embd = x.shape
@@ -44,18 +35,33 @@ class CausalSelfAttention(nn.Module):
         k = k.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
         v = v.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
 
-        att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(self.head_dim))
-        causal_mask = self.mask[:, :, :seq_len, :seq_len] == 0
-        att = att.masked_fill(causal_mask, torch.finfo(att.dtype).min)
-
+        dropout_p = self.dropout_p if self.training else 0.0
         if attention_mask is not None:
+            causal_mask = torch.ones(
+                seq_len,
+                seq_len,
+                device=x.device,
+                dtype=torch.bool,
+            ).tril()
             key_mask = attention_mask[:, None, None, :seq_len].to(dtype=torch.bool)
-            att = att.masked_fill(~key_mask, torch.finfo(att.dtype).min)
+            attn_mask = causal_mask.view(1, 1, seq_len, seq_len) & key_mask
+            y = F.scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                attn_mask=attn_mask,
+                dropout_p=dropout_p,
+                is_causal=False,
+            )
+        else:
+            y = F.scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                dropout_p=dropout_p,
+                is_causal=True,
+            )
 
-        att = F.softmax(att, dim=-1)
-        att = self.attn_dropout(att)
-
-        y = att @ v
         y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, embd)
         return self.resid_dropout(self.proj(y))
 

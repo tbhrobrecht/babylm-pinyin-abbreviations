@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -32,6 +31,8 @@ class JsonlTokenDataset(Dataset):
 
     def __init__(self, path: Path) -> None:
         self.examples: list[torch.Tensor] = []
+        self.sequence_lengths: set[int] = set()
+        self.max_token_id = -1
 
         with path.open("r", encoding="utf-8") as handle:
             for line_number, line in enumerate(handle, start=1):
@@ -41,6 +42,13 @@ class JsonlTokenDataset(Dataset):
                 input_ids = record["input_ids"]
                 if not input_ids:
                     raise ValueError(f"Empty input_ids at {path}:{line_number}")
+                if not all(isinstance(token_id, int) for token_id in input_ids):
+                    raise ValueError(f"Non-integer token id at {path}:{line_number}")
+                if min(input_ids) < 0:
+                    raise ValueError(f"Negative token id at {path}:{line_number}")
+
+                self.sequence_lengths.add(len(input_ids))
+                self.max_token_id = max(self.max_token_id, max(input_ids))
                 self.examples.append(torch.tensor(input_ids, dtype=torch.long))
 
         if not self.examples:
@@ -63,17 +71,10 @@ class CausalSelfAttention(nn.Module):
 
         self.n_head = config.n_head
         self.head_dim = config.n_embd // config.n_head
+        self.dropout_p = config.dropout
         self.qkv = nn.Linear(config.n_embd, 3 * config.n_embd)
         self.proj = nn.Linear(config.n_embd, config.n_embd)
-        self.attn_dropout = nn.Dropout(config.dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
-        self.register_buffer(
-            "mask",
-            torch.tril(torch.ones(config.block_size, config.block_size)).view(
-                1, 1, config.block_size, config.block_size
-            ),
-            persistent=False,
-        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         batch_size, seq_len, embd = x.shape
@@ -83,12 +84,13 @@ class CausalSelfAttention(nn.Module):
         k = k.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
         v = v.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
 
-        att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(self.head_dim))
-        att = att.masked_fill(self.mask[:, :, :seq_len, :seq_len] == 0, float("-inf"))
-        att = F.softmax(att, dim=-1)
-        att = self.attn_dropout(att)
-
-        y = att @ v
+        y = F.scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            dropout_p=self.dropout_p if self.training else 0.0,
+            is_causal=True,
+        )
         y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, embd)
         return self.resid_dropout(self.proj(y))
 
@@ -174,10 +176,40 @@ class PinyinCodeLanguageModel(nn.Module):
 
 def split_dataset(dataset: Dataset, validation_fraction: float, seed: int) -> tuple[Dataset, Dataset]:
     """Create deterministic train/validation splits."""
+    if len(dataset) < 2:
+        raise ValueError("At least two examples are required for train/validation split")
+    if not 0.0 < validation_fraction < 1.0:
+        raise ValueError("--validation-fraction must be greater than 0 and less than 1")
+
     validation_size = max(1, int(len(dataset) * validation_fraction))
+    validation_size = min(validation_size, len(dataset) - 1)
     train_size = len(dataset) - validation_size
     generator = torch.Generator().manual_seed(seed)
     return random_split(dataset, [train_size, validation_size], generator=generator)
+
+
+def validate_dataset_compatibility(dataset: JsonlTokenDataset, config: ModelConfig) -> None:
+    """Fail early when dataset chunks cannot be consumed by the model config."""
+    if dataset.max_token_id >= config.vocab_size:
+        raise ValueError(
+            "Dataset contains token id "
+            f"{dataset.max_token_id}, but --vocab-size is {config.vocab_size}. "
+            "Use the tokenizer vocabulary size used to create the dataset."
+        )
+
+    max_sequence_length = max(dataset.sequence_lengths)
+    if max_sequence_length > config.block_size:
+        raise ValueError(
+            "Dataset contains examples of length "
+            f"{max_sequence_length}, but --block-size is {config.block_size}."
+        )
+
+    if len(dataset.sequence_lengths) > 1:
+        lengths = ", ".join(str(length) for length in sorted(dataset.sequence_lengths))
+        raise ValueError(
+            "Dataset examples have varying lengths "
+            f"({lengths}); use fixed-size chunks or add a padding collator."
+        )
 
 
 @torch.no_grad()
@@ -201,6 +233,16 @@ def train(args: argparse.Namespace) -> None:
     device = torch.device(args.device or ("cuda" if torch.cuda.is_available() else "cpu"))
 
     dataset = JsonlTokenDataset(args.dataset)
+    config = ModelConfig(
+        vocab_size=args.vocab_size,
+        block_size=args.block_size,
+        n_layer=args.n_layer,
+        n_head=args.n_head,
+        n_embd=args.n_embd,
+        dropout=args.dropout,
+    )
+    validate_dataset_compatibility(dataset, config)
+
     train_dataset, valid_dataset = split_dataset(dataset, args.validation_fraction, args.seed)
     train_loader = DataLoader(
         train_dataset,
@@ -217,14 +259,6 @@ def train(args: argparse.Namespace) -> None:
         pin_memory=device.type == "cuda",
     )
 
-    config = ModelConfig(
-        vocab_size=args.vocab_size,
-        block_size=args.block_size,
-        n_layer=args.n_layer,
-        n_head=args.n_head,
-        n_embd=args.n_embd,
-        dropout=args.dropout,
-    )
     model = PinyinCodeLanguageModel(config).to(device)
     optimizer = torch.optim.AdamW(
         model.parameters(),

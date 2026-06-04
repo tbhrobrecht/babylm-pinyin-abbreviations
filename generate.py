@@ -22,6 +22,10 @@ from train_model import ModelConfig, PinyinCodeLanguageModel
 
 
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
+PINYIN_CODE_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9])[A-Za-z]\d(?:[A-Za-z]\d)*(?![A-Za-z0-9])"
+)
+SPECIAL_MARKER_RE = re.compile(r"<[A-Z_]+>")
 
 
 def require_sentencepiece():
@@ -55,6 +59,15 @@ def prompt_contains_chinese(text: str) -> bool:
     return bool(CHINESE_RE.search(text))
 
 
+def prompt_looks_preprocessed(text: str, transliteration: str) -> bool:
+    """Return true for prompts that already look like model-side text."""
+    if SPECIAL_MARKER_RE.search(text):
+        return True
+    if transliteration == "pinyin-code" and PINYIN_CODE_TOKEN_RE.search(text):
+        return True
+    return False
+
+
 def prepare_prompt(
     text: str,
     raw_prompt: bool,
@@ -66,6 +79,10 @@ def prepare_prompt(
     if code_prompt:
         return text
     if raw_prompt or prompt_contains_chinese(text):
+        return preprocess_prompt(text, transliteration, use_jieba)
+    if prompt_looks_preprocessed(text, transliteration):
+        return text
+    if text.strip():
         return preprocess_prompt(text, transliteration, use_jieba)
     return text
 

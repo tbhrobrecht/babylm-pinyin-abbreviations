@@ -24,8 +24,8 @@ from hf.tokenization_pinyin_code import PinyinCodeTokenizer
 DEFAULT_OUTPUT_DIR = Path("hf_pinyin_code_model")
 DEFAULT_TOKENIZER = Path("tokenizers/babylm_zho_pinyin_spm.model")
 DEFAULT_CHECKPOINT_CANDIDATES = (
-    Path("models/pinyin-code-gpt-small/best_model.pt"),
     Path("models/pinyin-code-gpt-small/best.pt"),
+    Path("models/pinyin-code-gpt-small/best_model.pt"),
 )
 
 
@@ -61,8 +61,22 @@ def tokenizer_special_ids(tokenizer_path: Path) -> dict[str, int | None]:
     return {key: (value if value >= 0 else None) for key, value in ids.items()}
 
 
+def tokenizer_vocab_size(tokenizer_path: Path) -> int:
+    """Return the number of pieces in a SentencePiece model."""
+    processor = spm.SentencePieceProcessor(model_file=str(tokenizer_path))
+    return processor.get_piece_size()
+
+
 def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
     """Create the HF config from the original model config and tokenizer ids."""
+    checkpoint_vocab_size = int(checkpoint["model_config"]["vocab_size"])
+    actual_vocab_size = tokenizer_vocab_size(tokenizer_path)
+    if checkpoint_vocab_size != actual_vocab_size:
+        raise ValueError(
+            "Tokenizer vocab size does not match checkpoint config: "
+            f"tokenizer={actual_vocab_size}, checkpoint={checkpoint_vocab_size}."
+        )
+
     config = PinyinCodeConfig(
         **checkpoint["model_config"],
         **tokenizer_special_ids(tokenizer_path),
@@ -212,8 +226,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--safe-serialization",
-        action="store_true",
-        help="Write model.safetensors instead of pytorch_model.bin.",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Write model.safetensors by default. Use --no-safe-serialization "
+            "to write pytorch_model.bin instead."
+        ),
     )
     return parser.parse_args()
 

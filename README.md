@@ -154,42 +154,6 @@ dimensions, 128-token context windows, and the tokenizer's 8,000-token
 vocabulary. Use `--device cuda` on a CUDA-capable GPU, or `--device cpu` to force
 CPU training.
 
-## Upload the model to Hugging Face
-
-Log in first:
-
-```powershell
-huggingface-cli login
-```
-
-or set a token:
-
-```powershell
-$env:HF_TOKEN = "hf_..."
-```
-
-Then upload the best checkpoint and SentencePiece tokenizer:
-
-```powershell
-py upload_to_hf.py your-username/pinyin-code-gpt-small
-```
-
-For a private repo:
-
-```powershell
-py upload_to_hf.py your-username/pinyin-code-gpt-small --private
-```
-
-To inspect the files before uploading:
-
-```powershell
-py upload_to_hf.py your-username/pinyin-code-gpt-small --dry-run --staging-dir hf_upload
-```
-
-The upload script packages `best.pt`, `pytorch_model.bin`, `config.json`, the
-SentencePiece tokenizer, local inference code, and a generated Hugging Face model
-card. This model uses custom PyTorch code rather than the Transformers model API.
-
 ## Convert to a Transformers model folder
 
 Convert the existing PyTorch checkpoint without retraining:
@@ -225,6 +189,29 @@ the matching input format. Also pass `--no-jieba` when converting a model traine
 on character-level Chinese preprocessing, so benchmark prompts use the same
 segmentation.
 
+## Upload the model to Hugging Face
+
+Log in first:
+
+```powershell
+huggingface-cli login
+```
+
+or set a token:
+
+```powershell
+$env:HF_TOKEN = "hf_..."
+```
+
+After conversion, upload the generated Transformers model folder:
+
+```powershell
+hf upload your-username/pinyin-code-gpt-small hf_pinyin_code_model --repo-type model
+```
+
+For a private model, create the Hugging Face model repo as private first, then
+upload the same converted folder.
+
 
 ## tldr pipeline
 python preprocessing/extract_babylm_zho.py 
@@ -233,9 +220,9 @@ python preprocessing/preprocess.py --input data/nk_babylm_zho.jsonl --output dat
 
 python train_sentencepiece.py --input data/processed/nk_babylm_zho.txt --output-dir tokenizers --model-name babylm_zho_pinyin_spm --vocab-size 16000 
 
-python create_dataset.py --input data/processed/nk_babylm_zho.txt --output data/datasets/nk_babylm_zho_spm.jsonl --tokenizer tokenizers/[name.model] --block-size 512 --stride 512
+python create_dataset.py --input data/processed/nk_babylm_zho.txt --output data/datasets/nk_babylm_zho_spm.jsonl --tokenizer tokenizers/[model name].model --block-size 512 --stride 512
 
-python train_model.py --dataset data/datasets/nk_spm.jsonl --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
+python train_model.py --dataset data/datasets/nk_babylm_zho_spm.jsonl --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
 
 python hf/convert_to_transformers.py --checkpoint models/[model name]/best.pt --tokenizer tokenizers/[model name].model --output-dir hf_[model name] --transliteration pinyin-code
 (add --no-jieba here if the training corpus was preprocessed with --no-jieba)

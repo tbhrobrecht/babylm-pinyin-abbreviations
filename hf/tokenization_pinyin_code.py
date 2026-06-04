@@ -13,6 +13,10 @@ from transformers import PreTrainedTokenizer
 
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
 CHINESE_SPAN_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]+")
+PINYIN_CODE_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9])[A-Za-z]\d(?:[A-Za-z]\d)*(?![A-Za-z0-9])"
+)
+SPECIAL_MARKER_RE = re.compile(r"<[A-Z_]+>")
 PUNCTUATION = set("\u3002\uff0c\u3001\uff1f\uff01\uff1a\uff1b.,?!:;()[]\u201c\u201d\"'")
 TOKEN_RE = re.compile(
     r"<[A-Z_]+>|"
@@ -86,8 +90,15 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
             return None
         return self.sp_model.id_to_piece(token_id)
 
+    def _looks_preprocessed(self, text: str) -> bool:
+        if SPECIAL_MARKER_RE.search(text):
+            return True
+        if self.transliteration == "pinyin-code" and PINYIN_CODE_TOKEN_RE.search(text):
+            return True
+        return False
+
     def _preprocess_raw_text(self, text: str) -> str:
-        if not CHINESE_RE.search(text):
+        if not CHINESE_RE.search(text) and self._looks_preprocessed(text):
             return text
         try:
             from preprocessing.preprocess import process_text, require_dependencies

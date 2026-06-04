@@ -41,6 +41,8 @@ def iter_chunks(token_ids: Iterable[int], block_size: int, stride: int) -> Itera
         raise ValueError("--block-size must be greater than zero")
     if stride <= 0:
         raise ValueError("--stride must be greater than zero")
+    if stride > block_size:
+        raise ValueError("--stride must be less than or equal to --block-size")
 
     buffer: list[int] = []
     for token_id in token_ids:
