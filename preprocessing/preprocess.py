@@ -7,6 +7,7 @@ import json
 import logging
 import re
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any, Iterable, Literal
 
@@ -21,17 +22,26 @@ LABELS = {
     "解析": "<EXPLANATION>",
 }
 
-PUNCTUATION = set("。，、？！：；.,?!:;()[]“”\"'")
+PUNCTUATION = set("。，、？！：；.,?!:;()[]{}<>《》【】“”\"'‘’「」『』—-~…/\\")
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]+")
 Transliteration = Literal["pinyin-code", "pinyin-initial", "hanzi"]
+LATIN_LETTER = r"A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏɐ-ʯ"
+LATIN_ALNUM_PATTERN = (
+    rf"(?:[{LATIN_LETTER}][{LATIN_LETTER}0-9]*"
+    rf"(?:[-_][{LATIN_LETTER}0-9]+)*|"
+    rf"[0-9]+[{LATIN_LETTER}][{LATIN_LETTER}0-9]*"
+    rf"(?:[-_][{LATIN_LETTER}0-9]+)*)"
+)
+LATIN_ALNUM_RE = re.compile(LATIN_ALNUM_PATTERN)
+URL_RE = re.compile(r"\b(?:https?://\S*|www\.\S+)", flags=re.I)
+DISCARDED_UNICODE_CATEGORIES = {"Cc", "Cf", "Co", "Cs", "Cn"}
 
 # Match protected markers before ordinary words so tokens like <ANSWER> survive
 # the later English/punctuation handling as a single vocabulary item.
 TOKEN_RE = re.compile(
     r"<[A-Z_]+>|"
     r"[\u3400-\u4dbf\u4e00-\u9fff]+|"
-    r"[A-Za-z]+|"
-    r"[。，、？！：；.,?!:;()\[\]“”\"']|"
+    rf"{LATIN_ALNUM_PATTERN}|"
     r"\S"
 )
 
@@ -51,20 +61,60 @@ def normalize_text(text: str) -> str:
     This happens before tokenization so multi-character patterns such as
     ``$$...$$`` and empty brackets cannot be split into punctuation pieces.
     """
+    text = unicodedata.normalize("NFKC", text)
+    text = URL_RE.sub(" <URL> ", text)
     text = re.sub(r"\$\$.*?\$\$", " <MATH> ", text, flags=re.DOTALL)
     text = re.sub(r"[（(]\s*[）)]", " <BLANK> ", text)
 
     for label, marker in LABELS.items():
         text = re.sub(rf"{label}\s*[:：]", f" {marker} ", text)
 
-    text = re.sub(r"(?<![A-Za-z])yes(?![A-Za-z])", " <YES> ", text, flags=re.I)
-    text = re.sub(r"(?<![A-Za-z])no(?![A-Za-z])", " <NO> ", text, flags=re.I)
-    text = re.sub(r"(?<![A-Za-z])[ABCD](?=\s*[:：.．、\)])", r" \g<0> ", text)
-    text = re.sub(r"(?<![A-Za-z0-9])[-+]?\d+(?:[.,]\d+)*(?:%|％)?", " <NUM> ", text)
+    text = re.sub(
+        rf"(?<![{LATIN_LETTER}])yes(?![{LATIN_LETTER}])",
+        " <YES> ",
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        rf"(?<![{LATIN_LETTER}])no(?![{LATIN_LETTER}])",
+        " <NO> ",
+        text,
+        flags=re.I,
+    )
+    text = re.sub(
+        rf"(?<![{LATIN_LETTER}])[ABCD](?=\s*[:：.．、\)])",
+        r" \g<0> ",
+        text,
+    )
+    text = re.sub(
+        rf"(?<![{LATIN_LETTER}0-9])[-+]?\d+(?:[.,]\d+)*(?:%|％)?"
+        rf"(?![{LATIN_LETTER}0-9])",
+        " <NUM> ",
+        text,
+    )
 
     text = text.replace("（", "(").replace("）", ")")
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
+
+def latin_token_to_model_token(token: str) -> str:
+    """Normalize non-Mandarin alphanumeric tokens without losing option labels."""
+    upper = token.upper()
+    return upper if upper in {"A", "B", "C", "D"} else token.lower()
+
+
+def should_preserve_fallback_token(token: str) -> bool:
+    """Return true for visible non-Hanzi letters, punctuation, and symbols."""
+    if token == "\ufffd":
+        return False
+    for char in token:
+        category = unicodedata.category(char)
+        if category in DISCARDED_UNICODE_CATEGORIES:
+            return False
+        if category[0] not in {"L", "P", "S"}:
+            return False
+    return True
 
 
 def split_tone3_syllable(syllable: str) -> tuple[str, int]:
@@ -172,9 +222,12 @@ def process_text(
             tokens.extend(tokenize_chinese_span(part, transliteration, use_jieba))
         elif part in PUNCTUATION:
             tokens.append(part)
-        elif re.fullmatch(r"[A-Za-z]+", part):
-            upper = part.upper()
-            tokens.append(upper if upper in {"A", "B", "C", "D"} else part.lower())
+        elif LATIN_ALNUM_RE.fullmatch(part):
+            tokens.append(latin_token_to_model_token(part))
+        elif part.isdigit():
+            tokens.append("<NUM>")
+        elif should_preserve_fallback_token(part):
+            tokens.append(part.lower())
 
     return " ".join(tokens)
 

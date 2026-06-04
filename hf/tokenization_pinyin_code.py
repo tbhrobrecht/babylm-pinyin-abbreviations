@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import shutil
+import unicodedata
 from pathlib import Path
 
 import sentencepiece as spm
@@ -17,12 +18,28 @@ PINYIN_CODE_TOKEN_RE = re.compile(
     r"(?<![A-Za-z0-9])[A-Za-z]\d(?:[A-Za-z]\d)*(?![A-Za-z0-9])"
 )
 SPECIAL_MARKER_RE = re.compile(r"<[A-Z_]+>")
-PUNCTUATION = set("\u3002\uff0c\u3001\uff1f\uff01\uff1a\uff1b.,?!:;()[]\u201c\u201d\"'")
+PUNCTUATION = set(
+    "\u3002\uff0c\u3001\uff1f\uff01\uff1a\uff1b.,?!:;()[]{}<>\u300a\u300b"
+    "\u3010\u3011\u201c\u201d\"'\u2018\u2019\u300c\u300d\u300e\u300f"
+    "\u2014-~\u2026/\\"
+)
+LATIN_LETTER = (
+    r"A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u00ff"
+    r"\u0100-\u017f\u0180-\u024f\u0250-\u02af"
+)
+LATIN_ALNUM_PATTERN = (
+    rf"(?:[{LATIN_LETTER}][{LATIN_LETTER}0-9]*"
+    rf"(?:[-_][{LATIN_LETTER}0-9]+)*|"
+    rf"[0-9]+[{LATIN_LETTER}][{LATIN_LETTER}0-9]*"
+    rf"(?:[-_][{LATIN_LETTER}0-9]+)*)"
+)
+LATIN_ALNUM_RE = re.compile(LATIN_ALNUM_PATTERN)
+URL_RE = re.compile(r"\b(?:https?://\S*|www\.\S+)", flags=re.I)
+DISCARDED_UNICODE_CATEGORIES = {"Cc", "Cf", "Co", "Cs", "Cn"}
 TOKEN_RE = re.compile(
     r"<[A-Z_]+>|"
     r"[\u3400-\u4dbf\u4e00-\u9fff]+|"
-    r"[A-Za-z]+|"
-    r"[\u3002\uff0c\u3001\uff1f\uff01\uff1a\uff1b.,?!:;()\[\]\u201c\u201d\"']|"
+    rf"{LATIN_ALNUM_PATTERN}|"
     r"\S"
 )
 LABELS = {
@@ -40,6 +57,23 @@ PINYIN_FORMAT_ALIASES = {
     "pinyin-initial": "pinyin-initial",
     "hanzi": "hanzi",
 }
+
+
+def latin_token_to_model_token(token: str) -> str:
+    upper = token.upper()
+    return upper if upper in {"A", "B", "C", "D"} else token.lower()
+
+
+def should_preserve_fallback_token(token: str) -> bool:
+    if token == "\ufffd":
+        return False
+    for char in token:
+        category = unicodedata.category(char)
+        if category in DISCARDED_UNICODE_CATEGORIES:
+            return False
+        if category[0] not in {"L", "P", "S"}:
+            return False
+    return True
 
 
 class PinyinCodeTokenizer(PreTrainedTokenizer):
@@ -134,23 +168,32 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
 
 
         def normalize_text(value: str) -> str:
+            value = unicodedata.normalize("NFKC", value)
+            value = URL_RE.sub(" <URL> ", value)
             value = re.sub(r"\$\$.*?\$\$", " <MATH> ", value, flags=re.DOTALL)
             value = re.sub(r"[\uff08(]\s*[\uff09)]", " <BLANK> ", value)
             for label, marker in LABELS.items():
                 value = re.sub(rf"{label}\s*[:\uff1a]", f" {marker} ", value)
             value = re.sub(
-                r"(?<![A-Za-z])yes(?![A-Za-z])", " <YES> ", value, flags=re.I
+                rf"(?<![{LATIN_LETTER}])yes(?![{LATIN_LETTER}])",
+                " <YES> ",
+                value,
+                flags=re.I,
             )
             value = re.sub(
-                r"(?<![A-Za-z])no(?![A-Za-z])", " <NO> ", value, flags=re.I
+                rf"(?<![{LATIN_LETTER}])no(?![{LATIN_LETTER}])",
+                " <NO> ",
+                value,
+                flags=re.I,
             )
             value = re.sub(
-                r"(?<![A-Za-z])[ABCD](?=\s*[:\uff1a.\uff0e\u3001\)])",
+                rf"(?<![{LATIN_LETTER}])[ABCD](?=\s*[:\uff1a.\uff0e\u3001\)])",
                 r" \g<0> ",
                 value,
             )
             value = re.sub(
-                r"(?<![A-Za-z0-9])[-+]?\d+(?:[.,]\d+)*(?:%|\uff05)?",
+                rf"(?<![{LATIN_LETTER}0-9])[-+]?\d+(?:[.,]\d+)*(?:%|\uff05)?"
+                rf"(?![{LATIN_LETTER}0-9])",
                 " <NUM> ",
                 value,
             )
@@ -217,9 +260,12 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
                 tokens.extend(tokenize_chinese_span(part))
             elif part in PUNCTUATION:
                 tokens.append(part)
-            elif re.fullmatch(r"[A-Za-z]+", part):
-                upper = part.upper()
-                tokens.append(upper if upper in {"A", "B", "C", "D"} else part.lower())
+            elif LATIN_ALNUM_RE.fullmatch(part):
+                tokens.append(latin_token_to_model_token(part))
+            elif part.isdigit():
+                tokens.append("<NUM>")
+            elif should_preserve_fallback_token(part):
+                tokens.append(part.lower())
 
         return " ".join(tokens)
 

@@ -58,7 +58,10 @@ py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\p
 
 The output file contains one preprocessed document per line. Chinese words are
 segmented with `jieba`, converted to compact pinyin-code tokens, and preserved
-as whitespace-delimited atomic tokens for downstream tokenizer training.
+as whitespace-delimited atomic tokens for downstream tokenizer training. The
+preprocessor also keeps visible punctuation, symbols, and non-Mandarin
+alphanumeric words such as English product names, while normalizing URLs, math
+blocks, and standalone numbers to stable markers.
 
 To disable `jieba` and preprocess Chinese character-by-character instead, add
 `--no-jieba`:
@@ -110,10 +113,10 @@ This writes:
 - `tokenizers\babylm_zho_pinyin_spm.vocab`
 
 The default tokenizer uses an 8,000-piece BPE vocabulary, preserves the
-preprocessing special tokens such as `<NUM>` and `<MATH>`, and avoids splitting
-pinyin-code digits away from their letters. SentencePiece is allowed to learn BPE
-pieces that span adjacent whitespace-delimited atomic tokens, so frequent
-multi-token pinyin-code patterns can become single tokenizer pieces.
+preprocessing special tokens such as `<NUM>`, `<MATH>`, and `<URL>`, and avoids
+splitting pinyin-code digits away from their letters. SentencePiece is allowed to
+learn BPE pieces that span adjacent whitespace-delimited atomic tokens, so
+frequent multi-token pinyin-code patterns can become single tokenizer pieces.
 
 Useful options:
 

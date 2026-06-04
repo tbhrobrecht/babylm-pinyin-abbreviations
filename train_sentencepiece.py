@@ -12,6 +12,7 @@ SPECIAL_TOKENS = [
     "<ANSWER>",
     "<EXPLANATION>",
     "<MATH>",
+    "<URL>",
     "<BLANK>",
     "<YES>",
     "<NO>",

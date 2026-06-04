@@ -53,6 +53,37 @@ class PipelineSanityTests(unittest.TestCase):
         text = "题干：A. yes 3"
         self.assertEqual(process_text(text), "<QUESTION> A . <YES> <NUM>")
 
+    def test_process_text_preserves_full_corpus_surface_tokens(self) -> None:
+        text = (
+            "hello iPhone12 5G SM-T29 Café mā ɡe 《》~ ^_^ "
+            "1280*800 http://example.com \ue5e5\u200b"
+        )
+
+        tokens = process_text(text).split()
+
+        self.assertEqual(
+            tokens,
+            [
+                "hello",
+                "iphone12",
+                "5g",
+                "sm-t29",
+                "café",
+                "mā",
+                "ɡe",
+                "《",
+                "》",
+                "~",
+                "^",
+                "_",
+                "^",
+                "<NUM>",
+                "*",
+                "<NUM>",
+                "<URL>",
+            ],
+        )
+
     def test_prepare_prompt_processes_non_chinese_raw_text(self) -> None:
         prompt = prepare_prompt(
             "A. yes 3",
@@ -195,6 +226,7 @@ class PipelineSanityTests(unittest.TestCase):
 
         self.assertFalse(captured["split_by_whitespace"])
         self.assertFalse(captured["split_by_number"])
+        self.assertIn("<URL>", captured["user_defined_symbols"].split(","))
 
     def test_dataset_validation_rejects_vocab_mismatch(self) -> None:
         dataset = JsonlTokenDataset(self.write_jsonl_dataset([[0, 1, 4]]))
