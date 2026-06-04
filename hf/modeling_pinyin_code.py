@@ -157,7 +157,15 @@ class PinyinCodeForCausalLM(PinyinCodePreTrainedModel, GenerationMixin):
             input_ids = input_ids[:, -self.config.block_size :]
             if attention_mask is not None:
                 attention_mask = attention_mask[:, -self.config.block_size :]
-        return {"input_ids": input_ids, "attention_mask": attention_mask}
+        position_ids = None
+        if attention_mask is not None:
+            position_ids = attention_mask.long().cumsum(dim=-1) - 1
+            position_ids = position_ids.clamp_min(0)
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "position_ids": position_ids,
+        }
 
     def forward(
         self,
@@ -165,6 +173,7 @@ class PinyinCodeForCausalLM(PinyinCodePreTrainedModel, GenerationMixin):
         attention_mask: torch.Tensor | None = None,
         labels: torch.Tensor | None = None,
         inputs_embeds: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
         return_dict: bool | None = None,
         **kwargs,
     ) -> CausalLMOutput | tuple:
@@ -189,8 +198,14 @@ class PinyinCodeForCausalLM(PinyinCodePreTrainedModel, GenerationMixin):
                     f"Sequence length {seq_len} exceeds block size {self.config.block_size}"
                 )
 
-        positions = torch.arange(seq_len, device=inputs_embeds.device)
-        x = inputs_embeds + self.position_embedding(positions)
+        if position_ids is None:
+            if attention_mask is not None:
+                position_ids = attention_mask.long().cumsum(dim=-1) - 1
+                position_ids = position_ids.clamp_min(0)
+            else:
+                position_ids = torch.arange(seq_len, device=inputs_embeds.device)
+        position_ids = position_ids[:, -seq_len:] if position_ids.ndim == 2 else position_ids
+        x = inputs_embeds + self.position_embedding(position_ids)
         x = self.dropout(x)
         for block in self.blocks:
             x = block(x, attention_mask=attention_mask)

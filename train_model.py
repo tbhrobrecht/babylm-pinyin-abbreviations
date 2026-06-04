@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -212,14 +213,169 @@ def validate_dataset_compatibility(dataset: JsonlTokenDataset, config: ModelConf
         )
 
 
+def validate_checkpoint_config(checkpoint: dict, config: ModelConfig, path: Path) -> None:
+    """Ensure a resumed checkpoint matches the requested model shape."""
+    checkpoint_config = checkpoint.get("model_config")
+    if checkpoint_config is None:
+        raise KeyError(f"{path} does not contain `model_config`")
+
+    requested_config = asdict(config)
+    mismatches = {
+        key: (checkpoint_config.get(key), value)
+        for key, value in requested_config.items()
+        if checkpoint_config.get(key) != value
+    }
+    if mismatches:
+        details = ", ".join(
+            f"{key}: checkpoint={old!r}, requested={new!r}"
+            for key, (old, new) in mismatches.items()
+        )
+        raise ValueError(f"Checkpoint config does not match requested args: {details}")
+
+
+def resolve_device(requested_device: str | None) -> torch.device:
+    """Choose a training device and fail clearly for unavailable CUDA requests."""
+    if requested_device == "cuda" and not torch.cuda.is_available():
+        raise SystemExit(
+            "CUDA was requested, but this PyTorch environment cannot see a CUDA GPU. "
+            "Install a CUDA-enabled PyTorch build or omit --device cuda to train on CPU."
+        )
+    return torch.device(requested_device or ("cuda" if torch.cuda.is_available() else "cpu"))
+
+
+def configure_runtime(args: argparse.Namespace, device: torch.device) -> None:
+    """Enable safe runtime knobs that improve training throughput."""
+    if args.num_threads is not None:
+        torch.set_num_threads(args.num_threads)
+
+    if device.type == "cuda" and args.tf32:
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision("high")
+
+
+def count_parameters(model: nn.Module) -> int:
+    """Return the number of trainable model parameters."""
+    return sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
+
+
+def amp_dtype_from_name(name: str) -> torch.dtype:
+    """Map CLI precision names to torch dtypes."""
+    if name == "float16":
+        return torch.float16
+    if name == "bfloat16":
+        return torch.bfloat16
+    raise ValueError(f"Unsupported AMP dtype: {name}")
+
+
+def make_grad_scaler(enabled: bool):
+    """Create a GradScaler across PyTorch versions."""
+    if hasattr(torch, "amp") and hasattr(torch.amp, "GradScaler"):
+        try:
+            return torch.amp.GradScaler("cuda", enabled=enabled)
+        except TypeError:
+            return torch.amp.GradScaler(enabled=enabled)
+    return torch.cuda.amp.GradScaler(enabled=enabled)
+
+
+def maybe_synchronize(device: torch.device) -> None:
+    """Synchronize CUDA before timing/logging if needed."""
+    if device.type == "cuda":
+        torch.cuda.synchronize()
+
+
+def build_optimizer(
+    model: nn.Module,
+    args: argparse.Namespace,
+    device: torch.device,
+) -> torch.optim.Optimizer:
+    """Create AdamW, using the fused CUDA implementation when available."""
+    optimizer_kwargs = {
+        "lr": args.learning_rate,
+        "betas": (0.9, 0.95),
+        "weight_decay": args.weight_decay,
+    }
+    if device.type == "cuda" and args.fused_adamw:
+        optimizer_kwargs["fused"] = True
+    try:
+        return torch.optim.AdamW(model.parameters(), **optimizer_kwargs)
+    except (TypeError, RuntimeError):
+        optimizer_kwargs.pop("fused", None)
+        return torch.optim.AdamW(model.parameters(), **optimizer_kwargs)
+
+
+def checkpoint_payload(
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    config: ModelConfig,
+    epoch: int,
+    global_step: int,
+    validation_loss: float,
+    best_loss: float,
+    save_optimizer: bool,
+) -> dict:
+    """Build a checkpoint, optionally including optimizer state for resuming."""
+    checkpoint = {
+        "model_state_dict": model.state_dict(),
+        "model_config": asdict(config),
+        "epoch": epoch,
+        "global_step": global_step,
+        "validation_loss": validation_loss,
+        "best_loss": best_loss,
+    }
+    if save_optimizer:
+        checkpoint["optimizer_state_dict"] = optimizer.state_dict()
+    return checkpoint
+
+
+def load_resume_checkpoint(
+    path: Path,
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    config: ModelConfig,
+    device: torch.device,
+) -> tuple[int, int, float]:
+    """Load model/optimizer state and return start_epoch, global_step, best_loss."""
+    if not path.exists():
+        raise FileNotFoundError(f"Resume checkpoint not found: {path}")
+
+    checkpoint = torch.load(path, map_location=device, weights_only=False)
+    validate_checkpoint_config(checkpoint, config, path)
+    if "model_state_dict" not in checkpoint:
+        raise KeyError(f"{path} does not contain `model_state_dict`")
+
+    model.load_state_dict(checkpoint["model_state_dict"])
+    if "optimizer_state_dict" in checkpoint:
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    else:
+        print(
+            "warning: resume checkpoint has no optimizer state; "
+            "continuing with a freshly initialized optimizer."
+        )
+
+    completed_epoch = int(checkpoint.get("epoch", 0))
+    start_epoch = completed_epoch + 1
+    global_step = int(checkpoint.get("global_step", 0))
+    validation_loss = checkpoint.get("validation_loss", float("inf"))
+    best_loss = float(checkpoint.get("best_loss", validation_loss))
+    return start_epoch, global_step, best_loss
+
+
 @torch.no_grad()
-def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> float:
+def evaluate(
+    model: nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    use_amp: bool,
+    amp_dtype: torch.dtype,
+) -> float:
     """Return mean validation loss."""
     model.eval()
     losses: list[float] = []
     for batch in loader:
-        batch = batch.to(device)
-        _, loss = model(batch, labels=batch)
+        batch = batch.to(device, non_blocking=device.type == "cuda")
+        with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
+            _, loss = model(batch, labels=batch)
         if loss is not None:
             losses.append(loss.item())
     model.train()
@@ -230,7 +386,8 @@ def train(args: argparse.Namespace) -> None:
     """Train the language model and write checkpoints."""
     random.seed(args.seed)
     torch.manual_seed(args.seed)
-    device = torch.device(args.device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    device = resolve_device(args.device)
+    configure_runtime(args, device)
 
     dataset = JsonlTokenDataset(args.dataset)
     config = ModelConfig(
@@ -243,13 +400,20 @@ def train(args: argparse.Namespace) -> None:
     )
     validate_dataset_compatibility(dataset, config)
 
-    train_dataset, valid_dataset = split_dataset(dataset, args.validation_fraction, args.seed)
+    if args.validation_dataset is not None:
+        valid_dataset = JsonlTokenDataset(args.validation_dataset)
+        validate_dataset_compatibility(valid_dataset, config)
+        train_dataset = dataset
+    else:
+        train_dataset, valid_dataset = split_dataset(dataset, args.validation_fraction, args.seed)
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
         shuffle=True,
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
+        persistent_workers=args.num_workers > 0,
     )
     valid_loader = DataLoader(
         valid_dataset,
@@ -257,48 +421,105 @@ def train(args: argparse.Namespace) -> None:
         shuffle=False,
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
+        persistent_workers=args.num_workers > 0,
     )
 
-    model = PinyinCodeLanguageModel(config).to(device)
-    optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=args.learning_rate,
-        betas=(0.9, 0.95),
-        weight_decay=args.weight_decay,
+    amp_dtype = amp_dtype_from_name(args.amp_dtype)
+    use_amp = args.amp and device.type == "cuda"
+    if use_amp and amp_dtype == torch.bfloat16 and not torch.cuda.is_bf16_supported():
+        raise SystemExit("bfloat16 AMP was requested, but this CUDA device does not support it.")
+    scaler = make_grad_scaler(enabled=use_amp and amp_dtype == torch.float16)
+
+    raw_model = PinyinCodeLanguageModel(config).to(device)
+    optimizer = build_optimizer(raw_model, args, device)
+    start_epoch = 1
+    global_step = 0
+    best_loss = float("inf")
+    if args.resume is not None:
+        start_epoch, global_step, best_loss = load_resume_checkpoint(
+            args.resume,
+            raw_model,
+            optimizer,
+            config,
+            device,
+        )
+
+    model: nn.Module = raw_model
+    if args.compile:
+        if not hasattr(torch, "compile"):
+            raise SystemExit("This PyTorch version does not support torch.compile.")
+        model = torch.compile(raw_model)
+
+    tokens_per_train_epoch = len(train_dataset) * max(dataset.sequence_lengths)
+    print(
+        "training_setup "
+        f"device={device} "
+        f"cuda_name={torch.cuda.get_device_name(0) if device.type == 'cuda' else 'none'} "
+        f"parameters={count_parameters(raw_model):,} "
+        f"examples={len(dataset):,} "
+        f"train_tokens_per_epoch={tokens_per_train_epoch:,} "
+        f"amp={use_amp} "
+        f"amp_dtype={args.amp_dtype if use_amp else 'none'} "
+        f"tf32={args.tf32 and device.type == 'cuda'} "
+        f"compile={args.compile} "
+        f"resume={args.resume or 'none'}"
     )
+    if device.type == "cpu":
+        print("warning: training on CPU; this will be much slower than CUDA-based runs.")
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    best_loss = float("inf")
-    global_step = 0
+    tokens_since_log = 0
+    log_start = time.perf_counter()
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         for batch in train_loader:
-            batch = batch.to(device)
-            _, loss = model(batch, labels=batch)
+            batch = batch.to(device, non_blocking=device.type == "cuda")
+            optimizer.zero_grad(set_to_none=True)
+            with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
+                _, loss = model(batch, labels=batch)
             if loss is None:
                 raise RuntimeError("Training loss was not computed")
 
-            optimizer.zero_grad(set_to_none=True)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
-            optimizer.step()
+            if scaler.is_enabled():
+                scaler.scale(loss).backward()
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(raw_model.parameters(), args.grad_clip)
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(raw_model.parameters(), args.grad_clip)
+                optimizer.step()
             global_step += 1
+            tokens_since_log += batch.numel()
 
             if global_step % args.log_every == 0:
-                print(f"epoch={epoch} step={global_step} train_loss={loss.item():.4f}")
+                maybe_synchronize(device)
+                elapsed = max(time.perf_counter() - log_start, 1e-9)
+                tokens_per_second = tokens_since_log / elapsed
+                print(
+                    f"epoch={epoch} step={global_step} "
+                    f"train_loss={loss.item():.4f} "
+                    f"tokens_per_second={tokens_per_second:,.0f}"
+                )
+                tokens_since_log = 0
+                log_start = time.perf_counter()
 
-        valid_loss = evaluate(model, valid_loader, device)
+        valid_loss = evaluate(model, valid_loader, device, use_amp, amp_dtype)
         print(f"epoch={epoch} validation_loss={valid_loss:.4f}")
+        checkpoint_best_loss = min(best_loss, valid_loss)
 
-        checkpoint = {
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "model_config": asdict(config),
-            "epoch": epoch,
-            "global_step": global_step,
-            "validation_loss": valid_loss,
-        }
+        checkpoint = checkpoint_payload(
+            raw_model,
+            optimizer,
+            config,
+            epoch,
+            global_step,
+            valid_loss,
+            checkpoint_best_loss,
+            args.save_optimizer,
+        )
         torch.save(checkpoint, args.output_dir / "last.pt")
         if valid_loss < best_loss:
             best_loss = valid_loss
@@ -309,6 +530,15 @@ def parse_args() -> argparse.Namespace:
     """Parse training options."""
     parser = argparse.ArgumentParser(description="Train a compact causal LM on pinyin-code chunks.")
     parser.add_argument("--dataset", type=Path, default=Path("data/datasets/10k_babylm_zho_spm.jsonl"))
+    parser.add_argument(
+        "--validation-dataset",
+        type=Path,
+        default=None,
+        help=(
+            "Optional separate validation JSONL created from held-out documents. "
+            "When omitted, the training dataset is split randomly by chunk."
+        ),
+    )
     parser.add_argument("--output-dir", type=Path, default=Path("models/pinyin-code-gpt-small"))
     parser.add_argument("--vocab-size", type=int, default=8000)
     parser.add_argument("--block-size", type=int, default=128)
@@ -324,8 +554,50 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--validation-fraction", type=float, default=0.05)
     parser.add_argument("--log-every", type=int, default=100)
     parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--num-threads", type=int, default=None)
     parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument("--device", choices=["cpu", "cuda"], default=None)
+    parser.add_argument(
+        "--resume",
+        type=Path,
+        default=None,
+        help="Resume from a checkpoint written by train_model.py.",
+    )
+    parser.add_argument(
+        "--amp",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use CUDA automatic mixed precision when training on GPU.",
+    )
+    parser.add_argument(
+        "--amp-dtype",
+        choices=("float16", "bfloat16"),
+        default="float16",
+        help="CUDA autocast dtype used when AMP is enabled.",
+    )
+    parser.add_argument(
+        "--tf32",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Allow TF32 matmul/convolution on CUDA devices that support it.",
+    )
+    parser.add_argument(
+        "--fused-adamw",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use fused AdamW on CUDA when supported.",
+    )
+    parser.add_argument(
+        "--compile",
+        action="store_true",
+        help="Opt into torch.compile for the training model.",
+    )
+    parser.add_argument(
+        "--save-optimizer",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Include optimizer state in checkpoints. Disabled by default to reduce checkpoint I/O.",
+    )
     return parser.parse_args()
 
 

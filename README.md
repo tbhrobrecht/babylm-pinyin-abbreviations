@@ -58,7 +58,7 @@ py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\p
 
 The output file contains one preprocessed document per line. Chinese words are
 segmented with `jieba`, converted to compact pinyin-code tokens, and preserved
-with whitespace boundaries for downstream tokenizer training.
+as whitespace-delimited atomic tokens for downstream tokenizer training.
 
 To disable `jieba` and preprocess Chinese character-by-character instead, add
 `--no-jieba`:
@@ -110,8 +110,10 @@ This writes:
 - `tokenizers\babylm_zho_pinyin_spm.vocab`
 
 The default tokenizer uses an 8,000-piece BPE vocabulary, preserves the
-preprocessing special tokens such as `<NUM>` and `<MATH>`, keeps whitespace-based
-pretokenization, and avoids splitting pinyin-code digits away from their letters.
+preprocessing special tokens such as `<NUM>` and `<MATH>`, and avoids splitting
+pinyin-code digits away from their letters. SentencePiece is allowed to learn BPE
+pieces that span adjacent whitespace-delimited atomic tokens, so frequent
+multi-token pinyin-code patterns can become single tokenizer pieces.
 
 Useful options:
 
@@ -134,7 +136,16 @@ py create_dataset.py
 ```
 
 This writes `data\datasets\10k_babylm_zho_spm.jsonl` by default. Each line has
-fixed-length `input_ids` and matching `labels` for causal language modeling.
+fixed-length `input_ids` for causal language modeling. Add `--include-labels` if
+you want the JSONL file to also contain labels identical to `input_ids`;
+`train_model.py` does not need them.
+
+For a cleaner validation signal, split by original processed document before
+chunking instead of randomly splitting adjacent chunks after dataset creation:
+
+```powershell
+py create_dataset.py --input data\processed\10k_babylm_zho.txt --output data\datasets\10k_train_spm.jsonl --validation-output data\datasets\10k_valid_spm.jsonl --validation-fraction 0.05
+```
 
 ## Train the language model
 
@@ -153,6 +164,33 @@ The default model uses 6 Transformer layers, 8 attention heads, 256 hidden
 dimensions, 128-token context windows, and the tokenizer's 8,000-token
 vocabulary. Use `--device cuda` on a CUDA-capable GPU, or `--device cpu` to force
 CPU training.
+
+At startup, `train_model.py` prints the selected device, CUDA device name,
+parameter count, tokens per epoch, and whether AMP/TF32/compile fast paths are
+active. If it prints `device=cpu` or `cuda_name=none`, training will be much
+slower than CUDA-based repository baselines. A CPU-only PyTorch install cannot
+use `--device cuda`; install a CUDA-enabled PyTorch build first.
+
+CUDA training enables automatic mixed precision, TF32, and fused AdamW by
+default when available. Disable them with `--no-amp`, `--no-tf32`, or
+`--no-fused-adamw` for debugging. `--compile` opts into `torch.compile`, which
+can improve longer GPU runs after a startup compilation cost. Checkpoints omit
+optimizer state by default to reduce disk I/O; pass `--save-optimizer` if you
+need optimizer state for manual resuming.
+
+On a CUDA machine, such as a workstation with an RTX GPU, keep using
+`--device cuda`. If the startup line prints your CUDA device name, the CUDA fast
+paths are active.
+
+When you created a separate validation JSONL, pass it during training:
+
+```powershell
+py train_model.py --dataset data\datasets\10k_train_spm.jsonl --validation-dataset data\datasets\10k_valid_spm.jsonl --device cuda
+```
+
+Resume a run from a previous checkpoint with `--resume`. Checkpoints only include
+optimizer state when they were written with `--save-optimizer`; otherwise the
+model weights resume and the optimizer starts fresh.
 
 ## Convert to a Transformers model folder
 
@@ -220,9 +258,9 @@ python preprocessing/preprocess.py --input data/nk_babylm_zho.jsonl --output dat
 
 python train_sentencepiece.py --input data/processed/nk_babylm_zho.txt --output-dir tokenizers --model-name babylm_zho_pinyin_spm --vocab-size 16000 
 
-python create_dataset.py --input data/processed/nk_babylm_zho.txt --output data/datasets/nk_babylm_zho_spm.jsonl --tokenizer tokenizers/[model name].model --block-size 512 --stride 512
+python create_dataset.py --input data/processed/nk_babylm_zho.txt --output data/datasets/nk_babylm_zho_train_spm.jsonl --validation-output data/datasets/nk_babylm_zho_valid_spm.jsonl --validation-fraction 0.05 --tokenizer tokenizers/[model name].model --block-size 512 --stride 512
 
-python train_model.py --dataset data/datasets/nk_babylm_zho_spm.jsonl --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
+python train_model.py --dataset data/datasets/nk_babylm_zho_train_spm.jsonl --validation-dataset data/datasets/nk_babylm_zho_valid_spm.jsonl --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
 
 python hf/convert_to_transformers.py --checkpoint models/[model name]/best.pt --tokenizer tokenizers/[model name].model --output-dir hf_[model name] --transliteration pinyin-code
 (add --no-jieba here if the training corpus was preprocessed with --no-jieba)

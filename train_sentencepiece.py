@@ -48,9 +48,9 @@ def train_tokenizer(args: argparse.Namespace) -> None:
     model_prefix = args.output_dir / args.model_name
     input_files = [str(path) for path in args.input]
 
-    # These settings match the output of preprocess.py: tokens are already
-    # whitespace-separated, and pinyin-code digits should stay attached to their
-    # letters instead of becoming separate pieces.
+    # The corpus starts as whitespace-separated atomic tokens, but BPE is allowed
+    # to learn pieces that span adjacent atoms. Pinyin-code digits should still
+    # stay attached to their letters instead of becoming separate pieces.
     spm.SentencePieceTrainer.train(
         input=input_files,
         model_prefix=str(model_prefix),

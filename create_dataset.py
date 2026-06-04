@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 
@@ -22,6 +24,12 @@ def require_sentencepiece():
 
 def iter_token_ids(input_paths: Iterable[Path], processor) -> Iterable[int]:
     """Yield token ids from processed text files, adding EOS after each document."""
+    for document_ids in iter_document_token_ids(input_paths, processor):
+        yield from document_ids
+
+
+def iter_document_token_ids(input_paths: Iterable[Path], processor) -> Iterable[list[int]]:
+    """Yield one token-id list per processed document, with EOS appended."""
     eos_id = processor.eos_id()
 
     for input_path in input_paths:
@@ -30,9 +38,11 @@ def iter_token_ids(input_paths: Iterable[Path], processor) -> Iterable[int]:
                 text = line.strip()
                 if not text:
                     continue
-                yield from processor.encode(text, out_type=int)
+                token_ids = processor.encode(text, out_type=int)
                 if eos_id >= 0:
-                    yield eos_id
+                    token_ids.append(eos_id)
+                if token_ids:
+                    yield token_ids
 
 
 def iter_chunks(token_ids: Iterable[int], block_size: int, stride: int) -> Iterable[list[int]]:
@@ -52,29 +62,121 @@ def iter_chunks(token_ids: Iterable[int], block_size: int, stride: int) -> Itera
             del buffer[:stride]
 
 
-def write_dataset(args: argparse.Namespace) -> int:
+@dataclass
+class ChunkWriter:
+    """Write fixed-size chunks while keeping sliding-window state."""
+
+    handle: object
+    block_size: int
+    stride: int
+    include_labels: bool
+    buffer: list[int]
+    written: int = 0
+    consumed_tokens: int = 0
+
+    def add_tokens(self, token_ids: Iterable[int]) -> None:
+        for token_id in token_ids:
+            self.consumed_tokens += 1
+            self.buffer.append(token_id)
+            if len(self.buffer) == self.block_size:
+                self.write_chunk(self.buffer)
+                del self.buffer[: self.stride]
+
+    def write_chunk(self, chunk: list[int]) -> None:
+        record = {"input_ids": list(chunk)}
+        if self.include_labels:
+            record["labels"] = list(chunk)
+        self.handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
+        self.handle.write("\n")
+        self.written += 1
+
+    @property
+    def dropped_tail_tokens(self) -> int:
+        return len(self.buffer)
+
+
+@dataclass
+class DatasetWriteStats:
+    train_examples: int
+    train_tokens: int
+    train_dropped_tail_tokens: int
+    validation_examples: int = 0
+    validation_tokens: int = 0
+    validation_dropped_tail_tokens: int = 0
+
+
+def make_chunk_writer(handle, args: argparse.Namespace) -> ChunkWriter:
+    return ChunkWriter(
+        handle=handle,
+        block_size=args.block_size,
+        stride=args.stride,
+        include_labels=args.include_labels,
+        buffer=[],
+    )
+
+
+def write_single_dataset(args: argparse.Namespace, processor) -> DatasetWriteStats:
+    """Write all input documents into one chunked dataset."""
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open("w", encoding="utf-8", newline="\n") as out:
+        writer = make_chunk_writer(out, args)
+        for document_ids in iter_document_token_ids(args.input, processor):
+            writer.add_tokens(document_ids)
+
+    return DatasetWriteStats(
+        train_examples=writer.written,
+        train_tokens=writer.consumed_tokens,
+        train_dropped_tail_tokens=writer.dropped_tail_tokens,
+    )
+
+
+def write_train_validation_datasets(args: argparse.Namespace, processor) -> DatasetWriteStats:
+    """Split processed documents, then write separate train/validation chunks."""
+    if not 0.0 < args.validation_fraction < 1.0:
+        raise ValueError("--validation-fraction must be greater than 0 and less than 1")
+    if args.validation_output is None:
+        raise ValueError("--validation-output is required when using --validation-fraction")
+
+    rng = random.Random(args.seed)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.validation_output.parent.mkdir(parents=True, exist_ok=True)
+
+    with (
+        args.output.open("w", encoding="utf-8", newline="\n") as train_out,
+        args.validation_output.open("w", encoding="utf-8", newline="\n") as valid_out,
+    ):
+        train_writer = make_chunk_writer(train_out, args)
+        valid_writer = make_chunk_writer(valid_out, args)
+
+        for document_ids in iter_document_token_ids(args.input, processor):
+            writer = valid_writer if rng.random() < args.validation_fraction else train_writer
+            writer.add_tokens(document_ids)
+
+    return DatasetWriteStats(
+        train_examples=train_writer.written,
+        train_tokens=train_writer.consumed_tokens,
+        train_dropped_tail_tokens=train_writer.dropped_tail_tokens,
+        validation_examples=valid_writer.written,
+        validation_tokens=valid_writer.consumed_tokens,
+        validation_dropped_tail_tokens=valid_writer.dropped_tail_tokens,
+    )
+
+
+def write_dataset(args: argparse.Namespace) -> DatasetWriteStats:
     """Tokenize processed text and write one JSON record per training chunk."""
     spm = require_sentencepiece()
     processor = spm.SentencePieceProcessor(model_file=str(args.tokenizer))
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    chunks = iter_chunks(
-        iter_token_ids(args.input, processor),
-        block_size=args.block_size,
-        stride=args.stride,
-    )
+    if args.validation_output is not None or args.validation_fraction is not None:
+        validation_fraction = args.validation_fraction
+        if validation_fraction is None:
+            validation_fraction = 0.05
+        args.validation_fraction = validation_fraction
+        stats = write_train_validation_datasets(args, processor)
+    else:
+        stats = write_single_dataset(args, processor)
 
-    written = 0
-    with args.output.open("w", encoding="utf-8", newline="\n") as out:
-        for chunk in chunks:
-            record = {"input_ids": chunk}
-            if args.include_labels:
-                record["labels"] = chunk
-            out.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
-            out.write("\n")
-            written += 1
-
-    return written
+    return stats
 
 
 def parse_args() -> argparse.Namespace:
@@ -116,16 +218,48 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--include-labels",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Write labels identical to input_ids for causal language modeling.",
+        default=False,
+        help=(
+            "Also write labels identical to input_ids. Disabled by default because "
+            "train_model.py creates causal LM labels from input_ids directly."
+        ),
     )
+    parser.add_argument(
+        "--validation-output",
+        type=Path,
+        help=(
+            "Optional output JSONL for a document-level validation split. "
+            "When provided, --output receives only training documents."
+        ),
+    )
+    parser.add_argument(
+        "--validation-fraction",
+        type=float,
+        default=None,
+        help=(
+            "Fraction of processed documents assigned to --validation-output. "
+            "Defaults to 0.05 when --validation-output is set."
+        ),
+    )
+    parser.add_argument("--seed", type=int, default=1337)
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    count = write_dataset(args)
-    print(f"Wrote {count:,} examples to {args.output}")
+    stats = write_dataset(args)
+    print(f"Wrote {stats.train_examples:,} training examples to {args.output}")
+    print(
+        "Training tokens consumed: "
+        f"{stats.train_tokens:,}; dropped tail tokens: {stats.train_dropped_tail_tokens:,}"
+    )
+    if args.validation_output is not None:
+        print(f"Wrote {stats.validation_examples:,} validation examples to {args.validation_output}")
+        print(
+            "Validation tokens consumed: "
+            f"{stats.validation_tokens:,}; dropped tail tokens: "
+            f"{stats.validation_dropped_tail_tokens:,}"
+        )
 
 
 if __name__ == "__main__":
