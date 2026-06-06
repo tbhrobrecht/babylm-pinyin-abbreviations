@@ -117,6 +117,11 @@ preprocessing special tokens such as `<NUM>`, `<MATH>`, and `<URL>`, and avoids
 splitting pinyin-code digits away from their letters. SentencePiece is allowed to
 learn BPE pieces that span adjacent whitespace-delimited atomic tokens, so
 frequent multi-token pinyin-code patterns can become single tokenizer pieces.
+For BPE training, long processed lines are split at whitespace boundaries before
+calling SentencePiece by default; this avoids SentencePiece's per-line 16-bit
+position limit on large corpora while preserving all tokens. Use
+`--no-split-long-lines` only if you are sure your input lines are already short
+enough.
 
 Useful options:
 

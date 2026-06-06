@@ -228,6 +228,48 @@ class PipelineSanityTests(unittest.TestCase):
         self.assertFalse(captured["split_by_number"])
         self.assertIn("<URL>", captured["user_defined_symbols"].split(","))
 
+    def test_sentencepiece_training_splits_long_bpe_lines(self) -> None:
+        input_path = Path(self.temp_dir.name) / "long.txt"
+        input_path.write_text("aa bb cc dd ee ff\nshort\n", encoding="utf-8")
+        captured = {}
+
+        class FakeTrainer:
+            @staticmethod
+            def train(**kwargs):
+                captured["input"] = kwargs["input"]
+                captured["lines"] = [
+                    line
+                    for path in kwargs["input"]
+                    for line in Path(path).read_text(encoding="utf-8").splitlines()
+                ]
+
+        fake_sentencepiece = SimpleNamespace(SentencePieceTrainer=FakeTrainer)
+        args = SimpleNamespace(
+            output_dir=Path(self.temp_dir.name),
+            model_name="toy",
+            input=[input_path],
+            vocab_size=32,
+            model_type="bpe",
+            character_coverage=1.0,
+            input_sentence_size=0,
+            max_sentence_length=100,
+            shuffle_input_sentence=True,
+            train_extremely_large_corpus=False,
+            hard_vocab_limit=False,
+            split_long_lines=True,
+            split_max_chars=10,
+        )
+
+        with (
+            patch("train_sentencepiece.require_sentencepiece", return_value=fake_sentencepiece),
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            train_tokenizer(args)
+
+        self.assertNotEqual(captured["input"], [str(input_path)])
+        self.assertTrue(all(len(line) <= 10 for line in captured["lines"]))
+        self.assertEqual(captured["lines"], ["aa bb cc", "dd ee ff", "short"])
+
     def test_dataset_validation_rejects_vocab_mismatch(self) -> None:
         dataset = JsonlTokenDataset(self.write_jsonl_dataset([[0, 1, 4]]))
         config = ModelConfig(vocab_size=4, block_size=3)
