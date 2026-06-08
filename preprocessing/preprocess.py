@@ -232,6 +232,12 @@ def process_text(
     return " ".join(tokens)
 
 
+def hanzi_to_encoded(text: str, use_jieba: bool = True) -> str:
+    """Convert normal Hanzi/Mandarin text to the compact initial+digit encoding."""
+    require_dependencies()
+    return process_text(text, "pinyin-code", use_jieba)
+
+
 def read_jsonl(path: Path) -> Iterable[dict[str, Any]]:
     """Yield JSON objects from UTF-8 JSONL, tolerating a leading BOM if present."""
     with path.open("r", encoding="utf-8-sig") as handle:

@@ -14,7 +14,7 @@ from torch.utils.data import TensorDataset
 
 from create_dataset import iter_chunks, write_dataset
 from generate import prepare_prompt
-from preprocessing.preprocess import process_text
+from preprocessing.preprocess import hanzi_to_encoded, process_text
 from train_sentencepiece import train_tokenizer
 from train_model import (
     BinaryTokenDataset,
@@ -31,7 +31,9 @@ from train_model import (
 try:
     from hf.configuration_pinyin_code import PinyinCodeConfig
     from hf.modeling_pinyin_code import PinyinCodeForCausalLM
+    from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
 except ModuleNotFoundError:
+    EncodedMandarinTokenizer = None
     PinyinCodeConfig = None
     PinyinCodeForCausalLM = None
 
@@ -103,6 +105,24 @@ class PipelineSanityTests(unittest.TestCase):
             use_jieba=True,
         )
         self.assertEqual(prompt, "W6M7 Y6")
+
+    def test_encoded_mandarin_tokenizer_wraps_hanzi_input(self) -> None:
+        if EncodedMandarinTokenizer is None:
+            self.skipTest("transformers or sentencepiece is not installed")
+        model_path = Path("hf_pinyin_code_model")
+        if not (model_path / "tokenizer.model").exists():
+            self.skipTest("exported tokenizer model is not available")
+
+        tokenizer = EncodedMandarinTokenizer.from_pretrained(model_path)
+        encoded_text = hanzi_to_encoded("已经很晚了")
+        hanzi_ids = tokenizer.encode("已经很晚了", add_special_tokens=False)
+        direct_ids = tokenizer.sp_model.encode(encoded_text, out_type=int)
+
+        self.assertEqual(hanzi_ids, direct_ids)
+        self.assertEqual(
+            tokenizer(["已经很晚了"], add_special_tokens=False)["input_ids"][0],
+            direct_ids,
+        )
 
     def test_iter_chunks_rejects_stride_larger_than_block_size(self) -> None:
         with self.assertRaisesRegex(ValueError, "--stride"):

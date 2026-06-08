@@ -18,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from hf.configuration_pinyin_code import PinyinCodeConfig
 from hf.modeling_pinyin_code import PinyinCodeForCausalLM
-from hf.tokenization_pinyin_code import PinyinCodeTokenizer
+from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
 
 
 DEFAULT_OUTPUT_DIR = Path("hf_pinyin_code_model")
@@ -85,7 +85,7 @@ def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
     config.auto_map = {
         "AutoConfig": "configuration_pinyin_code.PinyinCodeConfig",
         "AutoModelForCausalLM": "modeling_pinyin_code.PinyinCodeForCausalLM",
-        "AutoTokenizer": ["tokenization_pinyin_code.PinyinCodeTokenizer", None],
+        "AutoTokenizer": ["tokenization_pinyin_code.EncodedMandarinTokenizer", None],
     }
     return config
 
@@ -145,7 +145,7 @@ def convert(args: argparse.Namespace) -> None:
     copy_remote_code(args.output_dir)
     model.save_pretrained(args.output_dir, safe_serialization=args.safe_serialization)
 
-    tokenizer = PinyinCodeTokenizer(
+    tokenizer = EncodedMandarinTokenizer(
         vocab_file=str(args.tokenizer),
         transliteration=args.transliteration,
         use_jieba=args.jieba,
@@ -166,12 +166,15 @@ def convert(args: argparse.Namespace) -> None:
         args.output_dir / "tokenizer_config.json",
         {
             "auto_map": {
-                "AutoTokenizer": ["tokenization_pinyin_code.PinyinCodeTokenizer", None]
+                "AutoTokenizer": [
+                    "tokenization_pinyin_code.EncodedMandarinTokenizer",
+                    None,
+                ]
             },
             "model_max_length": config.block_size,
             "pinyin_format": args.transliteration,
             "jieba": args.jieba,
-            "tokenizer_class": "PinyinCodeTokenizer",
+            "tokenizer_class": "EncodedMandarinTokenizer",
             "transliteration": args.transliteration,
             "use_jieba": args.jieba,
         },

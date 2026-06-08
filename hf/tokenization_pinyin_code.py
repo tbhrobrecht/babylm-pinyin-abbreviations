@@ -7,6 +7,7 @@ import re
 import shutil
 import unicodedata
 from pathlib import Path
+from typing import Any
 
 import sentencepiece as spm
 from transformers import PreTrainedTokenizer
@@ -135,11 +136,17 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         if not CHINESE_RE.search(text) and self._looks_preprocessed(text):
             return text
         try:
-            from preprocessing.preprocess import process_text, require_dependencies
+            from preprocessing.preprocess import (
+                hanzi_to_encoded,
+                process_text,
+                require_dependencies,
+            )
         except ImportError:
             return self._fallback_process_text(text)
 
         require_dependencies()
+        if self.transliteration == "pinyin-code":
+            return hanzi_to_encoded(text, self.use_jieba)
         return process_text(text, self.transliteration, self.use_jieba)
 
     def _fallback_process_text(self, text: str) -> str:
@@ -269,6 +276,52 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
 
         return " ".join(tokens)
 
+    def _preprocess_tokenizer_input(self, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return self._preprocess_raw_text(value)
+        if isinstance(value, tuple):
+            return tuple(self._preprocess_tokenizer_input(item) for item in value)
+        if isinstance(value, list):
+            return [self._preprocess_tokenizer_input(item) for item in value]
+        return value
+
+    def __call__(self, text=None, text_pair=None, *args, **kwargs):
+        if "text_target" in kwargs:
+            kwargs["text_target"] = self._preprocess_tokenizer_input(kwargs["text_target"])
+        if "text_pair_target" in kwargs:
+            kwargs["text_pair_target"] = self._preprocess_tokenizer_input(
+                kwargs["text_pair_target"]
+            )
+
+        text = self._preprocess_tokenizer_input(text)
+        text_pair = self._preprocess_tokenizer_input(text_pair)
+        if text_pair is None:
+            return super().__call__(text, *args, **kwargs)
+        return super().__call__(text, text_pair, *args, **kwargs)
+
+    def encode(self, text, text_pair=None, add_special_tokens=True, *args, **kwargs):
+        kwargs["add_special_tokens"] = add_special_tokens
+        text = self._preprocess_tokenizer_input(text)
+        text_pair = self._preprocess_tokenizer_input(text_pair)
+        if text_pair is None:
+            return super().encode(text, *args, **kwargs)
+        return super().encode(text, text_pair, *args, **kwargs)
+
+    def encode_plus(self, text, text_pair=None, *args, **kwargs):
+        text = self._preprocess_tokenizer_input(text)
+        text_pair = self._preprocess_tokenizer_input(text_pair)
+        if text_pair is None:
+            return super().encode_plus(text, *args, **kwargs)
+        return super().encode_plus(text, text_pair, *args, **kwargs)
+
+    def batch_encode_plus(self, batch_text_or_text_pairs, *args, **kwargs):
+        batch_text_or_text_pairs = self._preprocess_tokenizer_input(
+            batch_text_or_text_pairs
+        )
+        return super().batch_encode_plus(batch_text_or_text_pairs, *args, **kwargs)
+
     @property
     def vocab_size(self) -> int:
         return self.sp_model.get_piece_size()
@@ -343,3 +396,7 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         if Path(self.vocab_file).resolve() != output_path.resolve():
             shutil.copyfile(self.vocab_file, output_path)
         return (str(output_path),)
+
+
+class EncodedMandarinTokenizer(PinyinCodeTokenizer):
+    """Tokenizer wrapper that hides Hanzi-to-encoded-Mandarin preprocessing."""
