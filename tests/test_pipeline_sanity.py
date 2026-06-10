@@ -30,12 +30,13 @@ from train_model import (
 
 try:
     from hf.configuration_pinyin_code import PinyinCodeConfig
-    from hf.modeling_pinyin_code import PinyinCodeForCausalLM
+    from hf.modeling_pinyin_code import PinyinCodeForCausalLM, PinyinCodeModel
     from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
 except ModuleNotFoundError:
     EncodedMandarinTokenizer = None
     PinyinCodeConfig = None
     PinyinCodeForCausalLM = None
+    PinyinCodeModel = None
 
 
 class PipelineSanityTests(unittest.TestCase):
@@ -463,6 +464,20 @@ class PipelineSanityTests(unittest.TestCase):
             attention_mask=attention_mask,
         )
         self.assertEqual(prepared["position_ids"].tolist(), [[0, 0, 0, 1, 2]])
+
+    def test_hf_base_model_forward_returns_hidden_states(self) -> None:
+        if PinyinCodeConfig is None or PinyinCodeModel is None:
+            self.skipTest("transformers is not installed")
+
+        config = PinyinCodeConfig(vocab_size=16, block_size=8, n_layer=1, n_head=1, n_embd=8)
+        model = PinyinCodeModel(config)
+        out = model(torch.tensor([[1, 2, 3]]), output_hidden_states=True)
+
+        self.assertEqual(tuple(out.last_hidden_state.shape), (1, 3, 8))
+        self.assertIsNotNone(out.hidden_states)
+        assert out.hidden_states is not None
+        self.assertEqual(len(out.hidden_states), 3)
+        self.assertEqual(tuple(out.hidden_states[-1].shape), (1, 3, 8))
 
 
 if __name__ == "__main__":

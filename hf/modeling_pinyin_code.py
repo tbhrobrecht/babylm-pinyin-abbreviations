@@ -7,7 +7,7 @@ from torch import nn
 from torch.nn import functional as F
 from transformers import PreTrainedModel
 from transformers.generation import GenerationMixin
-from transformers.modeling_outputs import CausalLMOutput
+from transformers.modeling_outputs import BaseModelOutput, CausalLMOutput
 
 from .configuration_pinyin_code import PinyinCodeConfig
 
@@ -114,28 +114,103 @@ class PinyinCodePreTrainedModel(PreTrainedModel):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
 
-class PinyinCodeForCausalLM(PinyinCodePreTrainedModel, GenerationMixin):
-    """Compact GPT-style causal language model using the original architecture."""
+class PinyinCodeModel(PinyinCodePreTrainedModel):
+    """Base decoder model returned by ``AutoModel``."""
 
-    _tied_weights_keys = {"lm_head.weight": "token_embedding.weight"}
-    _keys_to_ignore_on_load_missing = [r"lm_head\.weight"]
-
-    def __init__(self, config: PinyinCodeConfig) -> None:
+    def __init__(self, config: PinyinCodeConfig, init_weights: bool = True) -> None:
         super().__init__(config)
         self.token_embedding = nn.Embedding(config.vocab_size, config.n_embd)
         self.position_embedding = nn.Embedding(config.block_size, config.n_embd)
         self.dropout = nn.Dropout(config.dropout)
         self.blocks = nn.ModuleList(TransformerBlock(config) for _ in range(config.n_layer))
         self.ln_f = nn.LayerNorm(config.n_embd)
-        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
-        self.post_init()
-        self.tie_weights()
+        if init_weights:
+            self.post_init()
 
     def get_input_embeddings(self) -> nn.Embedding:
         return self.token_embedding
 
     def set_input_embeddings(self, value: nn.Embedding) -> None:
         self.token_embedding = value
+
+    def forward(
+        self,
+        input_ids: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+        inputs_embeds: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
+        output_hidden_states: bool | None = None,
+        return_dict: bool | None = None,
+        **kwargs,
+    ) -> BaseModelOutput | tuple:
+        return_dict = True if return_dict is None else return_dict
+        output_hidden_states = (
+            self.config.output_hidden_states
+            if output_hidden_states is None
+            else output_hidden_states
+        )
+
+        if input_ids is None and inputs_embeds is None:
+            raise ValueError("You must provide either input_ids or inputs_embeds")
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot provide both input_ids and inputs_embeds")
+
+        if inputs_embeds is None:
+            _, seq_len = input_ids.shape
+            if seq_len > self.config.block_size:
+                raise ValueError(
+                    f"Sequence length {seq_len} exceeds block size {self.config.block_size}"
+                )
+            inputs_embeds = self.token_embedding(input_ids)
+        else:
+            seq_len = inputs_embeds.shape[1]
+            if seq_len > self.config.block_size:
+                raise ValueError(
+                    f"Sequence length {seq_len} exceeds block size {self.config.block_size}"
+                )
+
+        if position_ids is None:
+            if attention_mask is not None:
+                position_ids = attention_mask.long().cumsum(dim=-1) - 1
+                position_ids = position_ids.clamp_min(0)
+            else:
+                position_ids = torch.arange(seq_len, device=inputs_embeds.device)
+        position_ids = position_ids[:, -seq_len:] if position_ids.ndim == 2 else position_ids
+
+        x = inputs_embeds + self.position_embedding(position_ids)
+        x = self.dropout(x)
+        all_hidden_states = (x,) if output_hidden_states else None
+        for block in self.blocks:
+            x = block(x, attention_mask=attention_mask)
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (x,)
+        hidden_states = self.ln_f(x)
+        if output_hidden_states:
+            all_hidden_states = all_hidden_states + (hidden_states,)
+
+        if not return_dict:
+            output = (hidden_states,)
+            if output_hidden_states:
+                output = output + (all_hidden_states,)
+            return output
+
+        return BaseModelOutput(
+            last_hidden_state=hidden_states,
+            hidden_states=all_hidden_states,
+        )
+
+
+class PinyinCodeForCausalLM(PinyinCodeModel, GenerationMixin):
+    """Compact GPT-style causal language model using the original architecture."""
+
+    _tied_weights_keys = {"lm_head.weight": "token_embedding.weight"}
+    _keys_to_ignore_on_load_missing = [r"lm_head\.weight"]
+
+    def __init__(self, config: PinyinCodeConfig) -> None:
+        super().__init__(config, init_weights=False)
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        self.post_init()
+        self.tie_weights()
 
     def get_output_embeddings(self) -> nn.Linear:
         return self.lm_head
@@ -174,42 +249,22 @@ class PinyinCodeForCausalLM(PinyinCodePreTrainedModel, GenerationMixin):
         labels: torch.Tensor | None = None,
         inputs_embeds: torch.Tensor | None = None,
         position_ids: torch.Tensor | None = None,
+        output_hidden_states: bool | None = None,
         return_dict: bool | None = None,
         **kwargs,
     ) -> CausalLMOutput | tuple:
         return_dict = True if return_dict is None else return_dict
 
-        if input_ids is None and inputs_embeds is None:
-            raise ValueError("You must provide either input_ids or inputs_embeds")
-        if input_ids is not None and inputs_embeds is not None:
-            raise ValueError("You cannot provide both input_ids and inputs_embeds")
-
-        if inputs_embeds is None:
-            _, seq_len = input_ids.shape
-            if seq_len > self.config.block_size:
-                raise ValueError(
-                    f"Sequence length {seq_len} exceeds block size {self.config.block_size}"
-                )
-            inputs_embeds = self.token_embedding(input_ids)
-        else:
-            seq_len = inputs_embeds.shape[1]
-            if seq_len > self.config.block_size:
-                raise ValueError(
-                    f"Sequence length {seq_len} exceeds block size {self.config.block_size}"
-                )
-
-        if position_ids is None:
-            if attention_mask is not None:
-                position_ids = attention_mask.long().cumsum(dim=-1) - 1
-                position_ids = position_ids.clamp_min(0)
-            else:
-                position_ids = torch.arange(seq_len, device=inputs_embeds.device)
-        position_ids = position_ids[:, -seq_len:] if position_ids.ndim == 2 else position_ids
-        x = inputs_embeds + self.position_embedding(position_ids)
-        x = self.dropout(x)
-        for block in self.blocks:
-            x = block(x, attention_mask=attention_mask)
-        logits = self.lm_head(self.ln_f(x))
+        decoder_outputs = PinyinCodeModel.forward(
+            self,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            inputs_embeds=inputs_embeds,
+            position_ids=position_ids,
+            output_hidden_states=output_hidden_states,
+            return_dict=True,
+        )
+        logits = self.lm_head(decoder_outputs.last_hidden_state)
 
         loss = None
         if labels is not None:
@@ -221,6 +276,12 @@ class PinyinCodeForCausalLM(PinyinCodePreTrainedModel, GenerationMixin):
 
         if not return_dict:
             output = (logits,)
+            if decoder_outputs.hidden_states is not None:
+                output = output + (decoder_outputs.hidden_states,)
             return ((loss,) + output) if loss is not None else output
 
-        return CausalLMOutput(loss=loss, logits=logits)
+        return CausalLMOutput(
+            loss=loss,
+            logits=logits,
+            hidden_states=decoder_outputs.hidden_states,
+        )

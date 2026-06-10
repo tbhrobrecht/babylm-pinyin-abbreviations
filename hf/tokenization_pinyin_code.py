@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import re
 import shutil
 import unicodedata
@@ -287,7 +288,119 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
             return [self._preprocess_tokenizer_input(item) for item in value]
         return value
 
+    def _non_content_token_ids(self) -> set[int]:
+        return {
+            token_id
+            for token_id in (
+                self.pad_token_id,
+                self.bos_token_id,
+                self.eos_token_id,
+                self.cls_token_id,
+                self.sep_token_id,
+                self.mask_token_id,
+            )
+            if token_id is not None
+        }
+
+    def _offset_source_text(self, value: Any, is_split_into_words: bool = False) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        if isinstance(value, tuple):
+            return " ".join(self._offset_source_text(item) for item in value)
+        if isinstance(value, list):
+            separator = " " if is_split_into_words else ""
+            return separator.join(self._offset_source_text(item) for item in value)
+        return str(value)
+
+    def _synthetic_offset_mapping(self, text: Any, input_ids: Any, is_split_into_words: bool = False) -> list[tuple[int, int]]:
+        """Return slow-tokenizer-compatible offsets for evaluators that require them.
+
+        SentencePiece offsets are not available for this Python tokenizer because
+        raw Mandarin text is preprocessed into pinyin-code before encoding. These
+        spans conservatively distribute non-special tokens across the original
+        text so suffix/completion masking code can run without requiring a fast
+        tokenizer.
+        """
+        ids = input_ids.tolist() if hasattr(input_ids, "tolist") else list(input_ids)
+        source = self._offset_source_text(text, is_split_into_words=is_split_into_words)
+        source_length = len(source)
+        if not ids:
+            return []
+        if source_length == 0:
+            return [(0, 0) for _ in ids]
+
+        non_content_ids = self._non_content_token_ids()
+        content_positions = [
+            index for index, token_id in enumerate(ids) if int(token_id) not in non_content_ids
+        ]
+        if not content_positions:
+            return [(0, 0) for _ in ids]
+
+        offsets = [(0, 0) for _ in ids]
+        count = len(content_positions)
+        for ordinal, position in enumerate(content_positions):
+            start = math.floor(ordinal * source_length / count)
+            end = math.ceil((ordinal + 1) * source_length / count)
+            if end <= start:
+                end = min(source_length, start + 1)
+            offsets[position] = (start, end)
+        return offsets
+
+    def _with_optional_offsets(
+        self,
+        encoding,
+        original_text: Any,
+        return_offsets_mapping: bool,
+        is_split_into_words: bool = False,
+        return_tensors: str | None = None,
+    ):
+        if not return_offsets_mapping:
+            return encoding
+
+        input_ids = encoding["input_ids"]
+        tensor_input = hasattr(input_ids, "ndim")
+        input_ids_list = input_ids.tolist() if tensor_input else input_ids
+
+        is_batched = False
+        if tensor_input:
+            is_batched = input_ids.ndim > 1
+        elif input_ids_list and isinstance(input_ids_list[0], list):
+            is_batched = True
+
+        if is_batched:
+            if isinstance(original_text, list) and not is_split_into_words:
+                texts = original_text
+            else:
+                texts = [original_text] * len(input_ids_list)
+            offsets = [
+                self._synthetic_offset_mapping(text, ids, is_split_into_words=is_split_into_words)
+                for text, ids in zip(texts, input_ids_list)
+            ]
+        else:
+            offsets = self._synthetic_offset_mapping(
+                original_text,
+                input_ids_list,
+                is_split_into_words=is_split_into_words,
+            )
+
+        if return_tensors == "pt" or tensor_input:
+            try:
+                import torch
+
+                offsets = torch.tensor(offsets, dtype=torch.long)
+            except ImportError:
+                pass
+        encoding["offset_mapping"] = offsets
+        return encoding
+
     def __call__(self, text=None, text_pair=None, *args, **kwargs):
+        original_text = text
+        return_offsets_mapping = bool(kwargs.pop("return_offsets_mapping", False))
+        is_split_into_words = bool(kwargs.get("is_split_into_words", False))
+        return_tensors = kwargs.get("return_tensors")
+
         if "text_target" in kwargs:
             kwargs["text_target"] = self._preprocess_tokenizer_input(kwargs["text_target"])
         if "text_pair_target" in kwargs:
@@ -298,8 +411,16 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         text = self._preprocess_tokenizer_input(text)
         text_pair = self._preprocess_tokenizer_input(text_pair)
         if text_pair is None:
-            return super().__call__(text, *args, **kwargs)
-        return super().__call__(text, text_pair, *args, **kwargs)
+            encoding = super().__call__(text, *args, **kwargs)
+        else:
+            encoding = super().__call__(text, text_pair, *args, **kwargs)
+        return self._with_optional_offsets(
+            encoding,
+            original_text,
+            return_offsets_mapping,
+            is_split_into_words=is_split_into_words,
+            return_tensors=return_tensors,
+        )
 
     def encode(self, text, text_pair=None, add_special_tokens=True, *args, **kwargs):
         kwargs["add_special_tokens"] = add_special_tokens
@@ -310,17 +431,42 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         return super().encode(text, text_pair, *args, **kwargs)
 
     def encode_plus(self, text, text_pair=None, *args, **kwargs):
+        original_text = text
+        return_offsets_mapping = bool(kwargs.pop("return_offsets_mapping", False))
+        is_split_into_words = bool(kwargs.get("is_split_into_words", False))
+        return_tensors = kwargs.get("return_tensors")
+
         text = self._preprocess_tokenizer_input(text)
         text_pair = self._preprocess_tokenizer_input(text_pair)
         if text_pair is None:
-            return super().encode_plus(text, *args, **kwargs)
-        return super().encode_plus(text, text_pair, *args, **kwargs)
+            encoding = super().encode_plus(text, *args, **kwargs)
+        else:
+            encoding = super().encode_plus(text, text_pair, *args, **kwargs)
+        return self._with_optional_offsets(
+            encoding,
+            original_text,
+            return_offsets_mapping,
+            is_split_into_words=is_split_into_words,
+            return_tensors=return_tensors,
+        )
 
     def batch_encode_plus(self, batch_text_or_text_pairs, *args, **kwargs):
+        original_batch = batch_text_or_text_pairs
+        return_offsets_mapping = bool(kwargs.pop("return_offsets_mapping", False))
+        is_split_into_words = bool(kwargs.get("is_split_into_words", False))
+        return_tensors = kwargs.get("return_tensors")
+
         batch_text_or_text_pairs = self._preprocess_tokenizer_input(
             batch_text_or_text_pairs
         )
-        return super().batch_encode_plus(batch_text_or_text_pairs, *args, **kwargs)
+        encoding = super().batch_encode_plus(batch_text_or_text_pairs, *args, **kwargs)
+        return self._with_optional_offsets(
+            encoding,
+            original_batch,
+            return_offsets_mapping,
+            is_split_into_words=is_split_into_words,
+            return_tensors=return_tensors,
+        )
 
     @property
     def vocab_size(self) -> int:

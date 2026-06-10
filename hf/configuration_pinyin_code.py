@@ -2,7 +2,51 @@
 
 from __future__ import annotations
 
+import functools
+import os
+import pathlib
+
 from transformers import PretrainedConfig
+
+
+_UTF8_PATH_OPEN_PATCH_MARKER = "_pinyin_code_utf8_path_open_patch"
+
+
+def install_utf8_path_open_patch() -> None:
+    """Default text-mode ``Path.open`` calls to UTF-8 when encoding is omitted.
+
+    Some external Windows evaluation pipelines call ``Path.open("r")`` on
+    UTF-8 JSONL data before specifying an encoding. The model is loaded before
+    those datasets, so this narrow compatibility shim lets such pipelines read
+    Mandarin evaluation files without repository-side changes. Explicit
+    encodings and binary modes are left untouched.
+    """
+    current_open = pathlib.Path.open
+    if getattr(current_open, _UTF8_PATH_OPEN_PATCH_MARKER, False):
+        return
+
+    @functools.wraps(current_open)
+    def utf8_default_open(
+        self,
+        mode: str = "r",
+        buffering: int = -1,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ):
+        if encoding is None and "b" not in mode:
+            encoding = "utf-8"
+        return current_open(
+            self,
+            mode=mode,
+            buffering=buffering,
+            encoding=encoding,
+            errors=errors,
+            newline=newline,
+        )
+
+    setattr(utf8_default_open, _UTF8_PATH_OPEN_PATCH_MARKER, True)
+    pathlib.Path.open = utf8_default_open
 
 
 class PinyinCodeConfig(PretrainedConfig):
@@ -22,6 +66,7 @@ class PinyinCodeConfig(PretrainedConfig):
         eos_token_id: int | None = None,
         pad_token_id: int | None = None,
         unk_token_id: int | None = None,
+        patch_pathlib_utf8_open: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -44,3 +89,9 @@ class PinyinCodeConfig(PretrainedConfig):
         self.is_decoder = True
         self.is_encoder_decoder = False
         self.use_cache = False
+        self.patch_pathlib_utf8_open = patch_pathlib_utf8_open
+        if (
+            patch_pathlib_utf8_open
+            and os.environ.get("PINYIN_CODE_DISABLE_UTF8_OPEN_PATCH") != "1"
+        ):
+            install_utf8_path_open_patch()

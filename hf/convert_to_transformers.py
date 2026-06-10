@@ -7,6 +7,7 @@ import json
 import shutil
 import sys
 from pathlib import Path
+from textwrap import dedent
 
 import sentencepiece as spm
 import torch
@@ -82,8 +83,11 @@ def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
         **tokenizer_special_ids(tokenizer_path),
     )
     config.architectures = ["PinyinCodeForCausalLM"]
+    config.evaluation_backend = "causal"
+    config.patch_pathlib_utf8_open = True
     config.auto_map = {
         "AutoConfig": "configuration_pinyin_code.PinyinCodeConfig",
+        "AutoModel": "modeling_pinyin_code.PinyinCodeModel",
         "AutoModelForCausalLM": "modeling_pinyin_code.PinyinCodeForCausalLM",
         "AutoTokenizer": ["tokenization_pinyin_code.EncodedMandarinTokenizer", None],
     }
@@ -123,6 +127,81 @@ def patch_json(path: Path, updates: dict) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     data.update(updates)
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) -> None:
+    """Write a minimal model-card README for external evaluation users."""
+    text = dedent(
+        f"""\
+        ---
+        library_name: transformers
+        pipeline_tag: text-generation
+        tags:
+        - causal-lm
+        - trust-remote-code
+        - sentencepiece
+        ---
+
+        # Pinyin-Code Causal LM
+
+        This repository contains a custom Transformers causal language model.
+        External evaluation repositories should load it with
+        `trust_remote_code=True` and use the `causal` backend.
+
+        ## Dependencies
+
+        Install the runtime dependencies before loading the model:
+
+        ```bash
+        pip install torch transformers safetensors sentencepiece pypinyin jieba
+        ```
+
+        `sentencepiece` is required for `AutoTokenizer`. `pypinyin` is required
+        for raw Mandarin-to-pinyin tokenization. `jieba` is required when
+        `use_jieba` is true; this export was created with `use_jieba={str(use_jieba).lower()}`.
+
+        ## Loading
+
+        ```python
+        from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer
+
+        model_path = "PATH_OR_REPO_ID"
+
+        config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        base_model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True)
+        ```
+
+        ## Evaluation
+
+        Configure external evaluators with:
+
+        - model path: this local folder or Hugging Face repo ID
+        - backend: `causal`
+        - trust remote code: enabled
+
+        The tokenizer accepts raw text through standard calls such as
+        `tokenizer(text)`, `tokenizer(text, add_special_tokens=False)`, and
+        `tokenizer(texts, padding=True, truncation=True, return_tensors="pt")`.
+        It also accepts `return_offsets_mapping=True` for compatibility with
+        completion-ranking evaluators that need suffix masks. The model supports
+        `output_hidden_states=True` for representation extraction tasks.
+
+        This export sets `patch_pathlib_utf8_open=true` in `config.json`.
+        When loaded with `trust_remote_code=True`, the config installs a narrow
+        Windows compatibility shim so later text-mode `Path.open("r")` calls
+        without an explicit encoding default to UTF-8. Set
+        `PINYIN_CODE_DISABLE_UTF8_OPEN_PATCH=1` before loading the model to
+        disable that shim.
+
+        Export metadata:
+
+        - transliteration: `{transliteration}`
+        - use_jieba: `{str(use_jieba).lower()}`
+        """
+    )
+    (output_dir / "README.md").write_text(text, encoding="utf-8", newline="\n")
 
 
 def convert(args: argparse.Namespace) -> None:
@@ -190,6 +269,7 @@ def convert(args: argparse.Namespace) -> None:
     )
 
     metadata = {
+        "evaluation_backend": "causal",
         "source_checkpoint": str(args.checkpoint),
         "epoch": checkpoint.get("epoch"),
         "global_step": checkpoint.get("global_step"),
@@ -202,6 +282,7 @@ def convert(args: argparse.Namespace) -> None:
         json.dumps(metadata, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    write_model_readme(args.output_dir, args.transliteration, args.jieba)
     print(f"Saved Transformers model to {args.output_dir}")
 
 

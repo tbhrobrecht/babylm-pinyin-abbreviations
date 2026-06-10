@@ -234,8 +234,16 @@ This writes `hf_pinyin_code_model\` with custom `trust_remote_code` files,
 Load it with:
 
 ```python
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer
 
+config = AutoConfig.from_pretrained(
+    "hf_pinyin_code_model",
+    trust_remote_code=True,
+)
+base_model = AutoModel.from_pretrained(
+    "hf_pinyin_code_model",
+    trust_remote_code=True,
+)
 model = AutoModelForCausalLM.from_pretrained(
     "hf_pinyin_code_model",
     trust_remote_code=True,
@@ -253,6 +261,46 @@ raw Mandarin/Hanzi benchmark prompts before SentencePiece tokenization, so
 the matching input format. Also pass `--no-jieba` when converting a model trained
 on character-level Chinese preprocessing, so benchmark prompts use the same
 segmentation.
+
+## Transformers and external evaluation compatibility
+
+The exported model is a causal language model. For external evaluation
+repositories, set only the evaluation config to point at the local model folder
+or uploaded Hugging Face repo ID, enable `trust_remote_code`, and select the
+`causal` backend.
+
+Runtime dependencies for the exported model are declared in `requirements.txt`.
+For a minimal evaluation environment, install:
+
+```powershell
+py -m pip install torch transformers safetensors sentencepiece pypinyin jieba
+```
+
+`sentencepiece` is required by `AutoTokenizer`. `pypinyin` is required for raw
+Mandarin-to-pinyin tokenization. `jieba` is required for model exports created
+with the default jieba segmentation.
+
+Run the compatibility smoke test against a local export or repo ID:
+
+```powershell
+py tests\hf_compatibility_smoke.py hf_models\hf_full_chinese_gpu3
+```
+
+The smoke test verifies `AutoConfig`, `AutoTokenizer`, `AutoModel`, and
+`AutoModelForCausalLM`, plus a CPU `torch.no_grad()` forward pass with logits
+shape `[batch, sequence_length, vocab_size]`.
+
+The slow tokenizer also accepts `return_offsets_mapping=True` for compatibility
+with evaluators that need completion-span masks, and the model supports
+`output_hidden_states=True` for representation extraction tasks.
+
+Exports set `patch_pathlib_utf8_open=true` in `config.json`. When the model is
+loaded with `trust_remote_code=True`, the config installs a narrow Windows
+compatibility shim so later text-mode `Path.open("r")` calls without an
+explicit encoding default to UTF-8. This helps evaluation repositories that
+read UTF-8 Chinese JSONL files without passing `encoding="utf-8"`. Set
+`PINYIN_CODE_DISABLE_UTF8_OPEN_PATCH=1` before loading the model to disable the
+shim.
 
 ## Upload the model to Hugging Face
 
