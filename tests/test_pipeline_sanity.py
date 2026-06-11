@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -27,6 +28,7 @@ from train_model import (
     train,
     validate_dataset_compatibility,
 )
+from dpo_utils import DPODataCollator, dpo_loss_from_logps, sequence_log_probs
 
 try:
     from hf.configuration_pinyin_code import PinyinCodeConfig
@@ -353,6 +355,72 @@ class PipelineSanityTests(unittest.TestCase):
         self.assertIsNotNone(loss)
         assert loss is not None
         self.assertTrue(torch.isfinite(loss))
+
+    def test_dpo_sequence_log_probs_scores_only_completion_tokens(self) -> None:
+        class UniformModel(torch.nn.Module):
+            def forward(self, input_ids):
+                return torch.zeros(input_ids.size(0), input_ids.size(1), 8)
+
+        input_ids = torch.tensor([[1, 2, 3, 4]])
+        completion_mask = torch.tensor([[False, False, True, True]])
+
+        logps = sequence_log_probs(UniformModel(), input_ids, completion_mask)
+
+        self.assertAlmostEqual(logps.item(), -2 * math.log(8), places=5)
+
+    def test_dpo_collator_marks_completion_after_prompt(self) -> None:
+        class FakeProcessor:
+            def encode(self, text, out_type=int):
+                return [int(token) for token in text.split()]
+
+            def pad_id(self):
+                return 0
+
+            def eos_id(self):
+                return 0
+
+            def unk_id(self):
+                return 0
+
+            def bos_id(self):
+                return 0
+
+        collator = DPODataCollator(FakeProcessor(), max_length=8)
+        batch = collator(
+            [
+                {
+                    "prompt": "1 2",
+                    "chosen": "3 4",
+                    "rejected": "5",
+                }
+            ]
+        )
+
+        self.assertEqual(batch["chosen_input_ids"].tolist(), [[1, 2, 3, 4]])
+        self.assertEqual(batch["chosen_completion_mask"].tolist(), [[False, False, True, True]])
+        self.assertEqual(batch["rejected_input_ids"].tolist(), [[1, 2, 5]])
+        self.assertEqual(batch["rejected_completion_mask"].tolist(), [[False, False, True]])
+
+    def test_dpo_loss_decreases_with_larger_policy_margin(self) -> None:
+        ref_chosen = torch.tensor([-4.0])
+        ref_rejected = torch.tensor([-4.0])
+        worse_loss, _ = dpo_loss_from_logps(
+            policy_chosen_logps=torch.tensor([-5.0]),
+            policy_rejected_logps=torch.tensor([-4.0]),
+            ref_chosen_logps=ref_chosen,
+            ref_rejected_logps=ref_rejected,
+            beta=0.1,
+        )
+        better_loss, margin = dpo_loss_from_logps(
+            policy_chosen_logps=torch.tensor([-3.0]),
+            policy_rejected_logps=torch.tensor([-5.0]),
+            ref_chosen_logps=ref_chosen,
+            ref_rejected_logps=ref_rejected,
+            beta=0.1,
+        )
+
+        self.assertGreater(margin.item(), 0)
+        self.assertLess(better_loss.item(), worse_loss.item())
 
     def test_tiny_train_loop_writes_compact_checkpoint(self) -> None:
         dataset_path = self.write_jsonl_dataset([[0, 1, 2, 3], [1, 2, 3, 4]])

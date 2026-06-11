@@ -219,6 +219,54 @@ Resume a run from a previous checkpoint with `--resume`. Checkpoints only includ
 optimizer state when they were written with `--save-optimizer`; otherwise the
 model weights resume and the optimizer starts fresh.
 
+## Optional DPO fine-tuning
+
+DPO is used as a post-pretraining preference optimization stage to reduce
+ambiguity introduced by compact pinyin-initial encoding. Preference pairs are
+constructed from gold encoded continuations versus model-generated incorrect
+continuations.
+
+This is an offline preference optimization stage, not full RLHF or PPO, and it
+does not replace the base language-model pretraining pipeline. Because the
+project trains a pure causal LM rather than an explicit prompt/target model, the
+DPO dataset builder splits each encoded sequence into a prompt from the first
+30-50% of tokens and a gold continuation from the remaining tokens. The
+pretrained model samples alternative continuations from the same prompt, and
+usable incorrect continuations become rejected responses.
+
+Run the base pretraining stage as usual:
+
+```powershell
+py train_model.py --dataset data\datasets\10k_train_spm.bin --validation-dataset data\datasets\10k_valid_spm.bin --output-dir models\pinyin-code-gpt-small --vocab-size 8000 --block-size 512 --device cuda
+```
+
+Build preference pairs from raw Hanzi JSONL or plain-text lines:
+
+```powershell
+py scripts\build_dpo_dataset.py --input-hanzi data\10k_babylm_zho.jsonl --output data\dpo_preferences.jsonl --model-checkpoint models\pinyin-code-gpt-small\best.pt --tokenizer tokenizers\babylm_zho_pinyin_spm.model --num-samples 1000 --num-candidates 4 --max-length 512 --device cuda
+```
+
+Fine-tune the policy checkpoint with DPO:
+
+```powershell
+py train_dpo.py --dpo-dataset data\dpo_preferences.jsonl --base-checkpoint models\pinyin-code-gpt-small\best.pt --output-dir models\pinyin-code-gpt-small-dpo --tokenizer tokenizers\babylm_zho_pinyin_spm.model --beta 0.1 --learning-rate 5e-6 --epochs 1 --batch-size 4 --gradient-accumulation-steps 8 --max-length 512 --device cuda
+```
+
+Compare the base and DPO checkpoints on the same preference records:
+
+```powershell
+py evaluate_dpo.py --dpo-dataset data\dpo_preferences.jsonl --base-checkpoint models\pinyin-code-gpt-small\best.pt --dpo-checkpoint models\pinyin-code-gpt-small-dpo\best.pt --tokenizer tokenizers\babylm_zho_pinyin_spm.model --max-length 512 --device cuda --examples 3
+```
+
+`train_dpo.py` keeps a frozen reference copy of the base checkpoint, initializes
+the trainable policy from that same checkpoint, and computes log-probabilities
+only over completion tokens. The DPO output directory contains `last.pt`,
+`best.pt`, `final.pt`, and `dpo_training_config.json`; the checkpoint format
+keeps `model_state_dict` and `model_config`, so `generate.py` can load DPO
+checkpoints the same way it loads pretrained checkpoints. If `--max-length`
+exceeds the checkpoint context window, the DPO scripts clamp it to the model's
+`block_size`.
+
 ## Convert to a Transformers model folder
 
 Convert the existing PyTorch checkpoint without retraining:
