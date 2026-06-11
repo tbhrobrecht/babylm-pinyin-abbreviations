@@ -131,6 +131,15 @@ py train_sentencepiece.py --model-type unigram --output-dir tokenizers\unigram
 py train_sentencepiece.py --input data\processed\10k_babylm_zho.txt data\processed\extra.txt
 ```
 
+For BERT/MLM training, train or reuse a tokenizer that contains the BERT
+special pieces `[MASK]`, `[PAD]`, `[UNK]`, `[CLS]`, and `[SEP]`. New tokenizers
+can use the bracketed BERT pieces without changing the default GPT tokenizer
+style:
+
+```powershell
+py train_sentencepiece.py --input data\processed\10k_babylm_zho.txt --output-dir tokenizers --model-name babylm_zho_pinyin_spm_bert --vocab-size 16000 --special-token-style bert
+```
+
 `--hard-vocab-limit` is disabled by default so SentencePiece can still finish if
 the corpus cannot support the exact requested vocabulary size.
 
@@ -167,7 +176,8 @@ Binary datasets write raw int32 token chunks plus a `.meta.json` sidecar.
 
 ## Train the language model
 
-Train a compact GPT-style causal language model on the tokenized dataset:
+Train a compact GPT-style causal language model on the tokenized dataset. GPT is
+still the default model type:
 
 ```powershell
 py train_model.py
@@ -196,6 +206,29 @@ can improve longer GPU runs after a startup compilation cost. Checkpoints omit
 optimizer state by default to reduce disk I/O; pass `--save-optimizer` if you
 need optimizer state for manual resuming.
 
+Select the architecture/objective with `--model-type {gpt,bert}`. Startup logs
+include `model_type`, `objective`, `mask_probability`, and the trainable
+parameter count. GPT uses shifted causal next-token prediction. BERT uses full
+blocks directly, dynamically creates MLM labels, ignores unmasked labels set to
+`-100`, and reports `validation_mlm_loss`.
+
+GPT baseline:
+
+```powershell
+python train_model.py --model-type gpt --dataset data\datasets\10k_train_spm.bin --validation-dataset data\datasets\10k_valid_spm.bin --output-dir models\gpt_baseline --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
+```
+
+BERT MLM:
+
+```powershell
+python train_model.py --model-type bert --dataset data\datasets\10k_train_spm.bin --validation-dataset data\datasets\10k_valid_spm.bin --output-dir models\bert_mlm --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda --tokenizer tokenizers\babylm_zho_pinyin_spm_bert.model
+```
+
+BERT mode validates that `[MASK]`, `[PAD]`, `[UNK]`, `[CLS]`, and `[SEP]` exist
+in the tokenizer. If any are missing, training stops with a clear error instead
+of silently corrupting the wrong ids. BERT/MLM checkpoints are encoder-only and
+cannot be used with `generate.py` for free-form autoregressive generation.
+
 Use gradient accumulation when you want a larger effective batch size than fits
 comfortably in VRAM. The learning-rate schedule is applied per optimizer update,
 not per mini-batch; cosine decay is the default, with optional linear warmup and
@@ -218,6 +251,37 @@ py train_model.py --dataset data\datasets\10k_train_spm.bin --validation-dataset
 Resume a run from a previous checkpoint with `--resume`. Checkpoints only include
 optimizer state when they were written with `--save-optimizer`; otherwise the
 model weights resume and the optimizer starts fresh.
+
+### BERT pseudo-likelihood scoring
+
+For BLiMP-style minimal-pair evaluation, BERT cannot provide a normal
+left-to-right sentence probability. Use pseudo-log-likelihood scoring instead:
+mask one non-special token at a time, run the MLM model, and sum the log
+probability assigned to the original token at that position.
+
+```python
+from scoring import score_sentence_pseudo_likelihood
+
+score = score_sentence_pseudo_likelihood(
+    model,
+    input_ids,
+    tokenizer,
+    device,
+    normalize="mean",
+)
+```
+
+This is slower than GPT scoring because it requires one forward pass per scored
+token position. It does not replace the existing GPT causal scoring path. For
+minimal-pair evaluation where candidate sentences can tokenize to different
+lengths, prefer `normalize="mean"` or the equivalent evaluator option; summed
+MLM pseudo-likelihood can strongly penalize longer candidates.
+
+With the local Chinese BabyLM eval pipeline, evaluate BERT exports with:
+
+```powershell
+python -m evaluation_pipeline.sentence_zero_shot.run --model_path_or_name timorobrecht/full_chinese_bert --backend mlm --score_normalization mean --task zhoblimp --data_path evaluation_data\full_eval\zhoblimp --output_dir results --save_predictions
+```
 
 ## Convert to a Transformers model folder
 
@@ -331,11 +395,22 @@ python preprocessing/extract_babylm_zho.py
 
 python preprocessing/preprocess.py --input data/nk_babylm_zho.jsonl --output data/processed/nk_babylm_zho.txt 
 
+<!-- for GPT  -->
 python train_sentencepiece.py --input data/processed/nk_babylm_zho.txt --output-dir tokenizers --model-name babylm_zho_pinyin_spm --vocab-size 16000 
 
 python create_dataset.py --format bin --input data/processed/nk_babylm_zho.txt --output data/datasets/nk_babylm_zho_train_spm.bin --validation-output data/datasets/nk_babylm_zho_valid_spm.bin --validation-fraction 0.05 --tokenizer tokenizers/[model name].model --block-size 512 --stride 512
 
 python train_model.py --dataset data/datasets/nk_babylm_zho_train_spm.bin --validation-dataset data/datasets/nk_babylm_zho_valid_spm.bin --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
+
+
+<!-- for BERT -->
+
+python train_sentencepiece.py --input data\processed\chinese_zho.txt --output-dir tokenizers --model-name full_chinese_spm_bert --vocab-size 16000 --special-token-style bert
+
+python train_model.py --model-type bert --dataset data\datasets\10k_train_spm.bin --validation-dataset data\datasets\10k_valid_spm.bin --output-dir models\bert_mlm --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda --tokenizer tokenizers\babylm_zho_pinyin_spm_bert.model
+
+
+<!-- huggingface conversion -->
 
 python hf/convert_to_transformers.py --checkpoint models/[model name]/best.pt --tokenizer tokenizers/[model name].model --output-dir hf_[model name] --transliteration pinyin-code
 (add --no-jieba here if the training corpus was preprocessed with --no-jieba)

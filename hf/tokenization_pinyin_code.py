@@ -108,6 +108,15 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         kwargs.setdefault("bos_token", self._piece_or_none(self.sp_model.bos_id()))
         kwargs.setdefault("eos_token", self._piece_or_none(self.sp_model.eos_id()))
         kwargs.setdefault("pad_token", self._piece_or_none(self.sp_model.pad_id()))
+        cls_token_id = self._piece_to_id_or_none("[CLS]")
+        sep_token_id = self._piece_to_id_or_none("[SEP]")
+        mask_token_id = self._piece_to_id_or_none("[MASK]")
+        if cls_token_id is not None:
+            kwargs.setdefault("cls_token", self.sp_model.id_to_piece(cls_token_id))
+        if sep_token_id is not None:
+            kwargs.setdefault("sep_token", self.sp_model.id_to_piece(sep_token_id))
+        if mask_token_id is not None:
+            kwargs.setdefault("mask_token", self.sp_model.id_to_piece(mask_token_id))
         kwargs.setdefault("transliteration", self.transliteration)
         kwargs.setdefault("pinyin_format", self.transliteration)
         kwargs.setdefault("use_jieba", self.use_jieba)
@@ -125,6 +134,12 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         if token_id is None or token_id < 0:
             return None
         return self.sp_model.id_to_piece(token_id)
+
+    def _piece_to_id_or_none(self, piece: str) -> int | None:
+        token_id = int(self.sp_model.piece_to_id(piece))
+        if token_id < 0 or self.sp_model.id_to_piece(token_id) != piece:
+            return None
+        return token_id
 
     def _looks_preprocessed(self, text: str) -> bool:
         if SPECIAL_MARKER_RE.search(text):

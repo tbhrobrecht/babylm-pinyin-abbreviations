@@ -1,4 +1,4 @@
-"""Train a small causal Transformer on the pinyin-code BabyLM dataset."""
+"""Train compact GPT or BERT-style Transformers on pinyin-code BabyLM chunks."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 
 @dataclass(frozen=True)
 class ModelConfig:
-    """Configuration for the compact GPT-style language model."""
+    """Configuration shared by the compact GPT and BERT-style models."""
 
     vocab_size: int = 8000
     block_size: int = 128
@@ -26,6 +26,26 @@ class ModelConfig:
     n_head: int = 8
     n_embd: int = 256
     dropout: float = 0.1
+    model_type: str = "gpt"
+
+    def __post_init__(self) -> None:
+        if self.model_type not in {"gpt", "bert"}:
+            raise ValueError("model_type must be either 'gpt' or 'bert'")
+
+
+@dataclass(frozen=True)
+class BertSpecialTokenIds:
+    """Special token ids needed for BERT-style MLM corruption."""
+
+    mask: int
+    pad: int
+    unk: int
+    cls: int
+    sep: int
+
+    @property
+    def all_special_ids(self) -> set[int]:
+        return {self.mask, self.pad, self.unk, self.cls, self.sep}
 
 
 class JsonlTokenDataset(Dataset):
@@ -121,6 +141,129 @@ def load_token_dataset(path: Path) -> Dataset:
     return JsonlTokenDataset(path)
 
 
+BERT_SPECIAL_PIECES = {
+    "mask": "[MASK]",
+    "pad": "[PAD]",
+    "unk": "[UNK]",
+    "cls": "[CLS]",
+    "sep": "[SEP]",
+}
+
+
+def require_sentencepiece():
+    """Import SentencePiece only when BERT tokenizer metadata is needed."""
+    try:
+        import sentencepiece as spm
+    except ImportError as exc:
+        raise SystemExit(
+            "BERT/MLM training requires sentencepiece to read special token ids. "
+            "Install it with `py -m pip install sentencepiece`."
+        ) from exc
+
+    return spm
+
+
+def sentencepiece_has_piece(processor, piece: str) -> bool:
+    """Return true when a SentencePiece model contains exactly this piece."""
+    try:
+        token_id = int(processor.piece_to_id(piece))
+        return token_id >= 0 and processor.id_to_piece(token_id) == piece
+    except (IndexError, RuntimeError, TypeError, ValueError):
+        return False
+
+
+def validate_bert_special_tokens(processor) -> BertSpecialTokenIds:
+    """Read and validate BERT special token ids from a SentencePiece processor."""
+    missing = [
+        piece
+        for piece in BERT_SPECIAL_PIECES.values()
+        if not sentencepiece_has_piece(processor, piece)
+    ]
+    if missing:
+        formatted = ", ".join(missing)
+        raise ValueError(
+            "BERT/MLM training requires tokenizer pieces "
+            "[MASK], [PAD], [UNK], [CLS], and [SEP]. "
+            f"Missing: {formatted}. Train a tokenizer with BERT special tokens "
+            "or pass --tokenizer pointing to one that already has them."
+        )
+
+    return BertSpecialTokenIds(
+        mask=int(processor.piece_to_id(BERT_SPECIAL_PIECES["mask"])),
+        pad=int(processor.piece_to_id(BERT_SPECIAL_PIECES["pad"])),
+        unk=int(processor.piece_to_id(BERT_SPECIAL_PIECES["unk"])),
+        cls=int(processor.piece_to_id(BERT_SPECIAL_PIECES["cls"])),
+        sep=int(processor.piece_to_id(BERT_SPECIAL_PIECES["sep"])),
+    )
+
+
+def load_bert_special_token_ids(tokenizer_path: Path) -> BertSpecialTokenIds:
+    """Load BERT special token ids from a SentencePiece model file."""
+    if not tokenizer_path.exists():
+        raise FileNotFoundError(
+            f"BERT/MLM training requires --tokenizer, but file was not found: {tokenizer_path}"
+        )
+    spm = require_sentencepiece()
+    processor = spm.SentencePieceProcessor(model_file=str(tokenizer_path))
+    return validate_bert_special_tokens(processor)
+
+
+class MLMDataCollator:
+    """Dynamically corrupt fixed token blocks with standard BERT 80/10/10 masking."""
+
+    def __init__(
+        self,
+        special_token_ids: BertSpecialTokenIds,
+        vocab_size: int,
+        mlm_probability: float = 0.15,
+    ) -> None:
+        if not 0.0 < mlm_probability <= 1.0:
+            raise ValueError("mlm_probability must be greater than 0 and less than or equal to 1")
+        self.special_token_ids = special_token_ids
+        self.vocab_size = vocab_size
+        self.mlm_probability = mlm_probability
+
+    def __call__(self, examples: list[torch.Tensor]) -> dict[str, torch.Tensor]:
+        input_ids = torch.stack([example.to(torch.long) for example in examples])
+        attention_mask = input_ids.ne(self.special_token_ids.pad).to(torch.long)
+        labels = input_ids.clone()
+
+        special_tokens_mask = torch.zeros_like(input_ids, dtype=torch.bool)
+        for token_id in self.special_token_ids.all_special_ids:
+            special_tokens_mask |= input_ids.eq(token_id)
+
+        probability_matrix = torch.full(input_ids.shape, self.mlm_probability)
+        probability_matrix.masked_fill_(special_tokens_mask, 0.0)
+        masked_indices = torch.bernoulli(probability_matrix).to(torch.bool)
+
+        if not torch.any(masked_indices):
+            eligible_indices = (~special_tokens_mask).nonzero(as_tuple=False)
+            if len(eligible_indices) > 0:
+                chosen = eligible_indices[torch.randint(len(eligible_indices), (1,)).item()]
+                masked_indices[chosen[0], chosen[1]] = True
+
+        labels[~masked_indices] = -100
+
+        indices_replaced = (
+            torch.bernoulli(torch.full(input_ids.shape, 0.8)).to(torch.bool) & masked_indices
+        )
+        input_ids[indices_replaced] = self.special_token_ids.mask
+
+        indices_random = (
+            torch.bernoulli(torch.full(input_ids.shape, 0.5)).to(torch.bool)
+            & masked_indices
+            & ~indices_replaced
+        )
+        random_words = torch.randint(self.vocab_size, input_ids.shape, dtype=torch.long)
+        input_ids[indices_random] = random_words[indices_random]
+
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels,
+        }
+
+
 class CausalSelfAttention(nn.Module):
     """Multi-head masked self-attention."""
 
@@ -155,6 +298,51 @@ class CausalSelfAttention(nn.Module):
         return self.resid_dropout(self.proj(y))
 
 
+class BidirectionalSelfAttention(nn.Module):
+    """Multi-head self-attention for encoder-only MLM training."""
+
+    def __init__(self, config: ModelConfig) -> None:
+        super().__init__()
+        if config.n_embd % config.n_head != 0:
+            raise ValueError("n_embd must be divisible by n_head")
+
+        self.n_head = config.n_head
+        self.head_dim = config.n_embd // config.n_head
+        self.dropout_p = config.dropout
+        self.qkv = nn.Linear(config.n_embd, 3 * config.n_embd)
+        self.proj = nn.Linear(config.n_embd, config.n_embd)
+        self.resid_dropout = nn.Dropout(config.dropout)
+
+    def forward(self, x: torch.Tensor, attention_mask: torch.Tensor | None = None) -> torch.Tensor:
+        batch_size, seq_len, embd = x.shape
+        q, k, v = self.qkv(x).split(embd, dim=2)
+
+        q = q.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
+        k = k.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
+        v = v.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
+
+        attn_mask = None
+        if attention_mask is not None:
+            if attention_mask.shape != (batch_size, seq_len):
+                raise ValueError(
+                    "attention_mask must have shape "
+                    f"{(batch_size, seq_len)}, got {tuple(attention_mask.shape)}"
+                )
+            # BERT sees both left and right context; this mask only removes padding keys.
+            attn_mask = attention_mask[:, None, None, :].to(dtype=torch.bool)
+
+        y = F.scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            attn_mask=attn_mask,
+            dropout_p=self.dropout_p if self.training else 0.0,
+            is_causal=False,
+        )
+        y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, embd)
+        return self.resid_dropout(self.proj(y))
+
+
 class FeedForward(nn.Module):
     """Transformer MLP block."""
 
@@ -172,7 +360,7 @@ class FeedForward(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    """Pre-norm Transformer block."""
+    """Pre-norm GPT Transformer block."""
 
     def __init__(self, config: ModelConfig) -> None:
         super().__init__()
@@ -183,6 +371,22 @@ class TransformerBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x + self.attn(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
+        return x
+
+
+class EncoderTransformerBlock(nn.Module):
+    """Pre-norm BERT-style encoder block without causal masking."""
+
+    def __init__(self, config: ModelConfig) -> None:
+        super().__init__()
+        self.ln_1 = nn.LayerNorm(config.n_embd)
+        self.attn = BidirectionalSelfAttention(config)
+        self.ln_2 = nn.LayerNorm(config.n_embd)
+        self.mlp = FeedForward(config)
+
+    def forward(self, x: torch.Tensor, attention_mask: torch.Tensor | None = None) -> torch.Tensor:
+        x = x + self.attn(self.ln_1(x), attention_mask=attention_mask)
         x = x + self.mlp(self.ln_2(x))
         return x
 
@@ -234,6 +438,84 @@ class PinyinCodeLanguageModel(nn.Module):
         return logits, loss
 
 
+class BabyBertForMaskedLM(nn.Module):
+    """A compact BERT-style encoder trained with masked language modeling."""
+
+    def __init__(self, config: ModelConfig) -> None:
+        super().__init__()
+        self.config = config
+        self.token_embedding = nn.Embedding(config.vocab_size, config.n_embd)
+        self.position_embedding = nn.Embedding(config.block_size, config.n_embd)
+        self.dropout = nn.Dropout(config.dropout)
+        self.blocks = nn.ModuleList(EncoderTransformerBlock(config) for _ in range(config.n_layer))
+        self.ln_f = nn.LayerNorm(config.n_embd)
+        self.mlm_transform = nn.Sequential(
+            nn.Linear(config.n_embd, config.n_embd),
+            nn.GELU(),
+            nn.LayerNorm(config.n_embd),
+        )
+        self.mlm_decoder = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        self.mlm_decoder.weight = self.token_embedding.weight
+        self.mlm_bias = nn.Parameter(torch.zeros(config.vocab_size))
+
+        self.apply(self._init_weights)
+
+    def _init_weights(self, module: nn.Module) -> None:
+        if isinstance(module, nn.Linear):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        batch_size, seq_len = input_ids.shape
+        if seq_len > self.config.block_size:
+            raise ValueError(f"Sequence length {seq_len} exceeds block size {self.config.block_size}")
+
+        if attention_mask is None:
+            attention_mask = torch.ones((batch_size, seq_len), dtype=torch.long, device=input_ids.device)
+
+        positions = torch.arange(seq_len, device=input_ids.device)
+        x = self.token_embedding(input_ids) + self.position_embedding(positions)
+        x = self.dropout(x)
+        for block in self.blocks:
+            x = block(x, attention_mask=attention_mask)
+        hidden_states = self.ln_f(x)
+        logits = self.mlm_decoder(self.mlm_transform(hidden_states)) + self.mlm_bias
+
+        loss = None
+        if labels is not None:
+            if labels.shape != input_ids.shape:
+                raise ValueError(
+                    f"labels must have shape {tuple(input_ids.shape)}, got {tuple(labels.shape)}"
+                )
+            if torch.any(labels != -100):
+                loss = F.cross_entropy(
+                    logits.contiguous().view(-1, logits.size(-1)),
+                    labels.contiguous().view(-1),
+                    ignore_index=-100,
+                )
+            else:
+                loss = logits.sum() * 0.0
+
+        return logits, loss
+
+
+def build_model(config: ModelConfig) -> nn.Module:
+    """Instantiate the model architecture requested by the config."""
+    if config.model_type == "gpt":
+        return PinyinCodeLanguageModel(config)
+    if config.model_type == "bert":
+        return BabyBertForMaskedLM(config)
+    raise ValueError(f"Unsupported model_type: {config.model_type}")
+
+
 def split_dataset(dataset: Dataset, validation_fraction: float, seed: int) -> tuple[Dataset, Dataset]:
     """Create deterministic train/validation splits."""
     if len(dataset) < 2:
@@ -272,12 +554,20 @@ def validate_dataset_compatibility(dataset: Dataset, config: ModelConfig) -> Non
         )
 
 
+def normalize_model_config_dict(config_dict: dict) -> dict:
+    """Treat older checkpoints without model_type as GPT checkpoints."""
+    normalized = dict(config_dict)
+    normalized.setdefault("model_type", "gpt")
+    return normalized
+
+
 def validate_checkpoint_config(checkpoint: dict, config: ModelConfig, path: Path) -> None:
     """Ensure a resumed checkpoint matches the requested model shape."""
     checkpoint_config = checkpoint.get("model_config")
     if checkpoint_config is None:
         raise KeyError(f"{path} does not contain `model_config`")
 
+    checkpoint_config = normalize_model_config_dict(checkpoint_config)
     requested_config = asdict(config)
     mismatches = {
         key: (checkpoint_config.get(key), value)
@@ -365,6 +655,12 @@ def build_optimizer(
 
 def validate_training_args(args: argparse.Namespace) -> None:
     """Validate optimization options that interact with the training loop."""
+    model_type = getattr(args, "model_type", "gpt")
+    if model_type not in {"gpt", "bert"}:
+        raise ValueError("--model-type must be either 'gpt' or 'bert'")
+    mlm_probability = getattr(args, "mlm_probability", 0.15)
+    if model_type == "bert" and not 0.0 < mlm_probability <= 1.0:
+        raise ValueError("--mlm-probability must be greater than 0 and less than or equal to 1")
     if args.gradient_accumulation_steps <= 0:
         raise ValueError("--gradient-accumulation-steps must be greater than zero")
     if args.warmup_steps < 0:
@@ -375,6 +671,46 @@ def validate_training_args(args: argparse.Namespace) -> None:
         raise ValueError("--min-learning-rate must be less than or equal to --learning-rate")
     if args.log_every <= 0:
         raise ValueError("--log-every must be greater than zero")
+
+
+def objective_name(model_type: str) -> str:
+    """Return the training objective name for logging."""
+    if model_type == "bert":
+        return "masked_language_modeling"
+    return "causal_language_modeling"
+
+
+def move_batch_to_device(batch, device: torch.device):
+    """Move either a GPT tensor batch or a BERT MLM dict batch to the device."""
+    non_blocking = device.type == "cuda"
+    if isinstance(batch, dict):
+        return {
+            key: value.to(device, non_blocking=non_blocking)
+            for key, value in batch.items()
+        }
+    return batch.to(device, non_blocking=non_blocking)
+
+
+def batch_token_count(batch) -> int:
+    """Return the number of input tokens represented by a training batch."""
+    if isinstance(batch, dict):
+        return int(batch["input_ids"].numel())
+    return int(batch.numel())
+
+
+def forward_for_objective(
+    model: nn.Module,
+    batch,
+    model_type: str,
+) -> tuple[torch.Tensor, torch.Tensor | None]:
+    """Run the correct objective-specific forward pass."""
+    if model_type == "bert":
+        return model(
+            batch["input_ids"],
+            attention_mask=batch["attention_mask"],
+            labels=batch["labels"],
+        )
+    return model(batch, labels=batch)
 
 
 def optimizer_steps_per_epoch(loader: DataLoader, gradient_accumulation_steps: int) -> int:
@@ -474,14 +810,15 @@ def evaluate(
     device: torch.device,
     use_amp: bool,
     amp_dtype: torch.dtype,
+    model_type: str,
 ) -> float:
     """Return mean validation loss."""
     model.eval()
     losses: list[float] = []
     for batch in loader:
-        batch = batch.to(device, non_blocking=device.type == "cuda")
+        batch = move_batch_to_device(batch, device)
         with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
-            _, loss = model(batch, labels=batch)
+            _, loss = forward_for_objective(model, batch, model_type)
         if loss is not None:
             losses.append(loss.item())
     model.train()
@@ -493,6 +830,8 @@ def train(args: argparse.Namespace) -> None:
     random.seed(args.seed)
     torch.manual_seed(args.seed)
     validate_training_args(args)
+    model_type = getattr(args, "model_type", "gpt")
+    mlm_probability = getattr(args, "mlm_probability", 0.15)
     device = resolve_device(args.device)
     configure_runtime(args, device)
 
@@ -504,8 +843,19 @@ def train(args: argparse.Namespace) -> None:
         n_head=args.n_head,
         n_embd=args.n_embd,
         dropout=args.dropout,
+        model_type=model_type,
     )
     validate_dataset_compatibility(dataset, config)
+    bert_special_ids = None
+    if model_type == "bert":
+        tokenizer_path = getattr(args, "tokenizer", Path("tokenizers/babylm_zho_pinyin_spm.model"))
+        bert_special_ids = load_bert_special_token_ids(tokenizer_path)
+        max_special_id = max(bert_special_ids.all_special_ids)
+        if max_special_id >= config.vocab_size:
+            raise ValueError(
+                "Tokenizer special token id "
+                f"{max_special_id} is outside --vocab-size {config.vocab_size}."
+            )
 
     if args.validation_dataset is not None:
         valid_dataset = load_token_dataset(args.validation_dataset)
@@ -514,6 +864,15 @@ def train(args: argparse.Namespace) -> None:
     else:
         train_dataset, valid_dataset = split_dataset(dataset, args.validation_fraction, args.seed)
 
+    collate_fn = None
+    if model_type == "bert":
+        assert bert_special_ids is not None
+        collate_fn = MLMDataCollator(
+            special_token_ids=bert_special_ids,
+            vocab_size=config.vocab_size,
+            mlm_probability=mlm_probability,
+        )
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=args.batch_size,
@@ -521,6 +880,7 @@ def train(args: argparse.Namespace) -> None:
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
         persistent_workers=args.num_workers > 0,
+        collate_fn=collate_fn,
     )
     valid_loader = DataLoader(
         valid_dataset,
@@ -529,6 +889,7 @@ def train(args: argparse.Namespace) -> None:
         num_workers=args.num_workers,
         pin_memory=device.type == "cuda",
         persistent_workers=args.num_workers > 0,
+        collate_fn=collate_fn,
     )
     steps_per_epoch = optimizer_steps_per_epoch(
         train_loader,
@@ -542,7 +903,7 @@ def train(args: argparse.Namespace) -> None:
         raise SystemExit("bfloat16 AMP was requested, but this CUDA device does not support it.")
     scaler = make_grad_scaler(enabled=use_amp and amp_dtype == torch.float16)
 
-    raw_model = PinyinCodeLanguageModel(config).to(device)
+    raw_model = build_model(config).to(device)
     optimizer = build_optimizer(raw_model, args, device)
     start_epoch = 1
     global_step = 0
@@ -565,9 +926,12 @@ def train(args: argparse.Namespace) -> None:
     tokens_per_train_epoch = len(train_dataset) * max(dataset.sequence_lengths)
     print(
         "training_setup "
+        f"model_type={model_type} "
+        f"objective={objective_name(model_type)} "
         f"device={device} "
         f"cuda_name={torch.cuda.get_device_name(0) if device.type == 'cuda' else 'none'} "
         f"parameters={count_parameters(raw_model):,} "
+        f"mask_probability={mlm_probability if model_type == 'bert' else 'none'} "
         f"examples={len(dataset):,} "
         f"train_tokens_per_epoch={tokens_per_train_epoch:,} "
         f"gradient_accumulation_steps={args.gradient_accumulation_steps} "
@@ -595,9 +959,9 @@ def train(args: argparse.Namespace) -> None:
         accumulation_index = 0
         pending_loss = 0.0
         for batch_index, batch in enumerate(train_loader, start=1):
-            batch = batch.to(device, non_blocking=device.type == "cuda")
+            batch = move_batch_to_device(batch, device)
             with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=use_amp):
-                _, loss = model(batch, labels=batch)
+                _, loss = forward_for_objective(model, batch, model_type)
             if loss is None:
                 raise RuntimeError("Training loss was not computed")
 
@@ -619,7 +983,7 @@ def train(args: argparse.Namespace) -> None:
                 or batch_index == len(train_loader)
             )
             if not should_step:
-                tokens_since_log += batch.numel()
+                tokens_since_log += batch_token_count(batch)
                 continue
 
             next_step = global_step + 1
@@ -644,7 +1008,7 @@ def train(args: argparse.Namespace) -> None:
             else:
                 torch.nn.utils.clip_grad_norm_(raw_model.parameters(), args.grad_clip)
                 optimizer.step()
-            tokens_since_log += batch.numel()
+            tokens_since_log += batch_token_count(batch)
 
             if step_completed:
                 global_step += 1
@@ -666,8 +1030,14 @@ def train(args: argparse.Namespace) -> None:
             accumulation_index = 0
             pending_loss = 0.0
 
-        valid_loss = evaluate(model, valid_loader, device, use_amp, amp_dtype)
-        print(f"epoch={epoch} validation_loss={valid_loss:.4f}")
+        valid_loss = evaluate(model, valid_loader, device, use_amp, amp_dtype, model_type)
+        if model_type == "bert":
+            print(f"epoch={epoch} validation_loss={valid_loss:.4f} validation_mlm_loss={valid_loss:.4f}")
+        else:
+            print(
+                f"epoch={epoch} validation_loss={valid_loss:.4f} "
+                f"validation_causal_lm_loss={valid_loss:.4f}"
+            )
         checkpoint_best_loss = min(best_loss, valid_loss)
 
         checkpoint = checkpoint_payload(
@@ -688,7 +1058,15 @@ def train(args: argparse.Namespace) -> None:
 
 def parse_args() -> argparse.Namespace:
     """Parse training options."""
-    parser = argparse.ArgumentParser(description="Train a compact causal LM on pinyin-code chunks.")
+    parser = argparse.ArgumentParser(
+        description="Train a compact GPT causal LM or BERT MLM on pinyin-code chunks."
+    )
+    parser.add_argument(
+        "--model-type",
+        choices=("gpt", "bert"),
+        default="gpt",
+        help="Model architecture/objective to train. Defaults to the existing GPT causal LM.",
+    )
     parser.add_argument("--dataset", type=Path, default=Path("data/datasets/10k_babylm_zho_spm.jsonl"))
     parser.add_argument(
         "--validation-dataset",
@@ -699,6 +1077,15 @@ def parse_args() -> argparse.Namespace:
             "When omitted, the training dataset is split randomly by chunk."
         ),
     )
+    parser.add_argument(
+        "--tokenizer",
+        type=Path,
+        default=Path("tokenizers/babylm_zho_pinyin_spm.model"),
+        help=(
+            "SentencePiece .model used to validate BERT special token ids. "
+            "Only required when --model-type bert."
+        ),
+    )
     parser.add_argument("--output-dir", type=Path, default=Path("models/pinyin-code-gpt-small"))
     parser.add_argument("--vocab-size", type=int, default=8000)
     parser.add_argument("--block-size", type=int, default=128)
@@ -706,6 +1093,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--n-head", type=int, default=8)
     parser.add_argument("--n-embd", type=int, default=256)
     parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument(
+        "--mlm-probability",
+        type=float,
+        default=0.15,
+        help="Fraction of eligible tokens selected for BERT masked-language modeling.",
+    )
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--learning-rate", type=float, default=3e-4)

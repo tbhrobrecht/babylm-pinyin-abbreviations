@@ -1,4 +1,4 @@
-"""Configuration for the Transformers-compatible pinyin-code causal LM."""
+"""Configuration for Transformers-compatible pinyin-code models."""
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def install_utf8_path_open_patch() -> None:
 
 
 class PinyinCodeConfig(PretrainedConfig):
-    """Configuration for the compact GPT-style pinyin-code decoder."""
+    """Configuration for compact GPT-style and BERT-style pinyin-code models."""
 
     model_type = "pinyin_code"
 
@@ -66,14 +66,28 @@ class PinyinCodeConfig(PretrainedConfig):
         eos_token_id: int | None = None,
         pad_token_id: int | None = None,
         unk_token_id: int | None = None,
+        cls_token_id: int | None = None,
+        sep_token_id: int | None = None,
+        mask_token_id: int | None = None,
+        training_model_type: str = "gpt",
+        recommended_score_normalization: str | None = None,
         patch_pathlib_utf8_open: bool = False,
         **kwargs,
     ) -> None:
+        if training_model_type not in {"gpt", "bert"}:
+            raise ValueError("training_model_type must be either 'gpt' or 'bert'")
+        if recommended_score_normalization is None:
+            recommended_score_normalization = "mean" if training_model_type == "bert" else "sum"
+        if recommended_score_normalization not in {"sum", "mean"}:
+            raise ValueError("recommended_score_normalization must be either 'sum' or 'mean'")
         super().__init__(
             bos_token_id=bos_token_id,
             eos_token_id=eos_token_id,
             pad_token_id=pad_token_id,
             unk_token_id=unk_token_id,
+            cls_token_id=cls_token_id,
+            sep_token_id=sep_token_id,
+            mask_token_id=mask_token_id,
             **kwargs,
         )
         self.vocab_size = vocab_size
@@ -86,7 +100,9 @@ class PinyinCodeConfig(PretrainedConfig):
         self.num_attention_heads = n_head
         self.hidden_size = n_embd
         self.max_position_embeddings = block_size
-        self.is_decoder = True
+        self.training_model_type = training_model_type
+        self.recommended_score_normalization = recommended_score_normalization
+        self.is_decoder = training_model_type == "gpt"
         self.is_encoder_decoder = False
         self.use_cache = False
         self.patch_pathlib_utf8_open = patch_pathlib_utf8_open

@@ -21,6 +21,7 @@ SPECIAL_TOKENS = [
     "<NO>",
     "<NUM>",
 ]
+BERT_MASK_TOKEN = "[MASK]"
 
 BPE_SAFE_MAX_LINE_CHARS = 60_000
 
@@ -74,6 +75,27 @@ def split_training_inputs(
     return temp_dir, split_paths, stats_by_input
 
 
+def sentencepiece_special_token_kwargs(args: argparse.Namespace) -> dict[str, str | int]:
+    """Return reserved SentencePiece pieces for the requested training style."""
+    if getattr(args, "special_token_style", "gpt") == "bert":
+        user_defined_symbols = SPECIAL_TOKENS + [BERT_MASK_TOKEN]
+        return {
+            "user_defined_symbols": ",".join(user_defined_symbols),
+            "pad_piece": "[PAD]",
+            "unk_piece": "[UNK]",
+            "bos_piece": "[CLS]",
+            "eos_piece": "[SEP]",
+        }
+
+    return {
+        "user_defined_symbols": ",".join(SPECIAL_TOKENS),
+        "pad_piece": "<pad>",
+        "unk_piece": "<unk>",
+        "bos_piece": "<s>",
+        "eos_piece": "</s>",
+    }
+
+
 def train_tokenizer(args: argparse.Namespace) -> None:
     """Train a SentencePiece model from one or more preprocessed text files.
 
@@ -107,6 +129,7 @@ def train_tokenizer(args: argparse.Namespace) -> None:
     # The corpus starts as whitespace-separated atomic tokens, but BPE is allowed
     # to learn pieces that span adjacent atoms. Pinyin-code digits should still
     # stay attached to their letters instead of becoming separate pieces.
+    special_token_kwargs = sentencepiece_special_token_kwargs(args)
     try:
         spm.SentencePieceTrainer.train(
             input=input_files,
@@ -119,19 +142,19 @@ def train_tokenizer(args: argparse.Namespace) -> None:
             shuffle_input_sentence=args.shuffle_input_sentence,
             train_extremely_large_corpus=args.train_extremely_large_corpus,
             hard_vocab_limit=args.hard_vocab_limit,
-            # Register preprocessing markers as indivisible pieces so tokens such as
-            # <NUM> and <MATH> survive tokenizer training exactly as written.
-            user_defined_symbols=",".join(SPECIAL_TOKENS),
+            # Register preprocessing markers, and optionally [MASK], as indivisible
+            # pieces so they survive tokenizer training exactly as written.
+            user_defined_symbols=special_token_kwargs["user_defined_symbols"],
             # Fixed ids make the tokenizer easier to use consistently in training
             # code and model configs.
             pad_id=0,
             unk_id=1,
             bos_id=2,
             eos_id=3,
-            pad_piece="<pad>",
-            unk_piece="<unk>",
-            bos_piece="<s>",
-            eos_piece="</s>",
+            pad_piece=special_token_kwargs["pad_piece"],
+            unk_piece=special_token_kwargs["unk_piece"],
+            bos_piece=special_token_kwargs["bos_piece"],
+            eos_piece=special_token_kwargs["eos_piece"],
             normalization_rule_name="identity",
             remove_extra_whitespaces=False,
             split_by_whitespace=False,
@@ -178,6 +201,16 @@ def parse_args() -> argparse.Namespace:
         "--model-type",
         choices=["unigram", "bpe", "char", "word"],
         default="bpe",
+    )
+    parser.add_argument(
+        "--special-token-style",
+        choices=("gpt", "bert"),
+        default="gpt",
+        help=(
+            "Reserved SentencePiece pieces. 'gpt' preserves the existing "
+            "<pad>, <unk>, <s>, </s> defaults; 'bert' uses "
+            "[PAD]/[UNK]/[CLS]/[SEP] and adds [MASK]."
+        ),
     )
     parser.add_argument("--character-coverage", type=float, default=1.0)
     parser.add_argument(

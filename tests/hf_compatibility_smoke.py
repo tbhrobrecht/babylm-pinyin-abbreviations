@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 
 import torch
-from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoModelForMaskedLM, AutoTokenizer
 
 
 DEFAULT_MODEL_PATH = Path("hf_models") / "hf_full_chinese_gpu3"
@@ -61,7 +61,11 @@ def main() -> None:
     if not getattr(base_out, "hidden_states", None):
         raise RuntimeError("AutoModel output does not expose hidden_states")
 
-    model = AutoModelForCausalLM.from_pretrained(args.model_path, trust_remote_code=True)
+    backend = getattr(config, "evaluation_backend", "causal")
+    if backend == "masked_language_modeling":
+        model = AutoModelForMaskedLM.from_pretrained(args.model_path, trust_remote_code=True)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(args.model_path, trust_remote_code=True)
     model.eval()
     with torch.no_grad():
         out = model(**batch, output_hidden_states=True)
@@ -83,6 +87,7 @@ def main() -> None:
         )
 
     print(config.model_type)
+    print(backend)
     print(tokenizer.__class__)
     print(base_out.last_hidden_state.shape)
     print(out.logits.shape)

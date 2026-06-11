@@ -18,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from hf.configuration_pinyin_code import PinyinCodeConfig
-from hf.modeling_pinyin_code import PinyinCodeForCausalLM
+from hf.modeling_pinyin_code import PinyinCodeForCausalLM, PinyinCodeForMaskedLM
 from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
 
 
@@ -50,6 +50,14 @@ def load_training_checkpoint(path: Path) -> dict:
     return checkpoint
 
 
+def sentencepiece_piece_id(processor: spm.SentencePieceProcessor, piece: str) -> int | None:
+    """Return a piece id only when the model contains that exact piece."""
+    token_id = int(processor.piece_to_id(piece))
+    if token_id < 0 or processor.id_to_piece(token_id) != piece:
+        return None
+    return token_id
+
+
 def tokenizer_special_ids(tokenizer_path: Path) -> dict[str, int | None]:
     """Read special token ids from the existing SentencePiece model."""
     processor = spm.SentencePieceProcessor(model_file=str(tokenizer_path))
@@ -58,8 +66,11 @@ def tokenizer_special_ids(tokenizer_path: Path) -> dict[str, int | None]:
         "eos_token_id": processor.eos_id(),
         "pad_token_id": processor.pad_id(),
         "unk_token_id": processor.unk_id(),
+        "cls_token_id": sentencepiece_piece_id(processor, "[CLS]"),
+        "sep_token_id": sentencepiece_piece_id(processor, "[SEP]"),
+        "mask_token_id": sentencepiece_piece_id(processor, "[MASK]"),
     }
-    return {key: (value if value >= 0 else None) for key, value in ids.items()}
+    return {key: (value if value is not None and value >= 0 else None) for key, value in ids.items()}
 
 
 def tokenizer_vocab_size(tokenizer_path: Path) -> int:
@@ -70,7 +81,12 @@ def tokenizer_vocab_size(tokenizer_path: Path) -> int:
 
 def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
     """Create the HF config from the original model config and tokenizer ids."""
-    checkpoint_vocab_size = int(checkpoint["model_config"]["vocab_size"])
+    model_config = dict(checkpoint["model_config"])
+    training_model_type = model_config.pop("model_type", "gpt")
+    if training_model_type not in {"gpt", "bert"}:
+        raise ValueError(f"Unsupported checkpoint model_type: {training_model_type}")
+
+    checkpoint_vocab_size = int(model_config["vocab_size"])
     actual_vocab_size = tokenizer_vocab_size(tokenizer_path)
     if checkpoint_vocab_size != actual_vocab_size:
         raise ValueError(
@@ -78,19 +94,45 @@ def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
             f"tokenizer={actual_vocab_size}, checkpoint={checkpoint_vocab_size}."
         )
 
+    special_ids = tokenizer_special_ids(tokenizer_path)
+    if training_model_type == "bert":
+        missing = [
+            name
+            for name in ("pad_token_id", "unk_token_id", "cls_token_id", "sep_token_id", "mask_token_id")
+            if special_ids.get(name) is None
+        ]
+        if missing:
+            raise ValueError(
+                "BERT/MLM export requires tokenizer pieces [PAD], [UNK], [CLS], [SEP], "
+                f"and [MASK]. Missing ids: {', '.join(missing)}."
+            )
+
     config = PinyinCodeConfig(
-        **checkpoint["model_config"],
-        **tokenizer_special_ids(tokenizer_path),
+        **model_config,
+        **special_ids,
+        training_model_type=training_model_type,
+        recommended_score_normalization="mean" if training_model_type == "bert" else "sum",
     )
-    config.architectures = ["PinyinCodeForCausalLM"]
-    config.evaluation_backend = "causal"
+    if training_model_type == "bert":
+        config.architectures = ["PinyinCodeForMaskedLM"]
+        config.evaluation_backend = "masked_language_modeling"
+    else:
+        config.architectures = ["PinyinCodeForCausalLM"]
+        config.evaluation_backend = "causal"
     config.patch_pathlib_utf8_open = True
     config.auto_map = {
         "AutoConfig": "configuration_pinyin_code.PinyinCodeConfig",
-        "AutoModel": "modeling_pinyin_code.PinyinCodeModel",
-        "AutoModelForCausalLM": "modeling_pinyin_code.PinyinCodeForCausalLM",
+        "AutoModel": (
+            "modeling_pinyin_code.PinyinCodeEncoderModel"
+            if training_model_type == "bert"
+            else "modeling_pinyin_code.PinyinCodeModel"
+        ),
         "AutoTokenizer": ["tokenization_pinyin_code.EncodedMandarinTokenizer", None],
     }
+    if training_model_type == "bert":
+        config.auto_map["AutoModelForMaskedLM"] = "modeling_pinyin_code.PinyinCodeForMaskedLM"
+    else:
+        config.auto_map["AutoModelForCausalLM"] = "modeling_pinyin_code.PinyinCodeForCausalLM"
     return config
 
 
@@ -129,24 +171,52 @@ def patch_json(path: Path, updates: dict) -> None:
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) -> None:
+def write_model_readme(
+    output_dir: Path,
+    transliteration: str,
+    use_jieba: bool,
+    training_model_type: str,
+) -> None:
     """Write a minimal model-card README for external evaluation users."""
+    if training_model_type == "bert":
+        pipeline_tag = "fill-mask"
+        tag = "masked-lm"
+        title = "Pinyin-Code Masked LM"
+        model_kind = "custom Transformers masked language model"
+        loading_import = "AutoConfig, AutoModel, AutoModelForMaskedLM, AutoTokenizer"
+        loading_model = "model = AutoModelForMaskedLM.from_pretrained(model_path, trust_remote_code=True)"
+        backend = "masked_language_modeling"
+        evaluation_note = (
+            "For BLiMP-style sentence-pair scoring, use pseudo-log-likelihood "
+            "rather than left-to-right probability. Mean-normalize token "
+            "log-probabilities when candidate lengths can differ; this requires "
+            "one forward pass per scored token."
+        )
+    else:
+        pipeline_tag = "text-generation"
+        tag = "causal-lm"
+        title = "Pinyin-Code Causal LM"
+        model_kind = "custom Transformers causal language model"
+        loading_import = "AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer"
+        loading_model = "model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True)"
+        backend = "causal"
+        evaluation_note = "External evaluation repositories should select the causal backend."
+
     text = dedent(
         f"""\
         ---
         library_name: transformers
-        pipeline_tag: text-generation
+        pipeline_tag: {pipeline_tag}
         tags:
-        - causal-lm
+        - {tag}
         - trust-remote-code
         - sentencepiece
         ---
 
-        # Pinyin-Code Causal LM
+        # {title}
 
-        This repository contains a custom Transformers causal language model.
-        External evaluation repositories should load it with
-        `trust_remote_code=True` and use the `causal` backend.
+        This repository contains a {model_kind}. Load it with
+        `trust_remote_code=True`.
 
         ## Dependencies
 
@@ -163,14 +233,14 @@ def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) 
         ## Loading
 
         ```python
-        from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer
+        from transformers import {loading_import}
 
         model_path = "PATH_OR_REPO_ID"
 
         config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
         tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
         base_model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
-        model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True)
+        {loading_model}
         ```
 
         ## Evaluation
@@ -178,8 +248,10 @@ def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) 
         Configure external evaluators with:
 
         - model path: this local folder or Hugging Face repo ID
-        - backend: `causal`
+        - backend: `{backend}`
         - trust remote code: enabled
+
+        {evaluation_note}
 
         The tokenizer accepts raw text through standard calls such as
         `tokenizer(text)`, `tokenizer(text, add_special_tokens=False)`, and
@@ -198,6 +270,7 @@ def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) 
         Export metadata:
 
         - transliteration: `{transliteration}`
+        - training_model_type: `{training_model_type}`
         - use_jieba: `{str(use_jieba).lower()}`
         """
     )
@@ -208,7 +281,8 @@ def convert(args: argparse.Namespace) -> None:
     """Convert and save the model, tokenizer, config, and remote-code files."""
     checkpoint = load_training_checkpoint(args.checkpoint)
     config = build_config(checkpoint, args.tokenizer)
-    model = PinyinCodeForCausalLM(config)
+    training_model_type = config.training_model_type
+    model = PinyinCodeForMaskedLM(config) if training_model_type == "bert" else PinyinCodeForCausalLM(config)
     load_result = model.load_state_dict(
         convert_state_dict(checkpoint["model_state_dict"]),
         strict=True,
@@ -234,12 +308,13 @@ def convert(args: argparse.Namespace) -> None:
     if tokenizer_vocab.exists():
         shutil.copy2(tokenizer_vocab, args.output_dir / tokenizer_vocab.name)
 
-    generation_config = GenerationConfig(
-        bos_token_id=config.bos_token_id,
-        eos_token_id=config.eos_token_id,
-        pad_token_id=config.pad_token_id,
-    )
-    generation_config.save_pretrained(args.output_dir)
+    if training_model_type == "gpt":
+        generation_config = GenerationConfig(
+            bos_token_id=config.bos_token_id,
+            eos_token_id=config.eos_token_id,
+            pad_token_id=config.pad_token_id,
+        )
+        generation_config.save_pretrained(args.output_dir)
 
     patch_json(
         args.output_dir / "tokenizer_config.json",
@@ -269,11 +344,13 @@ def convert(args: argparse.Namespace) -> None:
     )
 
     metadata = {
-        "evaluation_backend": "causal",
+        "evaluation_backend": config.evaluation_backend,
+        "recommended_score_normalization": config.recommended_score_normalization,
         "source_checkpoint": str(args.checkpoint),
         "epoch": checkpoint.get("epoch"),
         "global_step": checkpoint.get("global_step"),
         "jieba": args.jieba,
+        "model_type": training_model_type,
         "transliteration": args.transliteration,
         "use_jieba": args.jieba,
         "validation_loss": checkpoint.get("validation_loss"),
@@ -282,7 +359,7 @@ def convert(args: argparse.Namespace) -> None:
         json.dumps(metadata, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    write_model_readme(args.output_dir, args.transliteration, args.jieba)
+    write_model_readme(args.output_dir, args.transliteration, args.jieba, training_model_type)
     print(f"Saved Transformers model to {args.output_dir}")
 
 

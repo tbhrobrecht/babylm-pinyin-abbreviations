@@ -18,7 +18,7 @@ warnings.filterwarnings(
 import torch
 from torch.nn import functional as F
 
-from train_model import ModelConfig, PinyinCodeLanguageModel
+from train_model import ModelConfig, PinyinCodeLanguageModel, normalize_model_config_dict
 
 
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
@@ -90,7 +90,12 @@ def prepare_prompt(
 def load_model(checkpoint_path: Path, device: torch.device) -> PinyinCodeLanguageModel:
     """Load a checkpoint saved by train_model.py."""
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    config = ModelConfig(**checkpoint["model_config"])
+    config_dict = normalize_model_config_dict(checkpoint["model_config"])
+    if config_dict["model_type"] == "bert":
+        raise SystemExit(
+            "BERT/MLM checkpoints are not autoregressive and cannot be used for free-form generation."
+        )
+    config = ModelConfig(**config_dict)
     model = PinyinCodeLanguageModel(config)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.to(device)

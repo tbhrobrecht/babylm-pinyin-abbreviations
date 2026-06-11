@@ -1,4 +1,4 @@
-"""Transformers-compatible implementation of the pinyin-code causal LM."""
+"""Transformers-compatible implementation of pinyin-code GPT and BERT models."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from torch import nn
 from torch.nn import functional as F
 from transformers import PreTrainedModel
 from transformers.generation import GenerationMixin
-from transformers.modeling_outputs import BaseModelOutput, CausalLMOutput
+from transformers.modeling_outputs import BaseModelOutput, CausalLMOutput, MaskedLMOutput
 
 from .configuration_pinyin_code import PinyinCodeConfig
 
@@ -66,6 +66,46 @@ class CausalSelfAttention(nn.Module):
         return self.resid_dropout(self.proj(y))
 
 
+class BidirectionalSelfAttention(nn.Module):
+    """Multi-head self-attention for encoder-only masked language modeling."""
+
+    def __init__(self, config: PinyinCodeConfig) -> None:
+        super().__init__()
+        if config.n_embd % config.n_head != 0:
+            raise ValueError("n_embd must be divisible by n_head")
+
+        self.n_head = config.n_head
+        self.head_dim = config.n_embd // config.n_head
+        self.dropout_p = config.dropout
+        self.qkv = nn.Linear(config.n_embd, 3 * config.n_embd)
+        self.proj = nn.Linear(config.n_embd, config.n_embd)
+        self.resid_dropout = nn.Dropout(config.dropout)
+
+    def forward(self, x: torch.Tensor, attention_mask: torch.Tensor | None = None) -> torch.Tensor:
+        batch_size, seq_len, embd = x.shape
+        q, k, v = self.qkv(x).split(embd, dim=2)
+
+        q = q.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
+        k = k.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
+        v = v.view(batch_size, seq_len, self.n_head, self.head_dim).transpose(1, 2)
+
+        attn_mask = None
+        if attention_mask is not None:
+            attn_mask = attention_mask[:, None, None, :seq_len].to(dtype=torch.bool)
+
+        y = F.scaled_dot_product_attention(
+            q,
+            k,
+            v,
+            attn_mask=attn_mask,
+            dropout_p=self.dropout_p if self.training else 0.0,
+            is_causal=False,
+        )
+
+        y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, embd)
+        return self.resid_dropout(self.proj(y))
+
+
 class FeedForward(nn.Module):
     """Transformer MLP block."""
 
@@ -89,6 +129,22 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.ln_1 = nn.LayerNorm(config.n_embd)
         self.attn = CausalSelfAttention(config)
+        self.ln_2 = nn.LayerNorm(config.n_embd)
+        self.mlp = FeedForward(config)
+
+    def forward(self, x: torch.Tensor, attention_mask: torch.Tensor | None = None) -> torch.Tensor:
+        x = x + self.attn(self.ln_1(x), attention_mask=attention_mask)
+        x = x + self.mlp(self.ln_2(x))
+        return x
+
+
+class EncoderTransformerBlock(nn.Module):
+    """Pre-norm BERT-style encoder block without causal masking."""
+
+    def __init__(self, config: PinyinCodeConfig) -> None:
+        super().__init__()
+        self.ln_1 = nn.LayerNorm(config.n_embd)
+        self.attn = BidirectionalSelfAttention(config)
         self.ln_2 = nn.LayerNorm(config.n_embd)
         self.mlp = FeedForward(config)
 
@@ -284,4 +340,164 @@ class PinyinCodeForCausalLM(PinyinCodeModel, GenerationMixin):
             loss=loss,
             logits=logits,
             hidden_states=decoder_outputs.hidden_states,
+        )
+
+
+class PinyinCodeEncoderModel(PinyinCodePreTrainedModel):
+    """Base bidirectional encoder model returned by ``AutoModel`` for BERT exports."""
+
+    def __init__(self, config: PinyinCodeConfig, init_weights: bool = True) -> None:
+        super().__init__(config)
+        self.token_embedding = nn.Embedding(config.vocab_size, config.n_embd)
+        self.position_embedding = nn.Embedding(config.block_size, config.n_embd)
+        self.dropout = nn.Dropout(config.dropout)
+        self.blocks = nn.ModuleList(EncoderTransformerBlock(config) for _ in range(config.n_layer))
+        self.ln_f = nn.LayerNorm(config.n_embd)
+        if init_weights:
+            self.post_init()
+
+    def get_input_embeddings(self) -> nn.Embedding:
+        return self.token_embedding
+
+    def set_input_embeddings(self, value: nn.Embedding) -> None:
+        self.token_embedding = value
+
+    def forward(
+        self,
+        input_ids: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+        inputs_embeds: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
+        output_hidden_states: bool | None = None,
+        return_dict: bool | None = None,
+        **kwargs,
+    ) -> BaseModelOutput | tuple:
+        return_dict = True if return_dict is None else return_dict
+        output_hidden_states = (
+            self.config.output_hidden_states
+            if output_hidden_states is None
+            else output_hidden_states
+        )
+
+        if input_ids is None and inputs_embeds is None:
+            raise ValueError("You must provide either input_ids or inputs_embeds")
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot provide both input_ids and inputs_embeds")
+
+        if inputs_embeds is None:
+            batch_size, seq_len = input_ids.shape
+            if seq_len > self.config.block_size:
+                raise ValueError(
+                    f"Sequence length {seq_len} exceeds block size {self.config.block_size}"
+                )
+            inputs_embeds = self.token_embedding(input_ids)
+        else:
+            batch_size, seq_len = inputs_embeds.shape[:2]
+            if seq_len > self.config.block_size:
+                raise ValueError(
+                    f"Sequence length {seq_len} exceeds block size {self.config.block_size}"
+                )
+
+        if attention_mask is None:
+            attention_mask = torch.ones(
+                (batch_size, seq_len),
+                dtype=torch.long,
+                device=inputs_embeds.device,
+            )
+        if position_ids is None:
+            position_ids = torch.arange(seq_len, device=inputs_embeds.device)
+        position_ids = position_ids[:, -seq_len:] if position_ids.ndim == 2 else position_ids
+
+        x = inputs_embeds + self.position_embedding(position_ids)
+        x = self.dropout(x)
+        all_hidden_states = (x,) if output_hidden_states else None
+        for block in self.blocks:
+            x = block(x, attention_mask=attention_mask)
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (x,)
+        hidden_states = self.ln_f(x)
+        if output_hidden_states:
+            all_hidden_states = all_hidden_states + (hidden_states,)
+
+        if not return_dict:
+            output = (hidden_states,)
+            if output_hidden_states:
+                output = output + (all_hidden_states,)
+            return output
+
+        return BaseModelOutput(
+            last_hidden_state=hidden_states,
+            hidden_states=all_hidden_states,
+        )
+
+
+class PinyinCodeForMaskedLM(PinyinCodeEncoderModel):
+    """Compact BERT-style masked language model using the training architecture."""
+
+    _tied_weights_keys = {"mlm_decoder.weight": "token_embedding.weight"}
+    _keys_to_ignore_on_load_missing = [r"mlm_decoder\.weight"]
+
+    def __init__(self, config: PinyinCodeConfig) -> None:
+        super().__init__(config, init_weights=False)
+        self.mlm_transform = nn.Sequential(
+            nn.Linear(config.n_embd, config.n_embd),
+            nn.GELU(),
+            nn.LayerNorm(config.n_embd),
+        )
+        self.mlm_decoder = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        self.mlm_bias = nn.Parameter(torch.zeros(config.vocab_size))
+        self.post_init()
+        self.tie_weights()
+
+    def get_output_embeddings(self) -> nn.Linear:
+        return self.mlm_decoder
+
+    def set_output_embeddings(self, new_embeddings: nn.Linear) -> None:
+        self.mlm_decoder = new_embeddings
+
+    def tie_weights(self, *args, **kwargs) -> None:
+        self.mlm_decoder.weight = self.token_embedding.weight
+
+    def forward(
+        self,
+        input_ids: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
+        inputs_embeds: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
+        output_hidden_states: bool | None = None,
+        return_dict: bool | None = None,
+        **kwargs,
+    ) -> MaskedLMOutput | tuple:
+        return_dict = True if return_dict is None else return_dict
+
+        encoder_outputs = PinyinCodeEncoderModel.forward(
+            self,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            inputs_embeds=inputs_embeds,
+            position_ids=position_ids,
+            output_hidden_states=output_hidden_states,
+            return_dict=True,
+        )
+        logits = self.mlm_decoder(self.mlm_transform(encoder_outputs.last_hidden_state)) + self.mlm_bias
+
+        loss = None
+        if labels is not None:
+            loss = F.cross_entropy(
+                logits.contiguous().view(-1, logits.size(-1)),
+                labels.contiguous().view(-1),
+                ignore_index=-100,
+            )
+
+        if not return_dict:
+            output = (logits,)
+            if encoder_outputs.hidden_states is not None:
+                output = output + (encoder_outputs.hidden_states,)
+            return ((loss,) + output) if loss is not None else output
+
+        return MaskedLMOutput(
+            loss=loss,
+            logits=logits,
+            hidden_states=encoder_outputs.hidden_states,
         )
