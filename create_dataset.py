@@ -1,4 +1,4 @@
-"""Create a chunked language-modeling dataset from SentencePiece-tokenized text."""
+"""Create a chunked language-modeling dataset from tokenized pinyin-code text."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import struct
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 def require_sentencepiece():
@@ -21,6 +22,47 @@ def require_sentencepiece():
         ) from exc
 
     return spm
+
+
+def require_hybrid_tokenizer():
+    """Import the repository's hybrid tokenizer or stop with an install hint."""
+    try:
+        from hf.tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
+    except ImportError as exc:
+        raise SystemExit(
+            "Missing dependency for the hybrid tokenizer: install `transformers` "
+            "with `py -m pip install transformers`."
+        ) from exc
+
+    return HybridPinyinCodeTokenizer
+
+
+class HybridProcessorAdapter:
+    """Expose the small SentencePiece-like API used by this script."""
+
+    def __init__(self, tokenizer: Any) -> None:
+        self.tokenizer = tokenizer
+
+    def encode(self, text: str, out_type=int) -> list[int] | list[str]:
+        tokens = self.tokenizer.tokenize(text)
+        if out_type is str:
+            return tokens
+        return self.tokenizer.convert_tokens_to_ids(tokens)
+
+    def eos_id(self) -> int:
+        eos_id = self.tokenizer.eos_token_id
+        return eos_id if eos_id is not None else -1
+
+
+def load_tokenizer_processor(tokenizer_path: Path):
+    """Load either a legacy SentencePiece model or a hybrid tokenizer directory."""
+    if tokenizer_path.is_dir() or tokenizer_path.name == "vocab.json":
+        HybridPinyinCodeTokenizer = require_hybrid_tokenizer()
+        load_path = tokenizer_path.parent if tokenizer_path.name == "vocab.json" else tokenizer_path
+        return HybridProcessorAdapter(HybridPinyinCodeTokenizer.from_pretrained(load_path))
+
+    spm = require_sentencepiece()
+    return spm.SentencePieceProcessor(model_file=str(tokenizer_path))
 
 
 def iter_token_ids(input_paths: Iterable[Path], processor) -> Iterable[int]:
@@ -219,8 +261,7 @@ def write_dataset(args: argparse.Namespace) -> DatasetWriteStats:
     if args.format == "bin" and args.include_labels:
         raise ValueError("--include-labels is only supported for --format jsonl")
 
-    spm = require_sentencepiece()
-    processor = spm.SentencePieceProcessor(model_file=str(args.tokenizer))
+    processor = load_tokenizer_processor(args.tokenizer)
 
     if args.validation_output is not None or args.validation_fraction is not None:
         validation_fraction = args.validation_fraction
@@ -250,7 +291,10 @@ def parse_args() -> argparse.Namespace:
         "--tokenizer",
         type=Path,
         default=Path("tokenizers/babylm_zho_pinyin_spm.model"),
-        help="SentencePiece .model file used to encode the dataset.",
+        help=(
+            "Tokenizer used to encode the dataset. Pass a SentencePiece .model "
+            "file or a hybrid tokenizer directory containing vocab.json."
+        ),
     )
     parser.add_argument(
         "--output",

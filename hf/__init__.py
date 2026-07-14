@@ -2,10 +2,12 @@
 
 from .configuration_pinyin_code import PinyinCodeConfig
 from .modeling_pinyin_code import PinyinCodeForCausalLM, PinyinCodeModel
+from .tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
 from .tokenization_pinyin_code import EncodedMandarinTokenizer, PinyinCodeTokenizer
 
 __all__ = [
     "EncodedMandarinTokenizer",
+    "HybridPinyinCodeTokenizer",
     "PinyinCodeConfig",
     "PinyinCodeForCausalLM",
     "PinyinCodeModel",

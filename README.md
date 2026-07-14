@@ -134,6 +134,82 @@ py train_sentencepiece.py --input data\processed\10k_babylm_zho.txt data\process
 `--hard-vocab-limit` is disabled by default so SentencePiece can still finish if
 the corpus cannot support the exact requested vocabulary size.
 
+## Train the hybrid Jieba-word tokenizer
+
+The SentencePiece tokenizer remains the BPE baseline. For experiments that keep
+Jieba word boundaries explicit, build the hybrid tokenizer from the same
+preprocessed pinyin-code corpus:
+
+```powershell
+py train_hybrid_tokenizer.py --input data\processed\10k_babylm_zho.txt --output-dir tokenizers\babylm_zho_hybrid_16k --vocab-size 16000 --min-word-frequency 20
+```
+
+The hybrid vocabulary uses fixed IDs for `<pad>`, `<unk>`, `<s>`, `</s>`, and
+`<mask>`, includes the preprocessing markers such as `<QUESTION>` and `<NUM>`,
+adds every configurable Initial+Digit atom (`A0` through `z9` by default), and
+then adds frequent multi-atom Jieba words by corpus frequency. Valid encoded
+words that are not in the whole-word vocabulary fall back to their two-character
+atoms, so they do not become `<unk>`.
+
+Useful variants:
+
+```powershell
+py train_hybrid_tokenizer.py --input data\processed\10k_babylm_zho.txt --output-dir tokenizers\babylm_zho_atomic --atomic-only
+py train_hybrid_tokenizer.py --input data\processed\10k_babylm_zho.txt --output-dir tokenizers\babylm_zho_hybrid_2k --vocab-size 2000
+py train_hybrid_tokenizer.py --input data\processed\10k_babylm_zho.txt --output-dir tokenizers\babylm_zho_hybrid_4k --vocab-size 4000
+py train_hybrid_tokenizer.py --input data\processed\10k_babylm_zho.txt --output-dir tokenizers\babylm_zho_hybrid_8k --vocab-size 8000
+py train_hybrid_tokenizer.py --input data\processed\10k_babylm_zho.txt --output-dir tokenizers\babylm_zho_hybrid_16k --vocab-size 16000
+```
+
+Inspect a built tokenizer and optional corpus coverage:
+
+```powershell
+py scripts\inspect_hybrid_tokenizer.py --tokenizer-dir tokenizers\babylm_zho_hybrid_16k --input data\processed\10k_babylm_zho.txt --example "Y0J7 H2 X4Q3"
+```
+
+Use the tokenizer directly:
+
+```python
+from hf.tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
+
+tokenizer = HybridPinyinCodeTokenizer.from_pretrained("tokenizers/babylm_zho_hybrid_16k")
+print(tokenizer.tokenize("Y0J7 H2 X4Q3"))
+```
+
+The tokenizer directory also includes remote-code metadata, so this works in a
+Transformers environment when the directory contains
+`tokenization_hybrid_pinyin_code.py`:
+
+```python
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained(
+    "tokenizers/babylm_zho_hybrid_16k",
+    trust_remote_code=True,
+)
+```
+
+Decoding is deterministic back to encoded text, but it is not a lossless
+reconstruction of the original Hanzi or exact Jieba segmentation. Whole-word
+tokens decode as complete encoded words, while consecutive fallback atoms may be
+concatenated. Pass `readable=True` to `decode` when you want spaces between the
+emitted tokenizer pieces.
+
+Current SentencePiece BPE:
+
+- learns recursive frequency-based merges;
+- may produce partial-word pieces;
+- may split letters and digits;
+- may merge across Jieba boundaries depending on configuration.
+
+New hybrid tokenizer:
+
+- uses complete Jieba words selected directly by frequency;
+- never creates partial-word lexical tokens;
+- guarantees atomic Initial+Digit fallback;
+- never needs `<unk>` for valid encoded words;
+- uses whitespace only as preprocessing boundary metadata.
+
 ## Create a tokenized dataset
 
 Build a chunked JSONL language-modeling dataset from the processed text and
@@ -160,6 +236,13 @@ chunk files instead:
 
 ```powershell
 py create_dataset.py --format bin --input data\processed\10k_babylm_zho.txt --output data\datasets\10k_train_spm.bin --validation-output data\datasets\10k_valid_spm.bin --validation-fraction 0.05
+```
+
+For a hybrid tokenizer experiment, pass the tokenizer directory instead of a
+SentencePiece `.model` file:
+
+```powershell
+py create_dataset.py --format bin --input data\processed\10k_babylm_zho.txt --output data\datasets\10k_train_hybrid_16k.bin --validation-output data\datasets\10k_valid_hybrid_16k.bin --validation-fraction 0.05 --tokenizer tokenizers\babylm_zho_hybrid_16k --block-size 512 --stride 512
 ```
 
 Binary datasets write raw int32 token chunks plus a `.meta.json` sidecar.
