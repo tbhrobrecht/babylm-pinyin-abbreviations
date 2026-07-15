@@ -458,6 +458,27 @@ upload the same converted folder.
 
 
 ## tldr pipeline
+Run the automated pretraining pipeline with one command. The default tokenizer
+is the hybrid Jieba-word tokenizer:
+
+```powershell
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --device cuda
+```
+
+Use the older SentencePiece BPE path explicitly when you want the full
+conversion/upload workflow:
+
+```powershell
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho_bpe --tokenizer-kind bpe --device cuda
+```
+
+This runs extraction, preprocessing, tokenizer training, binary dataset
+creation, and model training. BPE runs also convert the checkpoint to a
+Transformers folder; hybrid conversion is skipped because
+`hf/convert_to_transformers.py` is still SentencePiece-specific. Use
+`--dry-run` to print the underlying commands without running them, and
+`--resume` to skip steps whose expected output already exists.
+
 python preprocessing/extract_babylm_zho.py 
 
 python preprocessing/preprocess.py --input data/nk_babylm_zho.jsonl --output data/processed/nk_babylm_zho.txt 
