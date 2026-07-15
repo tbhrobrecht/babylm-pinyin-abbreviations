@@ -465,19 +465,18 @@ is the hybrid Jieba-word tokenizer:
 python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --device cuda
 ```
 
-Use the older SentencePiece BPE path explicitly when you want the full
-conversion/upload workflow:
+Use the older SentencePiece BPE path explicitly when you want that baseline:
 
 ```powershell
 python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho_bpe --tokenizer-kind bpe --device cuda
 ```
 
 This runs extraction, preprocessing, tokenizer training, binary dataset
-creation, and model training. BPE runs also convert the checkpoint to a
-Transformers folder; hybrid conversion is skipped because
-`hf/convert_to_transformers.py` is still SentencePiece-specific. Use
-`--dry-run` to print the underlying commands without running them, and
-`--resume` to skip steps whose expected output already exists.
+creation, model training, and conversion to a Transformers folder for both
+hybrid and SentencePiece tokenizers. If `--hf-repo` is provided, the converted
+folder is uploaded after conversion. Use `--dry-run` to print the underlying
+commands without running them, and `--resume` to skip steps whose expected
+output already exists.
 
 python preprocessing/extract_babylm_zho.py 
 

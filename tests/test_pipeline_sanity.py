@@ -6,6 +6,7 @@ import json
 import math
 import tempfile
 import unittest
+from dataclasses import asdict
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -16,6 +17,7 @@ from torch.utils.data import TensorDataset
 from create_dataset import iter_chunks, write_dataset
 from generate import prepare_prompt
 from preprocessing.preprocess import hanzi_to_encoded, process_text
+from train_hybrid_tokenizer import build_vocab, write_tokenizer_files
 from train_sentencepiece import train_tokenizer
 from train_model import (
     BinaryTokenDataset,
@@ -465,6 +467,91 @@ class PipelineSanityTests(unittest.TestCase):
         checkpoint = torch.load(output_dir / "best.pt", map_location="cpu", weights_only=False)
         self.assertIn("model_state_dict", checkpoint)
         self.assertNotIn("optimizer_state_dict", checkpoint)
+
+    def test_convert_to_transformers_supports_hybrid_tokenizer(self) -> None:
+        if PinyinCodeConfig is None:
+            self.skipTest("transformers is not installed")
+
+        from hf.convert_to_transformers import convert
+        from transformers import AutoTokenizer
+
+        corpus_path = Path(self.temp_dir.name) / "hybrid-corpus.txt"
+        corpus_path.write_text("Y0J7 Y0J7 H2\n", encoding="utf-8")
+        tokenizer_dir = Path(self.temp_dir.name) / "hybrid-tokenizer"
+        tokenizer_args = SimpleNamespace(
+            input=[corpus_path],
+            output_dir=tokenizer_dir,
+            vocab_size=600,
+            min_word_frequency=1,
+            atomic_only=False,
+            initial_alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+            digits="0123456789",
+            permissive=False,
+            max_invalid_examples=20,
+        )
+        vocab, metadata = build_vocab(tokenizer_args)
+        write_tokenizer_files(tokenizer_dir, vocab, metadata)
+
+        model_config = ModelConfig(
+            vocab_size=len(vocab),
+            block_size=4,
+            n_layer=1,
+            n_head=1,
+            n_embd=8,
+            dropout=0.0,
+        )
+        model = PinyinCodeLanguageModel(model_config)
+        checkpoint_path = Path(self.temp_dir.name) / "hybrid-best.pt"
+        torch.save(
+            {
+                "model_state_dict": model.state_dict(),
+                "model_config": asdict(model_config),
+                "epoch": 1,
+                "global_step": 2,
+                "validation_loss": 1.23,
+            },
+            checkpoint_path,
+        )
+
+        output_dir = Path(self.temp_dir.name) / "hf-hybrid"
+        convert_args = SimpleNamespace(
+            checkpoint=checkpoint_path,
+            tokenizer=tokenizer_dir,
+            output_dir=output_dir,
+            transliteration="pinyin-code",
+            jieba=True,
+            safe_serialization=False,
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            convert(convert_args)
+
+        tokenizer_config = json.loads(
+            (output_dir / "tokenizer_config.json").read_text(encoding="utf-8")
+        )
+        model_config_json = json.loads((output_dir / "config.json").read_text(encoding="utf-8"))
+        training_metadata = json.loads(
+            (output_dir / "training_metadata.json").read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(tokenizer_config["tokenizer_class"], "HybridPinyinCodeTokenizer")
+        self.assertEqual(tokenizer_config["tokenizer_kind"], "hybrid")
+        self.assertEqual(
+            tokenizer_config["auto_map"]["AutoTokenizer"][0],
+            "tokenization_hybrid_pinyin_code.HybridPinyinCodeTokenizer",
+        )
+        self.assertEqual(
+            model_config_json["auto_map"]["AutoTokenizer"][0],
+            "tokenization_hybrid_pinyin_code.HybridPinyinCodeTokenizer",
+        )
+        self.assertEqual(model_config_json["vocab_size"], len(vocab))
+        self.assertEqual(training_metadata["tokenizer_kind"], "hybrid")
+        self.assertTrue((output_dir / "vocab.json").exists())
+        self.assertTrue((output_dir / "hybrid_tokenizer_metadata.json").exists())
+        self.assertTrue((output_dir / "tokenization_hybrid_pinyin_code.py").exists())
+
+        tokenizer = AutoTokenizer.from_pretrained(output_dir, trust_remote_code=True)
+        self.assertEqual(tokenizer.tokenize("Y0J7 H2 X4Q3"), ["Y0J7", "H2", "X4", "Q3"])
 
     def test_train_loop_can_resume_from_compact_checkpoint(self) -> None:
         dataset_path = self.write_jsonl_dataset(

@@ -3,7 +3,14 @@
 from .configuration_pinyin_code import PinyinCodeConfig
 from .modeling_pinyin_code import PinyinCodeForCausalLM, PinyinCodeModel
 from .tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
-from .tokenization_pinyin_code import EncodedMandarinTokenizer, PinyinCodeTokenizer
+
+try:
+    from .tokenization_pinyin_code import EncodedMandarinTokenizer, PinyinCodeTokenizer
+except ModuleNotFoundError as exc:
+    if exc.name != "sentencepiece":
+        raise
+    EncodedMandarinTokenizer = None
+    PinyinCodeTokenizer = None
 
 __all__ = [
     "EncodedMandarinTokenizer",

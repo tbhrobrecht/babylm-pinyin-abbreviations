@@ -265,12 +265,6 @@ def run_training(args: argparse.Namespace) -> None:
 
 
 def run_convert(args: argparse.Namespace) -> None:
-    if args.tokenizer_kind == "hybrid":
-        print(
-            "Skipping convert; hf/convert_to_transformers.py is currently "
-            "SentencePiece-only and does not yet export hybrid tokenizers."
-        )
-        return
     if should_skip("convert", args):
         print(f"Skipping convert; output is {path_arg(converted_config_path(args))}")
         return
@@ -293,9 +287,6 @@ def run_convert(args: argparse.Namespace) -> None:
 
 def run_upload(args: argparse.Namespace) -> None:
     if args.hf_repo is None:
-        return
-    if args.tokenizer_kind == "hybrid":
-        print("Skipping upload; hybrid conversion was skipped, so there is no HF export to upload.")
         return
     command = [
         "hf",

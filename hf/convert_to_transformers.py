@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from textwrap import dedent
 
-import sentencepiece as spm
 import torch
 from transformers import GenerationConfig
 
@@ -19,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from hf.configuration_pinyin_code import PinyinCodeConfig
 from hf.modeling_pinyin_code import PinyinCodeForCausalLM
-from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
+from hf.tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
 
 
 DEFAULT_OUTPUT_DIR = Path("hf_pinyin_code_model")
@@ -28,6 +27,20 @@ DEFAULT_CHECKPOINT_CANDIDATES = (
     Path("models/pinyin-code-gpt-small/best.pt"),
     Path("models/pinyin-code-gpt-small/best_model.pt"),
 )
+HYBRID_METADATA_NAME = "hybrid_tokenizer_metadata.json"
+
+
+def require_sentencepiece():
+    """Import SentencePiece only when converting a SentencePiece tokenizer."""
+    try:
+        import sentencepiece as spm
+    except ImportError as exc:
+        raise SystemExit(
+            "Missing dependency for SentencePiece conversion: install it with "
+            "`py -m pip install sentencepiece`."
+        ) from exc
+
+    return spm
 
 
 def default_checkpoint() -> Path:
@@ -50,8 +63,34 @@ def load_training_checkpoint(path: Path) -> dict:
     return checkpoint
 
 
+def is_hybrid_tokenizer(tokenizer_path: Path) -> bool:
+    """Return true when the tokenizer path points at a hybrid tokenizer."""
+    if tokenizer_path.name == "vocab.json":
+        return True
+    return tokenizer_path.is_dir() and (tokenizer_path / "vocab.json").exists()
+
+
+def hybrid_tokenizer_dir(tokenizer_path: Path) -> Path:
+    """Normalize a hybrid tokenizer path to the directory passed to from_pretrained."""
+    if tokenizer_path.name == "vocab.json":
+        return tokenizer_path.parent
+    return tokenizer_path
+
+
 def tokenizer_special_ids(tokenizer_path: Path) -> dict[str, int | None]:
-    """Read special token ids from the existing SentencePiece model."""
+    """Read special token ids from the existing tokenizer."""
+    if is_hybrid_tokenizer(tokenizer_path):
+        tokenizer = HybridPinyinCodeTokenizer.from_pretrained(
+            hybrid_tokenizer_dir(tokenizer_path)
+        )
+        return {
+            "bos_token_id": tokenizer.bos_token_id,
+            "eos_token_id": tokenizer.eos_token_id,
+            "pad_token_id": tokenizer.pad_token_id,
+            "unk_token_id": tokenizer.unk_token_id,
+        }
+
+    spm = require_sentencepiece()
     processor = spm.SentencePieceProcessor(model_file=str(tokenizer_path))
     ids = {
         "bos_token_id": processor.bos_id(),
@@ -63,9 +102,23 @@ def tokenizer_special_ids(tokenizer_path: Path) -> dict[str, int | None]:
 
 
 def tokenizer_vocab_size(tokenizer_path: Path) -> int:
-    """Return the number of pieces in a SentencePiece model."""
+    """Return the vocabulary size of a SentencePiece or hybrid tokenizer."""
+    if is_hybrid_tokenizer(tokenizer_path):
+        tokenizer = HybridPinyinCodeTokenizer.from_pretrained(
+            hybrid_tokenizer_dir(tokenizer_path)
+        )
+        return tokenizer.vocab_size
+
+    spm = require_sentencepiece()
     processor = spm.SentencePieceProcessor(model_file=str(tokenizer_path))
     return processor.get_piece_size()
+
+
+def tokenizer_auto_map(tokenizer_path: Path) -> list[str | None]:
+    """Return the AutoTokenizer remote-code target for the tokenizer family."""
+    if is_hybrid_tokenizer(tokenizer_path):
+        return ["tokenization_hybrid_pinyin_code.HybridPinyinCodeTokenizer", None]
+    return ["tokenization_pinyin_code.EncodedMandarinTokenizer", None]
 
 
 def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
@@ -89,7 +142,7 @@ def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
         "AutoConfig": "configuration_pinyin_code.PinyinCodeConfig",
         "AutoModel": "modeling_pinyin_code.PinyinCodeModel",
         "AutoModelForCausalLM": "modeling_pinyin_code.PinyinCodeForCausalLM",
-        "AutoTokenizer": ["tokenization_pinyin_code.EncodedMandarinTokenizer", None],
+        "AutoTokenizer": tokenizer_auto_map(tokenizer_path),
     }
     return config
 
@@ -114,6 +167,7 @@ def copy_remote_code(output_dir: Path) -> None:
         "__init__.py",
         "configuration_pinyin_code.py",
         "modeling_pinyin_code.py",
+        "tokenization_hybrid_pinyin_code.py",
         "tokenization_pinyin_code.py",
     ):
         shutil.copy2(Path("hf") / filename, package_dir / filename)
@@ -129,8 +183,35 @@ def patch_json(path: Path, updates: dict) -> None:
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) -> None:
+def write_model_readme(
+    output_dir: Path,
+    transliteration: str,
+    use_jieba: bool,
+    tokenizer_kind: str,
+) -> None:
     """Write a minimal model-card README for external evaluation users."""
+    tokenizer_tag = "sentencepiece" if tokenizer_kind == "sentencepiece" else "hybrid-tokenizer"
+    install_command = (
+        "pip install torch transformers safetensors sentencepiece pypinyin jieba"
+        if tokenizer_kind == "sentencepiece"
+        else "pip install torch transformers safetensors pypinyin jieba"
+    )
+    dependency_note = (
+        "`sentencepiece` is required for the SentencePiece tokenizer. "
+        if tokenizer_kind == "sentencepiece"
+        else "This export uses the repository's hybrid tokenizer and does not require SentencePiece. "
+    )
+    tokenizer_note = (
+        "The tokenizer accepts raw text through standard calls such as\n"
+        "        `tokenizer(text)`, `tokenizer(text, add_special_tokens=False)`, and\n"
+        "        `tokenizer(texts, padding=True, truncation=True, return_tensors=\"pt\")`.\n"
+        "        It also accepts `return_offsets_mapping=True` for compatibility with\n"
+        "        completion-ranking evaluators that need suffix masks."
+        if tokenizer_kind == "sentencepiece"
+        else "The hybrid tokenizer accepts preprocessed pinyin-code text through standard\n"
+        "        calls such as `tokenizer(text)`, `tokenizer(text, add_special_tokens=False)`,\n"
+        "        and `tokenizer(texts, padding=True, truncation=True, return_tensors=\"pt\")`."
+    )
     text = dedent(
         f"""\
         ---
@@ -139,7 +220,7 @@ def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) 
         tags:
         - causal-lm
         - trust-remote-code
-        - sentencepiece
+        - {tokenizer_tag}
         ---
 
         # Pinyin-Code Causal LM
@@ -153,11 +234,11 @@ def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) 
         Install the runtime dependencies before loading the model:
 
         ```bash
-        pip install torch transformers safetensors sentencepiece pypinyin jieba
+        {install_command}
         ```
 
-        `sentencepiece` is required for `AutoTokenizer`. `pypinyin` is required
-        for raw Mandarin-to-pinyin tokenization. `jieba` is required when
+        {dependency_note}`pypinyin` is required
+        for raw Mandarin-to-pinyin preprocessing. `jieba` is required when
         `use_jieba` is true; this export was created with `use_jieba={str(use_jieba).lower()}`.
 
         ## Loading
@@ -181,11 +262,7 @@ def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) 
         - backend: `causal`
         - trust remote code: enabled
 
-        The tokenizer accepts raw text through standard calls such as
-        `tokenizer(text)`, `tokenizer(text, add_special_tokens=False)`, and
-        `tokenizer(texts, padding=True, truncation=True, return_tensors="pt")`.
-        It also accepts `return_offsets_mapping=True` for compatibility with
-        completion-ranking evaluators that need suffix masks. The model supports
+        {tokenizer_note} The model supports
         `output_hidden_states=True` for representation extraction tasks.
 
         This export sets `patch_pathlib_utf8_open=true` in `config.json`.
@@ -197,11 +274,58 @@ def write_model_readme(output_dir: Path, transliteration: str, use_jieba: bool) 
 
         Export metadata:
 
+        - tokenizer_kind: `{tokenizer_kind}`
         - transliteration: `{transliteration}`
         - use_jieba: `{str(use_jieba).lower()}`
         """
     )
     (output_dir / "README.md").write_text(text, encoding="utf-8", newline="\n")
+
+
+def load_export_tokenizer(args: argparse.Namespace):
+    """Load the tokenizer implementation matching the input tokenizer path."""
+    if is_hybrid_tokenizer(args.tokenizer):
+        return HybridPinyinCodeTokenizer.from_pretrained(
+            hybrid_tokenizer_dir(args.tokenizer)
+        )
+    from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
+
+    return EncodedMandarinTokenizer(
+        vocab_file=str(args.tokenizer),
+        transliteration=args.transliteration,
+        use_jieba=args.jieba,
+    )
+
+
+def copy_tokenizer_sidecars(tokenizer_path: Path, output_dir: Path) -> None:
+    """Copy optional tokenizer metadata files that save_pretrained does not own."""
+    if is_hybrid_tokenizer(tokenizer_path):
+        metadata_path = hybrid_tokenizer_dir(tokenizer_path) / HYBRID_METADATA_NAME
+        if metadata_path.exists():
+            shutil.copy2(metadata_path, output_dir / metadata_path.name)
+        return
+
+    tokenizer_vocab = tokenizer_path.with_suffix(".vocab")
+    if tokenizer_vocab.exists():
+        shutil.copy2(tokenizer_vocab, output_dir / tokenizer_vocab.name)
+
+
+def tokenizer_config_updates(args: argparse.Namespace, config: PinyinCodeConfig) -> dict:
+    """Return tokenizer_config.json updates for the exported tokenizer."""
+    updates = {
+        "auto_map": {"AutoTokenizer": tokenizer_auto_map(args.tokenizer)},
+        "model_max_length": config.block_size,
+        "pinyin_format": args.transliteration,
+        "jieba": args.jieba,
+        "tokenizer_kind": "hybrid" if is_hybrid_tokenizer(args.tokenizer) else "sentencepiece",
+        "transliteration": args.transliteration,
+        "use_jieba": args.jieba,
+    }
+    if is_hybrid_tokenizer(args.tokenizer):
+        updates["tokenizer_class"] = "HybridPinyinCodeTokenizer"
+    else:
+        updates["tokenizer_class"] = "EncodedMandarinTokenizer"
+    return updates
 
 
 def convert(args: argparse.Namespace) -> None:
@@ -224,15 +348,9 @@ def convert(args: argparse.Namespace) -> None:
     copy_remote_code(args.output_dir)
     model.save_pretrained(args.output_dir, safe_serialization=args.safe_serialization)
 
-    tokenizer = EncodedMandarinTokenizer(
-        vocab_file=str(args.tokenizer),
-        transliteration=args.transliteration,
-        use_jieba=args.jieba,
-    )
+    tokenizer = load_export_tokenizer(args)
     tokenizer.save_pretrained(args.output_dir)
-    tokenizer_vocab = args.tokenizer.with_suffix(".vocab")
-    if tokenizer_vocab.exists():
-        shutil.copy2(tokenizer_vocab, args.output_dir / tokenizer_vocab.name)
+    copy_tokenizer_sidecars(args.tokenizer, args.output_dir)
 
     generation_config = GenerationConfig(
         bos_token_id=config.bos_token_id,
@@ -244,18 +362,7 @@ def convert(args: argparse.Namespace) -> None:
     patch_json(
         args.output_dir / "tokenizer_config.json",
         {
-            "auto_map": {
-                "AutoTokenizer": [
-                    "tokenization_pinyin_code.EncodedMandarinTokenizer",
-                    None,
-                ]
-            },
-            "model_max_length": config.block_size,
-            "pinyin_format": args.transliteration,
-            "jieba": args.jieba,
-            "tokenizer_class": "EncodedMandarinTokenizer",
-            "transliteration": args.transliteration,
-            "use_jieba": args.jieba,
+            **tokenizer_config_updates(args, config),
         },
     )
     special_tokens_map = {
@@ -274,6 +381,7 @@ def convert(args: argparse.Namespace) -> None:
         "epoch": checkpoint.get("epoch"),
         "global_step": checkpoint.get("global_step"),
         "jieba": args.jieba,
+        "tokenizer_kind": "hybrid" if is_hybrid_tokenizer(args.tokenizer) else "sentencepiece",
         "transliteration": args.transliteration,
         "use_jieba": args.jieba,
         "validation_loss": checkpoint.get("validation_loss"),
@@ -282,7 +390,12 @@ def convert(args: argparse.Namespace) -> None:
         json.dumps(metadata, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    write_model_readme(args.output_dir, args.transliteration, args.jieba)
+    write_model_readme(
+        args.output_dir,
+        args.transliteration,
+        args.jieba,
+        "hybrid" if is_hybrid_tokenizer(args.tokenizer) else "sentencepiece",
+    )
     print(f"Saved Transformers model to {args.output_dir}")
 
 
