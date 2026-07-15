@@ -238,6 +238,8 @@ def run_training(args: argparse.Namespace) -> None:
         path_arg(args.validation_dataset),
         "--output-dir",
         path_arg(args.model_output_dir),
+        "--architecture",
+        args.architecture,
         "--vocab-size",
         training_vocab_size(args),
         "--block-size",
@@ -259,6 +261,23 @@ def run_training(args: argparse.Namespace) -> None:
         "--seed",
         args.seed,
     )
+    if args.architecture == "qwen2":
+        command += [
+            "--num-key-value-heads",
+            str(args.num_key_value_heads),
+            "--intermediate-size",
+            str(args.intermediate_size),
+            "--rms-norm-eps",
+            str(args.rms_norm_eps),
+            "--rope-theta",
+            str(args.rope_theta),
+            "--attention-dropout",
+            str(args.attention_dropout),
+        ]
+        if not args.tie_word_embeddings:
+            command.append("--no-tie-word-embeddings")
+        if args.attn_implementation is not None:
+            command += ["--attn-implementation", args.attn_implementation]
     if args.device is not None:
         command += ["--device", args.device]
     run_command("Train language model", command, args)
@@ -370,9 +389,21 @@ def parse_args() -> argparse.Namespace:
 
     training = parser.add_argument_group("training")
     training.add_argument("--model-output-dir", type=Path, default=None)
+    training.add_argument("--architecture", choices=("gpt2", "qwen2"), default="gpt2")
     training.add_argument("--n-layer", type=int, default=8)
     training.add_argument("--n-head", type=int, default=8)
     training.add_argument("--n-embd", type=int, default=512)
+    training.add_argument("--num-key-value-heads", type=int, default=4)
+    training.add_argument("--intermediate-size", type=int, default=1376)
+    training.add_argument("--rms-norm-eps", type=float, default=1.0e-6)
+    training.add_argument("--rope-theta", type=float, default=10000.0)
+    training.add_argument("--attention-dropout", type=float, default=0.0)
+    training.add_argument("--tie-word-embeddings", action=argparse.BooleanOptionalAction, default=True)
+    training.add_argument(
+        "--attn-implementation",
+        choices=("eager", "sdpa", "flash_attention_2"),
+        default=None,
+    )
     training.add_argument("--epochs", type=int, default=5)
     training.add_argument("--batch-size", type=int, default=64)
     training.add_argument("--learning-rate", type=float, default=3e-4)

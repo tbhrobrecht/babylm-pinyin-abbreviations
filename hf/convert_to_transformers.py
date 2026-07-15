@@ -19,6 +19,11 @@ if str(PROJECT_ROOT) not in sys.path:
 from hf.configuration_pinyin_code import PinyinCodeConfig
 from hf.modeling_pinyin_code import PinyinCodeForCausalLM
 from hf.tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
+from train_model import (
+    build_model,
+    checkpoint_architecture,
+    model_config_from_checkpoint,
+)
 
 
 DEFAULT_OUTPUT_DIR = Path("hf_pinyin_code_model")
@@ -131,8 +136,20 @@ def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
             f"tokenizer={actual_vocab_size}, checkpoint={checkpoint_vocab_size}."
         )
 
+    model_config = {
+        key: value
+        for key, value in checkpoint["model_config"].items()
+        if key
+        not in {
+            "architecture",
+            "bos_token_id",
+            "eos_token_id",
+            "pad_token_id",
+            "unk_token_id",
+        }
+    }
     config = PinyinCodeConfig(
-        **checkpoint["model_config"],
+        **model_config,
         **tokenizer_special_ids(tokenizer_path),
     )
     config.architectures = ["PinyinCodeForCausalLM"]
@@ -310,11 +327,14 @@ def copy_tokenizer_sidecars(tokenizer_path: Path, output_dir: Path) -> None:
         shutil.copy2(tokenizer_vocab, output_dir / tokenizer_vocab.name)
 
 
-def tokenizer_config_updates(args: argparse.Namespace, config: PinyinCodeConfig) -> dict:
+def tokenizer_config_updates(args: argparse.Namespace, config) -> dict:
     """Return tokenizer_config.json updates for the exported tokenizer."""
+    model_max_length = getattr(config, "block_size", None)
+    if model_max_length is None:
+        model_max_length = getattr(config, "max_position_embeddings", None)
     updates = {
         "auto_map": {"AutoTokenizer": tokenizer_auto_map(args.tokenizer)},
-        "model_max_length": config.block_size,
+        "model_max_length": model_max_length,
         "pinyin_format": args.transliteration,
         "jieba": args.jieba,
         "tokenizer_kind": "hybrid" if is_hybrid_tokenizer(args.tokenizer) else "sentencepiece",
@@ -331,8 +351,27 @@ def tokenizer_config_updates(args: argparse.Namespace, config: PinyinCodeConfig)
 def convert(args: argparse.Namespace) -> None:
     """Convert and save the model, tokenizer, config, and remote-code files."""
     checkpoint = load_training_checkpoint(args.checkpoint)
-    config = build_config(checkpoint, args.tokenizer)
-    model = PinyinCodeForCausalLM(config)
+    architecture = checkpoint_architecture(checkpoint)
+    if architecture == "gpt2":
+        config = build_config(checkpoint, args.tokenizer)
+        model = PinyinCodeForCausalLM(config)
+    elif architecture == "qwen2":
+        model_config = model_config_from_checkpoint(checkpoint)
+        checkpoint_vocab_size = int(model_config.vocab_size)
+        actual_vocab_size = tokenizer_vocab_size(args.tokenizer)
+        if checkpoint_vocab_size != actual_vocab_size:
+            raise ValueError(
+                "Tokenizer vocab size does not match checkpoint config: "
+                f"tokenizer={actual_vocab_size}, checkpoint={checkpoint_vocab_size}."
+            )
+        model = build_model(model_config)
+        special_ids = tokenizer_special_ids(args.tokenizer)
+        for key, value in special_ids.items():
+            setattr(model.config, key, value)
+        config = model.config
+    else:
+        raise AssertionError(f"Unhandled architecture: {architecture}")
+
     load_result = model.load_state_dict(
         convert_state_dict(checkpoint["model_state_dict"]),
         strict=True,
@@ -365,6 +404,14 @@ def convert(args: argparse.Namespace) -> None:
             **tokenizer_config_updates(args, config),
         },
     )
+    if architecture == "qwen2":
+        patch_json(
+            args.output_dir / "config.json",
+            {
+                "auto_map": {"AutoTokenizer": tokenizer_auto_map(args.tokenizer)},
+                "evaluation_backend": "causal",
+            },
+        )
     special_tokens_map = {
         key: value
         for key, value in tokenizer.special_tokens_map.items()
@@ -377,6 +424,7 @@ def convert(args: argparse.Namespace) -> None:
 
     metadata = {
         "evaluation_backend": "causal",
+        "architecture": architecture,
         "source_checkpoint": str(args.checkpoint),
         "epoch": checkpoint.get("epoch"),
         "global_step": checkpoint.get("global_step"),

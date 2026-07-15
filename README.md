@@ -256,6 +256,16 @@ Train a compact GPT-style causal language model on the tokenized dataset:
 py train_model.py
 ```
 
+`train_model.py` supports two decoder-only architectures:
+
+- `gpt2`: the repository's original compact GPT-style PyTorch model. This is
+  the default, so older commands and checkpoints continue to use it.
+- `qwen2`: a Hugging Face `Qwen2ForCausalLM` initialized from scratch. It does
+  not download or load pretrained Qwen weights.
+
+Select the architecture with `--architecture`. Existing commands that omit this
+flag are equivalent to `--architecture gpt2`.
+
 This writes checkpoints to `models\pinyin-code-gpt-small`:
 
 - `last.pt`
@@ -266,11 +276,14 @@ dimensions, 128-token context windows, and the tokenizer's 8,000-token
 vocabulary. Use `--device cuda` on a CUDA-capable GPU, or `--device cpu` to force
 CPU training.
 
-At startup, `train_model.py` prints the selected device, CUDA device name,
-parameter count, tokens per epoch, and whether AMP/TF32/compile fast paths are
-active. If it prints `device=cpu` or `cuda_name=none`, training will be much
-slower than CUDA-based repository baselines. A CPU-only PyTorch install cannot
-use `--device cuda`; install a CUDA-enabled PyTorch build first.
+At startup, `train_model.py` prints the selected architecture, total parameter
+count, trainable parameter count, vocabulary size, layer count, hidden size,
+attention-head count, Qwen2 key-value-head count when relevant, maximum sequence
+length, selected device, CUDA device name, tokens per epoch, and whether
+AMP/TF32/compile fast paths are active. If it prints `device=cpu` or
+`cuda_name=none`, training will be much slower than CUDA-based repository
+baselines. A CPU-only PyTorch install cannot use `--device cuda`; install a
+CUDA-enabled PyTorch build first.
 
 CUDA training enables automatic mixed precision, TF32, and fused AdamW by
 default when available. Disable them with `--no-amp`, `--no-tf32`, or
@@ -298,9 +311,34 @@ When you created a separate validation dataset, pass it during training:
 py train_model.py --dataset data\datasets\10k_train_spm.bin --validation-dataset data\datasets\10k_valid_spm.bin --device cuda
 ```
 
+For Qwen2, keep the tokenizer, dataset, and preprocessing pipeline unchanged and
+only switch the model architecture and shape fields:
+
+```powershell
+py train_model.py --architecture qwen2 --dataset data\datasets\10k_train_hybrid_16k.bin --validation-dataset data\datasets\10k_valid_hybrid_16k.bin --output-dir models\pinyin-code-qwen2-small --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --num-key-value-heads 4 --intermediate-size 1376 --device cuda
+```
+
+The Qwen2-specific shape fields are `--num-key-value-heads`,
+`--intermediate-size`, `--rms-norm-eps`, `--rope-theta`,
+`--attention-dropout`, `--tie-word-embeddings`, and
+`--attn-implementation`. The required comparable-size fields are still
+`--n-embd`, `--n-layer`, `--n-head`, `--num-key-value-heads`,
+`--intermediate-size`, and `--block-size`. The builder validates that hidden
+size is divisible by attention heads and that attention heads are divisible by
+key-value heads. See `configs\qwen2_33m.yaml` for an example experiment record.
+
+Minimal CPU smoke test for Qwen2, using any tiny JSONL/bin chunk dataset:
+
+```powershell
+py train_model.py --architecture qwen2 --dataset data\datasets\tiny.jsonl --output-dir models\qwen2-smoke --vocab-size 64 --block-size 16 --n-layer 1 --n-head 2 --n-embd 16 --num-key-value-heads 1 --intermediate-size 32 --epochs 1 --batch-size 1 --device cpu --save-optimizer
+```
+
 Resume a run from a previous checkpoint with `--resume`. Checkpoints only include
 optimizer state when they were written with `--save-optimizer`; otherwise the
-model weights resume and the optimizer starts fresh.
+model weights resume and the optimizer starts fresh. New checkpoints store an
+explicit `architecture` field. Legacy GPT-style checkpoints without this field
+are still inferred as `gpt2`; explicit GPT2/Qwen2 architecture conflicts fail
+before weights are loaded.
 
 ## Optional DPO fine-tuning
 

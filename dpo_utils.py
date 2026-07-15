@@ -18,7 +18,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset
 
-from train_model import ModelConfig, PinyinCodeLanguageModel
+from train_model import ModelConfig, build_model, canonical_model_config, model_config_from_checkpoint
 
 
 WHITESPACE_RE = re.compile(r"\s+")
@@ -44,7 +44,7 @@ def load_checkpoint_model(
     checkpoint_path: Path,
     device: torch.device,
     eval_mode: bool = True,
-) -> tuple[PinyinCodeLanguageModel, ModelConfig, Path, dict[str, Any]]:
+) -> tuple[nn.Module, ModelConfig, Path, dict[str, Any]]:
     """Load a train_model.py-compatible checkpoint."""
     resolved_path = resolve_checkpoint_path(checkpoint_path)
     if not resolved_path.exists():
@@ -56,8 +56,8 @@ def load_checkpoint_model(
     if "model_state_dict" not in checkpoint:
         raise KeyError(f"{resolved_path} does not contain `model_state_dict`")
 
-    config = ModelConfig(**checkpoint["model_config"])
-    model = PinyinCodeLanguageModel(config)
+    config = model_config_from_checkpoint(checkpoint)
+    model = build_model(config)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.to(device)
     if eval_mode:
@@ -347,9 +347,13 @@ def checkpoint_payload(
     dpo_config: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Build a DPO checkpoint that remains compatible with generate.py."""
+    config = canonical_model_config(config)
     return {
         "model_state_dict": model.state_dict(),
         "model_config": asdict(config),
+        "architecture": config.architecture,
+        "tokenizer_type": "jieba_atomic",
+        "vocab_size": config.vocab_size,
         "epoch": epoch,
         "global_step": global_step,
         "validation_loss": validation_loss,

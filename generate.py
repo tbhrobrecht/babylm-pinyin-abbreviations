@@ -18,7 +18,7 @@ warnings.filterwarnings(
 import torch
 from torch.nn import functional as F
 
-from train_model import ModelConfig, PinyinCodeLanguageModel
+from train_model import build_model, model_config_from_checkpoint, output_logits
 
 
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
@@ -38,6 +38,42 @@ def require_sentencepiece():
         ) from exc
 
     return spm
+
+
+def load_generation_tokenizer(tokenizer_path: Path):
+    """Load either a SentencePiece model or the repository's hybrid tokenizer."""
+    if tokenizer_path.is_dir() or tokenizer_path.name == "vocab.json":
+        from hf.tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
+
+        load_path = tokenizer_path.parent if tokenizer_path.name == "vocab.json" else tokenizer_path
+        return HybridPinyinCodeTokenizer.from_pretrained(load_path)
+
+    spm = require_sentencepiece()
+    return spm.SentencePieceProcessor(model_file=str(tokenizer_path))
+
+
+def tokenizer_encode(processor, text: str) -> list[int]:
+    """Encode text with either supported tokenizer API."""
+    if hasattr(processor, "tokenize") and hasattr(processor, "convert_tokens_to_ids"):
+        tokens = processor.tokenize(text)
+        return [int(token_id) for token_id in processor.convert_tokens_to_ids(tokens)]
+    return [int(token_id) for token_id in processor.encode(text, out_type=int)]
+
+
+def tokenizer_decode(processor, token_ids: list[int]) -> str:
+    """Decode token ids with either supported tokenizer API."""
+    if not token_ids:
+        return ""
+    return processor.decode(token_ids)
+
+
+def tokenizer_id(processor, name: str) -> int:
+    """Return a special token id or -1 when unavailable."""
+    method = getattr(processor, f"{name}_id", None)
+    if callable(method):
+        return int(method())
+    value = getattr(processor, f"{name}_token_id", None)
+    return int(value) if value is not None else -1
 
 
 def preprocess_prompt(text: str, transliteration: str, use_jieba: bool) -> str:
@@ -87,11 +123,11 @@ def prepare_prompt(
     return text
 
 
-def load_model(checkpoint_path: Path, device: torch.device) -> PinyinCodeLanguageModel:
+def load_model(checkpoint_path: Path, device: torch.device) -> torch.nn.Module:
     """Load a checkpoint saved by train_model.py."""
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    config = ModelConfig(**checkpoint["model_config"])
-    model = PinyinCodeLanguageModel(config)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    config = model_config_from_checkpoint(checkpoint)
+    model = build_model(config)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.to(device)
     model.eval()
@@ -118,7 +154,7 @@ def sample_next_token(
 
 @torch.no_grad()
 def generate(
-    model: PinyinCodeLanguageModel,
+    model: torch.nn.Module,
     input_ids: list[int],
     max_new_tokens: int,
     temperature: float,
@@ -131,9 +167,31 @@ def generate(
         raise ValueError("At least one input token is required for generation")
 
     ids = torch.tensor([input_ids], dtype=torch.long, device=device)
+    if hasattr(model, "generate"):
+        generation_kwargs = {
+            "max_new_tokens": max_new_tokens,
+            "do_sample": temperature > 0,
+            "eos_token_id": eos_id if eos_id >= 0 else None,
+            "pad_token_id": getattr(model.config, "pad_token_id", None),
+        }
+        if temperature > 0:
+            generation_kwargs["temperature"] = temperature
+        if top_k is not None and top_k > 0:
+            generation_kwargs["top_k"] = top_k
+        attention_mask = torch.ones_like(ids)
+        generated = model.generate(
+            input_ids=ids,
+            attention_mask=attention_mask,
+            **generation_kwargs,
+        )
+        return generated[0].tolist()
+
+    block_size = getattr(model.config, "block_size", None)
+    if block_size is None:
+        block_size = getattr(model.config, "max_position_embeddings")
     for _ in range(max_new_tokens):
-        context = ids[:, -model.config.block_size :]
-        logits, _ = model(context)
+        context = ids[:, -block_size:]
+        logits = output_logits(model(context))
         next_id = sample_next_token(logits[:, -1, :], temperature, top_k)
         ids = torch.cat((ids, next_id), dim=1)
 
@@ -215,8 +273,7 @@ def main() -> None:
         torch.manual_seed(args.seed)
 
     device = torch.device(args.device or ("cuda" if torch.cuda.is_available() else "cpu"))
-    spm = require_sentencepiece()
-    processor = spm.SentencePieceProcessor(model_file=str(args.tokenizer))
+    processor = load_generation_tokenizer(args.tokenizer)
 
     prompt = prepare_prompt(
         args.prompt,
@@ -225,11 +282,11 @@ def main() -> None:
         args.transliteration,
         args.jieba,
     )
-    input_ids = processor.encode(prompt, out_type=int) if prompt.strip() else []
+    input_ids = tokenizer_encode(processor, prompt) if prompt.strip() else []
     if not input_ids:
-        start_id = processor.bos_id()
+        start_id = tokenizer_id(processor, "bos")
         if start_id < 0:
-            start_id = processor.eos_id()
+            start_id = tokenizer_id(processor, "eos")
         if start_id < 0:
             raise SystemExit("Tokenizer has no BOS/EOS id; provide a non-empty --prompt.")
         input_ids = [start_id]
@@ -241,12 +298,12 @@ def main() -> None:
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
         top_k=args.top_k,
-        eos_id=processor.eos_id(),
+        eos_id=tokenizer_id(processor, "eos"),
         device=device,
     )
 
     ids_to_decode = output_ids[len(input_ids) :] if args.completion_only else output_ids
-    print(processor.decode(ids_to_decode))
+    print(tokenizer_decode(processor, ids_to_decode))
 
 
 if __name__ == "__main__":

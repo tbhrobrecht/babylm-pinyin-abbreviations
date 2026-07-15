@@ -24,13 +24,23 @@ from train_model import (
     JsonlTokenDataset,
     ModelConfig,
     PinyinCodeLanguageModel,
+    build_model,
+    mask_padding_labels,
+    model_config_from_mapping,
     load_token_dataset,
     learning_rate_for_step,
+    output_logits,
+    output_loss,
     split_dataset,
     train,
     validate_dataset_compatibility,
 )
 from dpo_utils import DPODataCollator, dpo_loss_from_logps, sequence_log_probs
+
+try:
+    from transformers import Qwen2ForCausalLM
+except ImportError:
+    Qwen2ForCausalLM = None
 
 try:
     from hf.configuration_pinyin_code import PinyinCodeConfig
@@ -357,6 +367,194 @@ class PipelineSanityTests(unittest.TestCase):
         self.assertIsNotNone(loss)
         assert loss is not None
         self.assertTrue(torch.isfinite(loss))
+
+    def test_model_factory_defaults_to_gpt2(self) -> None:
+        model = build_model(ModelConfig(vocab_size=16, block_size=8, n_layer=1, n_head=1, n_embd=8))
+        self.assertIsInstance(model, PinyinCodeLanguageModel)
+
+        explicit = build_model(
+            ModelConfig(
+                architecture="gpt2",
+                vocab_size=16,
+                block_size=8,
+                n_layer=1,
+                n_head=1,
+                n_embd=8,
+            )
+        )
+        self.assertIsInstance(explicit, PinyinCodeLanguageModel)
+
+        if Qwen2ForCausalLM is None:
+            self.skipTest("transformers Qwen2 support is not installed")
+        qwen = build_model(
+            ModelConfig(
+                architecture="qwen2",
+                vocab_size=16,
+                block_size=8,
+                n_layer=1,
+                n_head=2,
+                n_embd=16,
+                num_key_value_heads=1,
+                intermediate_size=32,
+            )
+        )
+        self.assertIsInstance(qwen, Qwen2ForCausalLM)
+        with self.assertRaisesRegex(ValueError, "Unsupported model architecture"):
+            build_model(ModelConfig(architecture="llama"))
+
+    def test_qwen2_tiny_forward_has_finite_loss_and_backward(self) -> None:
+        if Qwen2ForCausalLM is None:
+            self.skipTest("transformers Qwen2 support is not installed")
+
+        model = build_model(
+            ModelConfig(
+                architecture="qwen2",
+                vocab_size=32,
+                block_size=16,
+                n_layer=2,
+                n_head=4,
+                n_embd=64,
+                num_key_value_heads=2,
+                intermediate_size=176,
+                attention_dropout=0.0,
+            )
+        )
+        input_ids = torch.randint(0, 32, (2, 8))
+        outputs = model(input_ids=input_ids, labels=input_ids)
+        logits = output_logits(outputs)
+        loss = output_loss(outputs)
+
+        self.assertEqual(tuple(logits.shape), (2, 8, 32))
+        self.assertIsNotNone(loss)
+        assert loss is not None
+        self.assertTrue(torch.isfinite(loss))
+        loss.backward()
+        self.assertTrue(any(parameter.grad is not None for parameter in model.parameters()))
+
+    def test_factory_rejects_invalid_qwen2_attention_shape(self) -> None:
+        if Qwen2ForCausalLM is None:
+            self.skipTest("transformers Qwen2 support is not installed")
+        with self.assertRaisesRegex(ValueError, "hidden_size"):
+            build_model(
+                ModelConfig(
+                    architecture="qwen2",
+                    vocab_size=16,
+                    block_size=8,
+                    n_layer=1,
+                    n_head=3,
+                    n_embd=16,
+                    num_key_value_heads=1,
+                )
+            )
+        with self.assertRaisesRegex(ValueError, "num_attention_heads"):
+            build_model(
+                ModelConfig(
+                    architecture="qwen2",
+                    vocab_size=16,
+                    block_size=8,
+                    n_layer=1,
+                    n_head=4,
+                    n_embd=16,
+                    num_key_value_heads=3,
+                )
+            )
+
+    def test_model_embeddings_match_tokenizer_length(self) -> None:
+        class FakeTokenizer:
+            def __len__(self) -> int:
+                return 21
+
+        configs = [
+            ModelConfig(
+                architecture="gpt2",
+                vocab_size=16,
+                block_size=8,
+                n_layer=1,
+                n_head=1,
+                n_embd=8,
+            ),
+            ModelConfig(
+                architecture="qwen2",
+                vocab_size=16,
+                block_size=8,
+                n_layer=1,
+                n_head=2,
+                n_embd=16,
+                num_key_value_heads=1,
+                intermediate_size=32,
+            ),
+        ]
+        for config in configs:
+            if config.architecture == "qwen2" and Qwen2ForCausalLM is None:
+                continue
+            model = build_model(config, tokenizer=FakeTokenizer())
+            self.assertEqual(model.get_input_embeddings().num_embeddings, 21)
+            self.assertEqual(model.get_output_embeddings().out_features, 21)
+
+    def test_padding_labels_are_masked_for_loss(self) -> None:
+        labels = torch.tensor([[1, 2, 3], [4, 5, 6]])
+        attention_mask = torch.tensor([[1, 1, 0], [1, 0, 0]])
+
+        masked = mask_padding_labels(labels, attention_mask)
+
+        self.assertEqual(masked.tolist(), [[1, 2, -100], [4, -100, -100]])
+
+    def test_save_and_load_tiny_model_families(self) -> None:
+        from dpo_utils import load_checkpoint_model
+
+        configs = [
+            ModelConfig(
+                architecture="gpt2",
+                vocab_size=16,
+                block_size=8,
+                n_layer=1,
+                n_head=1,
+                n_embd=8,
+                dropout=0.0,
+            ),
+            ModelConfig(
+                architecture="qwen2",
+                vocab_size=16,
+                block_size=8,
+                n_layer=1,
+                n_head=2,
+                n_embd=16,
+                num_key_value_heads=1,
+                intermediate_size=32,
+            ),
+        ]
+        for config in configs:
+            if config.architecture == "qwen2" and Qwen2ForCausalLM is None:
+                continue
+            model = build_model(config)
+            checkpoint_path = Path(self.temp_dir.name) / f"{config.architecture}.pt"
+            torch.save(
+                {
+                    "model_state_dict": model.state_dict(),
+                    "model_config": asdict(config),
+                    "architecture": config.architecture,
+                },
+                checkpoint_path,
+            )
+
+            loaded, loaded_config, _, _ = load_checkpoint_model(checkpoint_path, torch.device("cpu"))
+            self.assertEqual(loaded_config.architecture, config.architecture)
+            outputs = loaded(input_ids=torch.randint(0, 16, (1, 4)), labels=torch.randint(0, 16, (1, 4)))
+            self.assertEqual(tuple(output_logits(outputs).shape), (1, 4, 16))
+
+    def test_legacy_gpt2_config_without_architecture_loads_as_gpt2(self) -> None:
+        config = model_config_from_mapping(
+            {
+                "vocab_size": 16,
+                "block_size": 8,
+                "n_layer": 1,
+                "n_head": 1,
+                "n_embd": 8,
+                "dropout": 0.0,
+            }
+        )
+        self.assertEqual(config.architecture, "gpt2")
+        self.assertIsInstance(build_model(config), PinyinCodeLanguageModel)
 
     def test_dpo_sequence_log_probs_scores_only_completion_tokens(self) -> None:
         class UniformModel(torch.nn.Module):
