@@ -9,7 +9,7 @@ import random
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 import torch
 from torch import nn
@@ -608,6 +608,20 @@ def maybe_synchronize(device: torch.device) -> None:
         torch.cuda.synchronize()
 
 
+def resolve_metrics_log_path(args: argparse.Namespace) -> Path:
+    """Return the JSONL metrics log path for this training run."""
+    metrics_log = getattr(args, "metrics_log", None)
+    if metrics_log is None:
+        return args.output_dir / "metrics.jsonl"
+    return Path(metrics_log)
+
+
+def write_metrics_event(metrics_log: TextIO, event: dict[str, Any]) -> None:
+    """Append one structured training metric event."""
+    metrics_log.write(json.dumps(event, sort_keys=True) + "\n")
+    metrics_log.flush()
+
+
 def build_optimizer(
     model: nn.Module,
     args: argparse.Namespace,
@@ -845,6 +859,9 @@ def train(args: argparse.Namespace) -> None:
     qwen_summary = ""
     if config.architecture == "qwen2":
         qwen_summary = f" key_value_heads={summary['key_value_heads']}"
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    metrics_path = resolve_metrics_log_path(args)
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
     print(
         "training_setup "
         f"architecture={summary['architecture']} "
@@ -870,14 +887,16 @@ def train(args: argparse.Namespace) -> None:
         f"warmup_steps={args.warmup_steps} "
         f"min_learning_rate={args.min_learning_rate:g} "
         f"compile={args.compile} "
-        f"resume={args.resume or 'none'}"
+        f"resume={args.resume or 'none'} "
+        f"metrics_log={metrics_path}"
     )
     if device.type == "cpu":
         print("warning: training on CPU; this will be much slower than CUDA-based runs.")
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
     tokens_since_log = 0
     log_start = time.perf_counter()
+    metrics_mode = "a" if args.resume is not None and metrics_path.exists() else "w"
+    metrics_log = metrics_path.open(metrics_mode, encoding="utf-8")
 
     for epoch in range(start_epoch, args.epochs + 1):
         model.train()
@@ -944,11 +963,23 @@ def train(args: argparse.Namespace) -> None:
                 maybe_synchronize(device)
                 elapsed = max(time.perf_counter() - log_start, 1e-9)
                 tokens_per_second = tokens_since_log / elapsed
+                train_loss = pending_loss / accumulation_index
                 print(
                     f"epoch={epoch} step={global_step} "
-                    f"train_loss={pending_loss / accumulation_index:.4f} "
+                    f"train_loss={train_loss:.4f} "
                     f"lr={current_lr:.6g} "
                     f"tokens_per_second={tokens_per_second:,.0f}"
+                )
+                write_metrics_event(
+                    metrics_log,
+                    {
+                        "event": "train",
+                        "epoch": epoch,
+                        "step": global_step,
+                        "train_loss": train_loss,
+                        "learning_rate": current_lr,
+                        "tokens_per_second": tokens_per_second,
+                    },
                 )
                 tokens_since_log = 0
                 log_start = time.perf_counter()
@@ -960,6 +991,16 @@ def train(args: argparse.Namespace) -> None:
         valid_loss = evaluate(model, valid_loader, device, use_amp, amp_dtype)
         print(f"epoch={epoch} validation_loss={valid_loss:.4f}")
         checkpoint_best_loss = min(best_loss, valid_loss)
+        write_metrics_event(
+            metrics_log,
+            {
+                "event": "validation",
+                "epoch": epoch,
+                "step": global_step,
+                "validation_loss": valid_loss,
+                "best_loss": checkpoint_best_loss,
+            },
+        )
 
         checkpoint = checkpoint_payload(
             raw_model,
@@ -975,6 +1016,7 @@ def train(args: argparse.Namespace) -> None:
         if valid_loss < best_loss:
             best_loss = valid_loss
             torch.save(checkpoint, args.output_dir / "best.pt")
+    metrics_log.close()
 
 
 def parse_args() -> argparse.Namespace:
@@ -1062,6 +1104,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--grad-clip", type=float, default=1.0)
     parser.add_argument("--validation-fraction", type=float, default=0.05)
     parser.add_argument("--log-every", type=int, default=100)
+    parser.add_argument(
+        "--metrics-log",
+        type=Path,
+        default=None,
+        help="JSONL metrics output path. Defaults to <output-dir>/metrics.jsonl.",
+    )
     parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--num-threads", type=int, default=None)
     parser.add_argument("--seed", type=int, default=1337)

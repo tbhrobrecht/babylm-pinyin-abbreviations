@@ -271,6 +271,12 @@ This writes checkpoints to `models\pinyin-code-gpt-small`:
 - `last.pt`
 - `best.pt`
 
+It also writes structured metrics to `metrics.jsonl` in the output directory by
+default. Training events include `train_loss`, learning rate, step, epoch, and
+token throughput; validation events include `validation_loss`, `best_loss`,
+step, and epoch. Pass `--metrics-log path\to\metrics.jsonl` to choose another
+location.
+
 The default model uses 6 Transformer layers, 8 attention heads, 256 hidden
 dimensions, 128-token context windows, and the tokenizer's 8,000-token
 vocabulary. Use `--device cuda` on a CUDA-capable GPU, or `--device cpu` to force

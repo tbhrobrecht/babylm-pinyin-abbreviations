@@ -645,7 +645,7 @@ class PipelineSanityTests(unittest.TestCase):
             weight_decay=0.0,
             grad_clip=1.0,
             validation_fraction=0.5,
-            log_every=100,
+            log_every=1,
             num_workers=0,
             num_threads=None,
             seed=1337,
@@ -665,6 +665,12 @@ class PipelineSanityTests(unittest.TestCase):
         checkpoint = torch.load(output_dir / "best.pt", map_location="cpu", weights_only=False)
         self.assertIn("model_state_dict", checkpoint)
         self.assertNotIn("optimizer_state_dict", checkpoint)
+        metrics = [
+            json.loads(line)
+            for line in (output_dir / "metrics.jsonl").read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertTrue(any("train_loss" in event for event in metrics))
+        self.assertTrue(any("validation_loss" in event for event in metrics))
 
     def test_convert_to_transformers_supports_hybrid_tokenizer(self) -> None:
         if PinyinCodeConfig is None:
