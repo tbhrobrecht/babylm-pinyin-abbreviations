@@ -8,6 +8,7 @@ import logging
 import re
 import sys
 import unicodedata
+from multiprocessing import Pool
 from pathlib import Path
 from typing import Any, Iterable, Literal
 
@@ -251,28 +252,71 @@ def read_jsonl(path: Path) -> Iterable[dict[str, Any]]:
                 raise ValueError(f"Invalid JSON on line {line_number}: {exc}") from exc
 
 
+def iter_processing_tasks(
+    input_path: Path,
+    transliteration: Transliteration,
+    use_jieba: bool,
+) -> Iterable[tuple[str, Transliteration, bool]]:
+    """Yield independent document tasks without loading the full corpus."""
+    for obj in read_jsonl(input_path):
+        yield str(obj.get("text", "")), transliteration, use_jieba
+
+
+def process_task(
+    task: tuple[str, Transliteration, bool],
+) -> tuple[str, str]:
+    """Process one document and return its original and encoded text."""
+    text, transliteration, use_jieba = task
+    return text, process_text(text, transliteration, use_jieba)
+
+
 def preprocess_file(
     input_path: Path,
     output_path: Path,
     preview_count: int,
     transliteration: Transliteration = "pinyin-code",
     use_jieba: bool = True,
+    workers: int = 1,
+    chunksize: int = 32,
 ) -> int:
-    """Stream input documents to output while retaining a small preview buffer."""
+    """Stream documents to output, optionally using ordered multiprocessing."""
+    if workers < 1:
+        raise ValueError("workers must be at least 1")
+    if chunksize < 1:
+        raise ValueError("chunksize must be at least 1")
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     written = 0
     previews: list[tuple[str, str]] = []
+    tasks = iter_processing_tasks(input_path, transliteration, use_jieba)
 
     with output_path.open("w", encoding="utf-8", newline="\n") as out:
-        for obj in read_jsonl(input_path):
-            text = str(obj.get("text", ""))
-            processed = process_text(text, transliteration, use_jieba)
-            out.write(processed)
-            out.write("\n")
-            written += 1
+        if workers == 1:
+            for text, processed in map(process_task, tasks):
+                out.write(processed)
+                out.write("\n")
+                written += 1
 
-            if len(previews) < preview_count:
-                previews.append((text, processed))
+                if len(previews) < preview_count:
+                    previews.append((text, processed))
+        else:
+            with Pool(
+                processes=workers,
+                initializer=require_dependencies,
+            ) as pool:
+                results = pool.imap(
+                    process_task,
+                    tasks,
+                    chunksize=chunksize,
+                )
+
+                for text, processed in results:
+                    out.write(processed)
+                    out.write("\n")
+                    written += 1
+
+                    if len(previews) < preview_count:
+                        previews.append((text, processed))
 
     for original, processed in previews:
         print("ORIGINAL:")
@@ -282,7 +326,6 @@ def preprocess_file(
         print()
 
     return written
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -311,6 +354,21 @@ def parse_args() -> argparse.Namespace:
             "transliteration."
         ),
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help=(
+            "Number of document-processing worker processes. "
+            "The default of 1 preserves sequential behavior."
+        ),
+    )
+    parser.add_argument(
+        "--chunksize",
+        type=int,
+        default=32,
+        help="Documents assigned to each worker per multiprocessing batch.",
+    )
     return parser.parse_args()
 
 
@@ -325,6 +383,8 @@ def main() -> None:
         args.preview,
         args.transliteration,
         args.jieba,
+        args.workers,
+        args.chunksize,
     )
     print(f"Wrote {count:,} processed documents to {args.output}")
 
