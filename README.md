@@ -502,44 +502,78 @@ upload the same converted folder.
 
 
 ## tldr pipeline
-Run the automated pretraining pipeline with one command. The default tokenizer
-is the hybrid Jieba-word tokenizer:
+Run the automated pretraining pipeline with one command. The default is the
+repository GPT-style architecture with the hybrid Jieba-word tokenizer:
 
 ```powershell
 python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --device cuda
 ```
 
-Use the older SentencePiece BPE path explicitly when you want that baseline:
+For the four main pretraining runs in one HPC job, cross both model
+architectures with both tokenizer families:
 
 ```powershell
-python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho_bpe --tokenizer-kind bpe --device cuda
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --architectures gpt2 qwen2 --tokenizer-kinds hybrid bpe --device cuda --vocab-size 16000 --block-size 512 --stride 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --preprocess-workers 8 --num-workers 4 --resume
 ```
 
-This runs extraction, preprocessing, tokenizer training, binary dataset
-creation, model training, and conversion to a Transformers folder for both
-hybrid and SentencePiece tokenizers. If `--hf-repo` is provided, the converted
-folder is uploaded after conversion. Use `--dry-run` to print the underlying
-commands without running them, and `--resume` to skip steps whose expected
-output already exists.
+This creates shared corpus artifacts and tokenizer-specific datasets, then
+trains separate model/export folders:
 
-python preprocessing/extract_babylm_zho.py 
+- `models\nk_babylm_zho_gpt2_hybrid` and `hf_nk_babylm_zho_gpt2_hybrid`
+- `models\nk_babylm_zho_qwen2_hybrid` and `hf_nk_babylm_zho_qwen2_hybrid`
+- `models\nk_babylm_zho_gpt2_bpe` and `hf_nk_babylm_zho_gpt2_bpe`
+- `models\nk_babylm_zho_qwen2_bpe` and `hf_nk_babylm_zho_qwen2_bpe`
 
-python preprocessing/preprocess.py --input data/nk_babylm_zho.jsonl --output data/processed/nk_babylm_zho.txt 
+Use `--dry-run` to print the underlying commands without running them. Use
+`--resume` to skip steps whose expected outputs already exist; within a matrix
+run, extraction/preprocessing are shared across all runs, and tokenizer/dataset
+creation is shared across the two architectures for each tokenizer kind.
 
-python train_sentencepiece.py --input data/processed/nk_babylm_zho.txt --output-dir tokenizers --model-name babylm_zho_pinyin_spm --vocab-size 16000 
+Use `--start-at` and `--stop-after` to run only part of the pipeline. For
+example, prepare corpus/tokenizers/datasets without training:
 
-python create_dataset.py --format bin --input data/processed/nk_babylm_zho.txt --output data/datasets/nk_babylm_zho_train_spm.bin --validation-output data/datasets/nk_babylm_zho_valid_spm.bin --validation-fraction 0.05 --tokenizer tokenizers/[model name].model --block-size 512 --stride 512
+```powershell
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --architectures gpt2 qwen2 --tokenizer-kinds hybrid bpe --stop-after dataset --device cuda --resume
+```
 
-python train_model.py --dataset data/datasets/nk_babylm_zho_train_spm.bin --validation-dataset data/datasets/nk_babylm_zho_valid_spm.bin --output-dir models/[model name] --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --device cuda
+Then continue later from model training:
 
-python hf/convert_to_transformers.py --checkpoint models/[model name]/best.pt --tokenizer tokenizers/[model name].model --output-dir hf_[model name] --transliteration pinyin-code
-(add --no-jieba here if the training corpus was preprocessed with --no-jieba)
+```powershell
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --architectures gpt2 qwen2 --tokenizer-kinds hybrid bpe --start-at train --device cuda --resume
+```
 
-hf upload [username]/[model name] [model saved directory]
+You can still skip individual steps with `--skip-extract`, `--skip-preprocess`,
+`--skip-tokenizer`, `--skip-dataset`, `--skip-train`, `--skip-convert`, or
+`--skip-upload` when you already have specific artifacts.
 
-cd multilingual 
+Single-run examples:
 
+```powershell
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho_qwen2_bpe --architecture qwen2 --tokenizer-kind bpe --device cuda --vocab-size 16000 --block-size 512 --n-layer 8 --n-head 8 --n-embd 512 --num-key-value-heads 4 --intermediate-size 1376
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho_gpt2_hybrid --architecture gpt2 --tokenizer-kind hybrid --device cuda --vocab-size 16000 --block-size 512
+```
+
+If you already have an extracted JSONL on the HPC filesystem, skip extraction
+and point the pipeline at it:
+
+```powershell
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --raw-output data/nk_babylm_zho.jsonl --skip-extract --architectures gpt2 qwen2 --tokenizer-kinds hybrid bpe --device cuda --resume
+```
+
+If `--hf-repo` is provided for a single run, the converted folder is uploaded
+after conversion. Matrix runs intentionally do not accept a single `--hf-repo`
+because each export needs its own model repo or an explicit manual upload:
+
+```powershell
+hf upload [username]/[model name] [model saved directory] --repo-type model
+```
+
+For external evaluation after upload:
+
+```powershell
+cd multilingual
 bash scripts/zeroshot_model.sh --model_name [username]/[model name] --langs "zho" --revision main
 (bash scripts/zeroshot_model.sh --model_name YOUR_MODEL --langs "zho" --pinyin_format initials)
 
 python -m lm_eval --model hf --model_args "pretrained=[username]/[model name],revision=main,trust_remote_code=True" --tasks zeroshot_zho --device cuda --output_path ../results/main --batch_size auto:10 --num_fewshot 0 --log_samples --include_path tasks/
+```

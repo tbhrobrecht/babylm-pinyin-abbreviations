@@ -10,13 +10,25 @@ older SentencePiece path.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
+import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PIPELINE_STEPS = (
+    "extract",
+    "preprocess",
+    "tokenizer",
+    "dataset",
+    "train",
+    "convert",
+    "upload",
+)
 
 
 def path_arg(path: Path) -> str:
@@ -27,23 +39,52 @@ def path_arg(path: Path) -> str:
         return str(path)
 
 
-def default_paths(model_name: str, args: argparse.Namespace) -> None:
+def format_command(command: list[str]) -> str:
+    """Return a shell-readable command line for logging."""
+    if os.name == "nt":
+        return subprocess.list2cmdline(command)
+    return shlex.join(command)
+
+
+def default_tokenizer_name(
+    model_name: str,
+    tokenizer_kind: str,
+    matrix_mode: bool,
+) -> str:
+    """Return the default tokenizer artifact name for this run."""
+    if matrix_mode:
+        return f"{model_name}_{tokenizer_kind}"
+    return f"{model_name}_hybrid" if tokenizer_kind == "hybrid" else model_name
+
+
+def default_paths(
+    corpus_name: str,
+    model_name: str,
+    run_name: str,
+    matrix_mode: bool,
+    args: argparse.Namespace,
+) -> None:
     """Fill derived paths after parsing model_name."""
     dataset_suffix = "hybrid" if args.tokenizer_kind == "hybrid" else "spm"
     if args.raw_output is None:
-        args.raw_output = Path("data") / f"{model_name}.jsonl"
+        args.raw_output = Path("data") / f"{corpus_name}.jsonl"
     if args.processed_output is None:
-        args.processed_output = Path("data/processed") / f"{model_name}.txt"
+        args.processed_output = Path("data/processed") / f"{corpus_name}.txt"
     if args.tokenizer_name is None:
-        args.tokenizer_name = f"{model_name}_hybrid" if args.tokenizer_kind == "hybrid" else model_name
+        args.tokenizer_name = default_tokenizer_name(
+            model_name,
+            args.tokenizer_kind,
+            matrix_mode,
+        )
+    dataset_name = f"{model_name}_{args.tokenizer_kind}" if matrix_mode else model_name
     if args.train_dataset is None:
-        args.train_dataset = Path("data/datasets") / f"{model_name}_train_{dataset_suffix}.bin"
+        args.train_dataset = Path("data/datasets") / f"{dataset_name}_train_{dataset_suffix}.bin"
     if args.validation_dataset is None:
-        args.validation_dataset = Path("data/datasets") / f"{model_name}_valid_{dataset_suffix}.bin"
+        args.validation_dataset = Path("data/datasets") / f"{dataset_name}_valid_{dataset_suffix}.bin"
     if args.model_output_dir is None:
-        args.model_output_dir = Path("models") / model_name
+        args.model_output_dir = Path("models") / run_name
     if args.hf_output_dir is None:
-        args.hf_output_dir = Path(f"hf_{model_name}")
+        args.hf_output_dir = Path(f"hf_{run_name}")
 
 
 def tokenizer_path(args: argparse.Namespace) -> Path:
@@ -94,13 +135,23 @@ def should_skip(step: str, args: argparse.Namespace) -> bool:
     if getattr(args, f"skip_{step}"):
         return True
     output = existing_output_for_step(step, args)
+    if (step, str(output)) in getattr(args, "completed_outputs", set()):
+        return True
     return args.resume and output.exists()
+
+
+def step_selected(step: str, args: argparse.Namespace) -> bool:
+    """Return true when a step falls inside the requested step range."""
+    start_index = PIPELINE_STEPS.index(args.start_at)
+    stop_index = PIPELINE_STEPS.index(args.stop_after)
+    step_index = PIPELINE_STEPS.index(step)
+    return start_index <= step_index <= stop_index
 
 
 def run_command(label: str, command: list[str], args: argparse.Namespace) -> None:
     print()
     print(f"==> {label}")
-    print(subprocess.list2cmdline(command))
+    print(format_command(command))
     if args.dry_run:
         return
     subprocess.run(command, cwd=ROOT, check=True)
@@ -150,6 +201,12 @@ def run_preprocess(args: argparse.Namespace) -> None:
         path_arg(args.processed_output),
         "--transliteration",
         args.transliteration,
+        "--preview",
+        args.preprocess_preview,
+        "--workers",
+        args.preprocess_workers,
+        "--chunksize",
+        args.preprocess_chunksize,
     )
     if not args.jieba:
         command.append("--no-jieba")
@@ -172,6 +229,12 @@ def run_tokenizer(args: argparse.Namespace) -> None:
             args.vocab_size,
             "--min-word-frequency",
             args.hybrid_min_word_frequency,
+            "--initial-alphabet",
+            args.hybrid_initial_alphabet,
+            "--digits",
+            args.hybrid_digits,
+            "--max-invalid-examples",
+            args.hybrid_max_invalid_examples,
         )
         if args.hybrid_atomic_only:
             command.append("--atomic-only")
@@ -192,7 +255,23 @@ def run_tokenizer(args: argparse.Namespace) -> None:
         args.vocab_size,
         "--model-type",
         args.sentencepiece_model_type,
+        "--character-coverage",
+        args.sentencepiece_character_coverage,
+        "--input-sentence-size",
+        args.sentencepiece_input_sentence_size,
+        "--max-sentence-length",
+        args.sentencepiece_max_sentence_length,
+        "--split-max-chars",
+        args.sentencepiece_split_max_chars,
     )
+    if not args.sentencepiece_split_long_lines:
+        command.append("--no-split-long-lines")
+    if not args.sentencepiece_shuffle_input_sentence:
+        command.append("--no-shuffle-input-sentence")
+    if args.sentencepiece_train_extremely_large_corpus:
+        command.append("--train-extremely-large-corpus")
+    if args.sentencepiece_hard_vocab_limit:
+        command.append("--hard-vocab-limit")
     run_command("Train SentencePiece tokenizer", command, args)
 
 
@@ -250,6 +329,8 @@ def run_training(args: argparse.Namespace) -> None:
         args.n_head,
         "--n-embd",
         args.n_embd,
+        "--dropout",
+        args.dropout,
         "--epochs",
         args.epochs,
         "--batch-size",
@@ -258,6 +339,22 @@ def run_training(args: argparse.Namespace) -> None:
         args.learning_rate,
         "--gradient-accumulation-steps",
         args.gradient_accumulation_steps,
+        "--lr-schedule",
+        args.lr_schedule,
+        "--warmup-steps",
+        args.warmup_steps,
+        "--min-learning-rate",
+        args.min_learning_rate,
+        "--weight-decay",
+        args.weight_decay,
+        "--grad-clip",
+        args.grad_clip,
+        "--log-every",
+        args.log_every,
+        "--num-workers",
+        args.num_workers,
+        "--amp-dtype",
+        args.amp_dtype,
         "--seed",
         args.seed,
     )
@@ -280,6 +377,22 @@ def run_training(args: argparse.Namespace) -> None:
             command += ["--attn-implementation", args.attn_implementation]
     if args.device is not None:
         command += ["--device", args.device]
+    if args.num_threads is not None:
+        command += ["--num-threads", str(args.num_threads)]
+    if args.metrics_log is not None:
+        command += ["--metrics-log", path_arg(args.metrics_log)]
+    if args.resume_checkpoint is not None:
+        command += ["--resume", path_arg(args.resume_checkpoint)]
+    if not args.amp:
+        command.append("--no-amp")
+    if not args.tf32:
+        command.append("--no-tf32")
+    if not args.fused_adamw:
+        command.append("--no-fused-adamw")
+    if args.compile:
+        command.append("--compile")
+    if args.save_optimizer:
+        command.append("--save-optimizer")
     run_command("Train language model", command, args)
 
 
@@ -301,10 +414,15 @@ def run_convert(args: argparse.Namespace) -> None:
     )
     if not args.jieba:
         command.append("--no-jieba")
+    if not args.safe_serialization:
+        command.append("--no-safe-serialization")
     run_command("Convert to Transformers folder", command, args)
 
 
 def run_upload(args: argparse.Namespace) -> None:
+    if args.skip_upload:
+        print("Skipping upload")
+        return
     if args.hf_repo is None:
         return
     command = [
@@ -326,8 +444,24 @@ def parse_args() -> argparse.Namespace:
         "--model-name",
         required=True,
         help=(
-            "Run name used for tokenizer, datasets, checkpoint directory, and "
-            "Transformers export unless those paths are overridden."
+            "Base run name used for outputs. In matrix mode, architecture and "
+            "tokenizer suffixes are added to model/export directories."
+        ),
+    )
+    parser.add_argument(
+        "--corpus-name",
+        default=None,
+        help=(
+            "Name used for extracted and preprocessed corpus files. Defaults to "
+            "--model-name, which lets matrix runs share one corpus."
+        ),
+    )
+    parser.add_argument(
+        "--run-name-template",
+        default=None,
+        help=(
+            "Optional Python format string for per-run names. Available fields: "
+            "model_name, architecture, tokenizer_kind."
         ),
     )
     parser.add_argument("--dry-run", action="store_true", help="Print commands without running them.")
@@ -360,6 +494,9 @@ def parse_args() -> argparse.Namespace:
         default="pinyin-code",
     )
     preprocess.add_argument("--jieba", action=argparse.BooleanOptionalAction, default=True)
+    preprocess.add_argument("--preprocess-preview", type=int, default=3)
+    preprocess.add_argument("--preprocess-workers", type=int, default=1)
+    preprocess.add_argument("--preprocess-chunksize", type=int, default=32)
 
     tokenizer = parser.add_argument_group("tokenizer")
     tokenizer.add_argument(
@@ -367,6 +504,16 @@ def parse_args() -> argparse.Namespace:
         choices=("hybrid", "bpe"),
         default="hybrid",
         help="Tokenizer family to train. Hybrid is the default; bpe uses SentencePiece.",
+    )
+    tokenizer.add_argument(
+        "--tokenizer-kinds",
+        choices=("hybrid", "bpe"),
+        nargs="+",
+        default=None,
+        help=(
+            "Run one or more tokenizer families. Overrides --tokenizer-kind and "
+            "can be combined with --architectures for a matrix run."
+        ),
     )
     tokenizer.add_argument("--tokenizer-dir", type=Path, default=Path("tokenizers"))
     tokenizer.add_argument("--tokenizer-name", default=None)
@@ -376,9 +523,39 @@ def parse_args() -> argparse.Namespace:
         choices=("bpe", "unigram", "char", "word"),
         default="bpe",
     )
+    tokenizer.add_argument("--sentencepiece-character-coverage", type=float, default=1.0)
+    tokenizer.add_argument("--sentencepiece-input-sentence-size", type=int, default=0)
+    tokenizer.add_argument("--sentencepiece-max-sentence-length", type=int, default=100000)
+    tokenizer.add_argument(
+        "--sentencepiece-split-long-lines",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    tokenizer.add_argument("--sentencepiece-split-max-chars", type=int, default=60000)
+    tokenizer.add_argument(
+        "--sentencepiece-shuffle-input-sentence",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    tokenizer.add_argument(
+        "--sentencepiece-train-extremely-large-corpus",
+        action="store_true",
+    )
+    tokenizer.add_argument("--sentencepiece-hard-vocab-limit", action="store_true")
     tokenizer.add_argument("--hybrid-min-word-frequency", type=int, default=20)
     tokenizer.add_argument("--hybrid-atomic-only", action="store_true")
     tokenizer.add_argument("--hybrid-permissive", action="store_true")
+    tokenizer.add_argument(
+        "--hybrid-initial-alphabet",
+        default=None,
+        help="Initial alphabet passed to train_hybrid_tokenizer.py.",
+    )
+    tokenizer.add_argument(
+        "--hybrid-digits",
+        default=None,
+        help="Digit alphabet passed to train_hybrid_tokenizer.py.",
+    )
+    tokenizer.add_argument("--hybrid-max-invalid-examples", type=int, default=20)
 
     dataset = parser.add_argument_group("dataset")
     dataset.add_argument("--train-dataset", type=Path, default=None)
@@ -390,9 +567,20 @@ def parse_args() -> argparse.Namespace:
     training = parser.add_argument_group("training")
     training.add_argument("--model-output-dir", type=Path, default=None)
     training.add_argument("--architecture", choices=("gpt2", "qwen2"), default="gpt2")
+    training.add_argument(
+        "--architectures",
+        choices=("gpt2", "qwen2"),
+        nargs="+",
+        default=None,
+        help=(
+            "Run one or more model architectures. Overrides --architecture and "
+            "can be combined with --tokenizer-kinds for a matrix run."
+        ),
+    )
     training.add_argument("--n-layer", type=int, default=8)
     training.add_argument("--n-head", type=int, default=8)
     training.add_argument("--n-embd", type=int, default=512)
+    training.add_argument("--dropout", type=float, default=0.1)
     training.add_argument("--num-key-value-heads", type=int, default=4)
     training.add_argument("--intermediate-size", type=int, default=1376)
     training.add_argument("--rms-norm-eps", type=float, default=1.0e-6)
@@ -408,39 +596,192 @@ def parse_args() -> argparse.Namespace:
     training.add_argument("--batch-size", type=int, default=64)
     training.add_argument("--learning-rate", type=float, default=3e-4)
     training.add_argument("--gradient-accumulation-steps", type=int, default=1)
+    training.add_argument("--lr-schedule", choices=("cosine", "constant"), default="cosine")
+    training.add_argument("--warmup-steps", type=int, default=0)
+    training.add_argument("--min-learning-rate", type=float, default=0.0)
+    training.add_argument("--weight-decay", type=float, default=0.1)
+    training.add_argument("--grad-clip", type=float, default=1.0)
+    training.add_argument("--log-every", type=int, default=100)
+    training.add_argument("--num-workers", type=int, default=0)
+    training.add_argument("--num-threads", type=int, default=None)
+    training.add_argument("--metrics-log", type=Path, default=None)
     training.add_argument("--device", choices=("cpu", "cuda"), default=None)
+    training.add_argument(
+        "--resume-checkpoint",
+        type=Path,
+        default=None,
+        help="Forwarded to train_model.py --resume; distinct from pipeline --resume.",
+    )
+    training.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True)
+    training.add_argument("--amp-dtype", choices=("float16", "bfloat16"), default="float16")
+    training.add_argument("--tf32", action=argparse.BooleanOptionalAction, default=True)
+    training.add_argument("--fused-adamw", action=argparse.BooleanOptionalAction, default=True)
+    training.add_argument("--compile", action="store_true")
+    training.add_argument("--save-optimizer", action=argparse.BooleanOptionalAction, default=False)
     training.add_argument("--seed", type=int, default=1337)
 
     convert = parser.add_argument_group("convert/upload")
     convert.add_argument("--hf-output-dir", type=Path, default=None)
+    convert.add_argument(
+        "--safe-serialization",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     convert.add_argument(
         "--hf-repo",
         default=None,
         help="Optional Hugging Face repo id to upload after conversion, e.g. user/model.",
     )
 
-    skips = parser.add_argument_group("skip steps")
+    skips = parser.add_argument_group("step control")
+    skips.add_argument(
+        "--start-at",
+        choices=PIPELINE_STEPS,
+        default="extract",
+        help=(
+            "Start at this pipeline step, assuming earlier step outputs already "
+            "exist when they are needed."
+        ),
+    )
+    skips.add_argument(
+        "--stop-after",
+        choices=PIPELINE_STEPS,
+        default="upload",
+        help="Stop after this pipeline step.",
+    )
     skips.add_argument("--skip-extract", action="store_true")
     skips.add_argument("--skip-preprocess", action="store_true")
     skips.add_argument("--skip-tokenizer", action="store_true")
     skips.add_argument("--skip-dataset", action="store_true")
     skips.add_argument("--skip-train", action="store_true")
     skips.add_argument("--skip-convert", action="store_true")
+    skips.add_argument("--skip-upload", action="store_true")
 
-    args = parser.parse_args()
-    default_paths(args.model_name, args)
-    return args
+    return parser.parse_args()
+
+
+def selected_values(args: argparse.Namespace, plural_name: str, singular_name: str) -> list[str]:
+    """Return de-duplicated values from a plural override or singular default."""
+    values = getattr(args, plural_name) or [getattr(args, singular_name)]
+    return list(dict.fromkeys(values))
+
+
+def make_run_name(
+    args: argparse.Namespace,
+    architecture: str,
+    tokenizer_kind: str,
+    matrix_mode: bool,
+) -> str:
+    """Derive the model/export run name for one pipeline leg."""
+    if args.run_name_template is not None:
+        return args.run_name_template.format(
+            model_name=args.model_name,
+            architecture=architecture,
+            tokenizer_kind=tokenizer_kind,
+        )
+    if matrix_mode:
+        return f"{args.model_name}_{architecture}_{tokenizer_kind}"
+    return args.model_name
+
+
+def validate_matrix_args(
+    args: argparse.Namespace,
+    architectures: list[str],
+    tokenizer_kinds: list[str],
+) -> None:
+    """Fail early for explicit paths that would collide across matrix runs."""
+    if PIPELINE_STEPS.index(args.stop_after) < PIPELINE_STEPS.index(args.start_at):
+        raise ValueError("--stop-after must be the same as or later than --start-at")
+
+    run_count = len(architectures) * len(tokenizer_kinds)
+    if run_count <= 1:
+        return
+
+    per_run_paths = {
+        "--model-output-dir": args.model_output_dir,
+        "--hf-output-dir": args.hf_output_dir,
+        "--metrics-log": args.metrics_log,
+    }
+    for option, value in per_run_paths.items():
+        if value is not None:
+            raise ValueError(f"{option} cannot be shared across a matrix run")
+
+    if len(tokenizer_kinds) > 1:
+        tokenizer_scoped_paths = {
+            "--tokenizer-name": args.tokenizer_name,
+            "--train-dataset": args.train_dataset,
+            "--validation-dataset": args.validation_dataset,
+        }
+        for option, value in tokenizer_scoped_paths.items():
+            if value is not None:
+                raise ValueError(f"{option} cannot be shared across multiple tokenizer kinds")
+
+    if args.resume_checkpoint is not None:
+        raise ValueError("--resume-checkpoint is only supported for a single pipeline run")
+    if args.hf_repo is not None:
+        raise ValueError("--hf-repo is only supported for a single pipeline run")
+
+
+def pipeline_runs(args: argparse.Namespace) -> list[argparse.Namespace]:
+    """Create per-run argument namespaces for single or matrix execution."""
+    architectures = selected_values(args, "architectures", "architecture")
+    tokenizer_kinds = selected_values(args, "tokenizer_kinds", "tokenizer_kind")
+    validate_matrix_args(args, architectures, tokenizer_kinds)
+
+    matrix_mode = len(architectures) * len(tokenizer_kinds) > 1
+    corpus_name = args.corpus_name or args.model_name
+    runs: list[argparse.Namespace] = []
+    for tokenizer_kind in tokenizer_kinds:
+        for architecture in architectures:
+            run_args = copy.copy(args)
+            run_args.architecture = architecture
+            run_args.tokenizer_kind = tokenizer_kind
+            run_name = make_run_name(run_args, architecture, tokenizer_kind, matrix_mode)
+            default_paths(corpus_name, args.model_name, run_name, matrix_mode, run_args)
+            if run_args.hybrid_initial_alphabet is None:
+                run_args.hybrid_initial_alphabet = (
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+                )
+            if run_args.hybrid_digits is None:
+                run_args.hybrid_digits = "0123456789"
+            runs.append(run_args)
+    return runs
 
 
 def main() -> None:
-    args = parse_args()
-    run_extract(args)
-    run_preprocess(args)
-    run_tokenizer(args)
-    run_dataset(args)
-    run_training(args)
-    run_convert(args)
-    run_upload(args)
+    try:
+        runs = pipeline_runs(parse_args())
+    except ValueError as exc:
+        raise SystemExit(f"error: {exc}") from None
+
+    completed_outputs: set[tuple[str, str]] = set()
+    pipeline = [
+        ("extract", run_extract),
+        ("preprocess", run_preprocess),
+        ("tokenizer", run_tokenizer),
+        ("dataset", run_dataset),
+        ("train", run_training),
+        ("convert", run_convert),
+        ("upload", run_upload),
+    ]
+    for index, args in enumerate(runs, start=1):
+        args.completed_outputs = completed_outputs
+        if len(runs) > 1:
+            print()
+            print(
+                f"### Pipeline {index}/{len(runs)}: "
+                f"architecture={args.architecture} tokenizer={args.tokenizer_kind}"
+            )
+
+        for step, runner in pipeline:
+            if not step_selected(step, args):
+                continue
+            runner(args)
+            if step in {"extract", "preprocess", "tokenizer", "dataset"}:
+                if not getattr(args, f"skip_{step}"):
+                    completed_outputs.add(
+                        (step, str(existing_output_for_step(step, args)))
+                    )
     print()
     print("Pipeline finished.")
 
