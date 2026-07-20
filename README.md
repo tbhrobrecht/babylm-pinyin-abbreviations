@@ -409,7 +409,13 @@ This writes `hf_pinyin_code_model\` with custom `trust_remote_code` files,
 Load it with:
 
 ```python
-from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoConfig,
+    AutoModel,
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+)
 
 config = AutoConfig.from_pretrained(
     "hf_pinyin_code_model",
@@ -422,6 +428,11 @@ base_model = AutoModel.from_pretrained(
 model = AutoModelForCausalLM.from_pretrained(
     "hf_pinyin_code_model",
     trust_remote_code=True,
+)
+classifier = AutoModelForSequenceClassification.from_pretrained(
+    "hf_pinyin_code_model",
+    trust_remote_code=True,
+    num_labels=3,
 )
 tokenizer = AutoTokenizer.from_pretrained(
     "hf_pinyin_code_model",
@@ -439,10 +450,12 @@ segmentation.
 
 ## Transformers and external evaluation compatibility
 
-The exported model is a causal language model. For external evaluation
-repositories, set only the evaluation config to point at the local model folder
-or uploaded Hugging Face repo ID, enable `trust_remote_code`, and select the
-`causal` backend.
+The exported model is a causal language model and can also be loaded with
+`AutoModelForSequenceClassification` to reuse the same GPT-style backbone with a
+fresh classifier head. For external evaluation repositories, set only the
+evaluation config to point at the local model folder or uploaded Hugging Face
+repo ID, enable `trust_remote_code`, and select the `causal` backend for
+language-model evaluation.
 
 Runtime dependencies for the exported model are declared in `requirements.txt`.
 For a minimal evaluation environment, install:
@@ -461,9 +474,10 @@ Run the compatibility smoke test against a local export or repo ID:
 py tests\hf_compatibility_smoke.py hf_models\hf_full_chinese_gpu3
 ```
 
-The smoke test verifies `AutoConfig`, `AutoTokenizer`, `AutoModel`, and
-`AutoModelForCausalLM`, plus a CPU `torch.no_grad()` forward pass with logits
-shape `[batch, sequence_length, vocab_size]`.
+The smoke test verifies `AutoConfig`, `AutoTokenizer`, `AutoModel`,
+`AutoModelForCausalLM`, and `AutoModelForSequenceClassification`, plus CPU
+`torch.no_grad()` forward passes with logits shapes
+`[batch, sequence_length, vocab_size]` and `[batch, num_labels]`.
 
 The slow tokenizer also accepts `return_offsets_mapping=True` for compatibility
 with evaluators that need completion-span masks, and the model supports

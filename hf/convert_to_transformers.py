@@ -159,6 +159,9 @@ def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
         "AutoConfig": "configuration_pinyin_code.PinyinCodeConfig",
         "AutoModel": "modeling_pinyin_code.PinyinCodeModel",
         "AutoModelForCausalLM": "modeling_pinyin_code.PinyinCodeForCausalLM",
+        "AutoModelForSequenceClassification": (
+            "modeling_pinyin_code.PinyinCodeForSequenceClassification"
+        ),
         "AutoTokenizer": tokenizer_auto_map(tokenizer_path),
     }
     return config
@@ -261,7 +264,13 @@ def write_model_readme(
         ## Loading
 
         ```python
-        from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer
+        from transformers import (
+            AutoConfig,
+            AutoModel,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoTokenizer,
+        )
 
         model_path = "PATH_OR_REPO_ID"
 
@@ -269,6 +278,11 @@ def write_model_readme(
         tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
         base_model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
         model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True)
+        classifier = AutoModelForSequenceClassification.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+            num_labels=3,
+        )
         ```
 
         ## Evaluation

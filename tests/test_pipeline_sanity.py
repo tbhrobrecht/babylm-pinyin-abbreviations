@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import inspect
 import io
 import json
 import math
@@ -44,12 +45,17 @@ except ImportError:
 
 try:
     from hf.configuration_pinyin_code import PinyinCodeConfig
-    from hf.modeling_pinyin_code import PinyinCodeForCausalLM, PinyinCodeModel
+    from hf.modeling_pinyin_code import (
+        PinyinCodeForCausalLM,
+        PinyinCodeForSequenceClassification,
+        PinyinCodeModel,
+    )
     from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
 except ModuleNotFoundError:
     EncodedMandarinTokenizer = None
     PinyinCodeConfig = None
     PinyinCodeForCausalLM = None
+    PinyinCodeForSequenceClassification = None
     PinyinCodeModel = None
 
 
@@ -677,7 +683,12 @@ class PipelineSanityTests(unittest.TestCase):
             self.skipTest("transformers is not installed")
 
         from hf.convert_to_transformers import convert
-        from transformers import AutoTokenizer
+        from transformers import (
+            AutoModel,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoTokenizer,
+        )
 
         corpus_path = Path(self.temp_dir.name) / "hybrid-corpus.txt"
         corpus_path.write_text("Y0J7 Y0J7 H2\n", encoding="utf-8")
@@ -748,6 +759,10 @@ class PipelineSanityTests(unittest.TestCase):
             model_config_json["auto_map"]["AutoTokenizer"][0],
             "tokenization_hybrid_pinyin_code.HybridPinyinCodeTokenizer",
         )
+        self.assertEqual(
+            model_config_json["auto_map"]["AutoModelForSequenceClassification"],
+            "modeling_pinyin_code.PinyinCodeForSequenceClassification",
+        )
         self.assertEqual(model_config_json["vocab_size"], len(vocab))
         self.assertEqual(training_metadata["tokenizer_kind"], "hybrid")
         self.assertTrue((output_dir / "vocab.json").exists())
@@ -756,6 +771,18 @@ class PipelineSanityTests(unittest.TestCase):
 
         tokenizer = AutoTokenizer.from_pretrained(output_dir, trust_remote_code=True)
         self.assertEqual(tokenizer.tokenize("Y0J7 H2 X4Q3"), ["Y0J7", "H2", "X4", "Q3"])
+        base_model = AutoModel.from_pretrained(output_dir, trust_remote_code=True)
+        causal_model = AutoModelForCausalLM.from_pretrained(output_dir, trust_remote_code=True)
+        classifier, loading_info = AutoModelForSequenceClassification.from_pretrained(
+            output_dir,
+            trust_remote_code=True,
+            num_labels=3,
+            output_loading_info=True,
+        )
+        self.assertEqual(set(loading_info["missing_keys"]), {"classifier.weight", "classifier.bias"})
+        self.assertEqual(set(loading_info["unexpected_keys"]), set())
+        self.assertTrue(torch.equal(base_model.token_embedding.weight, classifier.token_embedding.weight))
+        self.assertTrue(torch.equal(causal_model.token_embedding.weight, classifier.token_embedding.weight))
 
     def test_train_loop_can_resume_from_compact_checkpoint(self) -> None:
         dataset_path = self.write_jsonl_dataset(
@@ -837,6 +864,97 @@ class PipelineSanityTests(unittest.TestCase):
         assert out.hidden_states is not None
         self.assertEqual(len(out.hidden_states), 3)
         self.assertEqual(tuple(out.hidden_states[-1].shape), (1, 3, 8))
+
+    def test_hf_sequence_classifier_forward_pools_last_non_padding_token(self) -> None:
+        if PinyinCodeConfig is None or PinyinCodeForSequenceClassification is None:
+            self.skipTest("transformers is not installed")
+
+        config = PinyinCodeConfig(
+            vocab_size=16,
+            block_size=8,
+            n_layer=1,
+            n_head=1,
+            n_embd=8,
+            num_labels=3,
+            dropout=0.0,
+        )
+        model = PinyinCodeForSequenceClassification(config)
+        input_ids = torch.tensor([[1, 2, 3, 0], [4, 5, 0, 0]])
+        attention_mask = torch.tensor([[1, 1, 1, 0], [1, 1, 0, 0]])
+        labels = torch.tensor([1, 2])
+
+        out = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=torch.zeros_like(input_ids),
+            labels=labels,
+            output_hidden_states=True,
+        )
+
+        self.assertEqual(tuple(out.logits.shape), (2, 3))
+        self.assertIsNotNone(out.loss)
+        assert out.loss is not None
+        self.assertTrue(torch.isfinite(out.loss))
+        self.assertIsNotNone(out.hidden_states)
+
+    def test_hf_sequence_classifier_uses_existing_raw_text_tokenizer_path(self) -> None:
+        if EncodedMandarinTokenizer is None or PinyinCodeForSequenceClassification is None:
+            self.skipTest("transformers or sentencepiece is not installed")
+        model_path = Path("hf_pinyin_code_model")
+        if not (model_path / "tokenizer.model").exists():
+            self.skipTest("exported tokenizer model is not available")
+
+        from transformers import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        texts = ["已经很晚了", "这是一个测试。"]
+        batch = tokenizer(texts, padding=True, return_tensors="pt")
+
+        causal_model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True)
+        causal_model.eval()
+        with torch.no_grad():
+            causal_out = causal_model(**batch)
+        self.assertEqual(tuple(causal_out.logits.shape[:2]), tuple(batch["input_ids"].shape))
+
+        classifier = AutoModelForSequenceClassification.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+            num_labels=3,
+        )
+        classifier.eval()
+        labels = torch.tensor([0, 2], dtype=torch.long)
+        with torch.no_grad():
+            classifier_out = classifier(**batch, labels=labels)
+
+        self.assertEqual(tuple(classifier_out.logits.shape), (2, 3))
+        self.assertIsNotNone(classifier_out.loss)
+        assert classifier_out.loss is not None
+        self.assertTrue(torch.isfinite(classifier_out.loss))
+
+    def test_hf_sequence_classifier_does_not_double_encode_raw_text(self) -> None:
+        if EncodedMandarinTokenizer is None or PinyinCodeForSequenceClassification is None:
+            self.skipTest("transformers or sentencepiece is not installed")
+        model_path = Path("hf_pinyin_code_model")
+        if not (model_path / "tokenizer.model").exists():
+            self.skipTest("exported tokenizer model is not available")
+
+        import preprocessing.preprocess as preprocess_module
+
+        tokenizer = EncodedMandarinTokenizer.from_pretrained(model_path)
+        calls = []
+        original = preprocess_module.hanzi_to_encoded
+
+        def counting_hanzi_to_encoded(text: str, use_jieba: bool = True) -> str:
+            calls.append(text)
+            return original(text, use_jieba)
+
+        with patch("preprocessing.preprocess.hanzi_to_encoded", side_effect=counting_hanzi_to_encoded):
+            tokenizer(["已经很晚了", "这是一个测试。"], padding=True)
+
+        self.assertEqual(calls, ["已经很晚了", "这是一个测试。"])
+        source = inspect.getsource(PinyinCodeForSequenceClassification)
+        forbidden = ("jieba", "pypinyin", "hanzi_to_encoded", "process_text", "_preprocess")
+        self.assertFalse(any(term in source for term in forbidden))
 
 
 if __name__ == "__main__":

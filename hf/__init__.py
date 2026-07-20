@@ -1,7 +1,11 @@
 """Hugging Face Transformers integration for the pinyin-code language model."""
 
 from .configuration_pinyin_code import PinyinCodeConfig
-from .modeling_pinyin_code import PinyinCodeForCausalLM, PinyinCodeModel
+from .modeling_pinyin_code import (
+    PinyinCodeForCausalLM,
+    PinyinCodeForSequenceClassification,
+    PinyinCodeModel,
+)
 from .tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
 
 try:
@@ -17,6 +21,7 @@ __all__ = [
     "HybridPinyinCodeTokenizer",
     "PinyinCodeConfig",
     "PinyinCodeForCausalLM",
+    "PinyinCodeForSequenceClassification",
     "PinyinCodeModel",
     "PinyinCodeTokenizer",
 ]

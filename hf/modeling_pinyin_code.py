@@ -7,7 +7,11 @@ from torch import nn
 from torch.nn import functional as F
 from transformers import PreTrainedModel
 from transformers.generation import GenerationMixin
-from transformers.modeling_outputs import BaseModelOutput, CausalLMOutput
+from transformers.modeling_outputs import (
+    BaseModelOutput,
+    CausalLMOutput,
+    SequenceClassifierOutput,
+)
 
 from .configuration_pinyin_code import PinyinCodeConfig
 
@@ -284,4 +288,102 @@ class PinyinCodeForCausalLM(PinyinCodeModel, GenerationMixin):
             loss=loss,
             logits=logits,
             hidden_states=decoder_outputs.hidden_states,
+        )
+
+
+class PinyinCodeForSequenceClassification(PinyinCodeModel):
+    """Sequence classifier using the pinyin-code decoder backbone."""
+
+    _keys_to_ignore_on_load_unexpected = [r"lm_head\.weight"]
+
+    def __init__(self, config: PinyinCodeConfig) -> None:
+        super().__init__(config, init_weights=False)
+        self.num_labels = config.num_labels
+        classifier_dropout = getattr(config, "classifier_dropout", None)
+        if classifier_dropout is None:
+            classifier_dropout = getattr(config, "hidden_dropout_prob", config.dropout)
+        self.score_dropout = nn.Dropout(classifier_dropout)
+        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+        self.post_init()
+
+    def forward(
+        self,
+        input_ids: torch.Tensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
+        token_type_ids: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
+        inputs_embeds: torch.Tensor | None = None,
+        output_attentions: bool | None = None,
+        output_hidden_states: bool | None = None,
+        return_dict: bool | None = None,
+        **kwargs,
+    ) -> SequenceClassifierOutput | tuple:
+        return_dict = True if return_dict is None else return_dict
+
+        outputs = PinyinCodeModel.forward(
+            self,
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            inputs_embeds=inputs_embeds,
+            position_ids=position_ids,
+            output_hidden_states=output_hidden_states,
+            return_dict=True,
+            **kwargs,
+        )
+
+        hidden_states = outputs.last_hidden_state
+        batch_size, sequence_length, _ = hidden_states.shape
+        if attention_mask is not None:
+            sequence_indices = attention_mask.to(hidden_states.device).long().sum(dim=-1) - 1
+        else:
+            sequence_indices = torch.full(
+                (batch_size,),
+                sequence_length - 1,
+                dtype=torch.long,
+                device=hidden_states.device,
+            )
+        sequence_indices = sequence_indices.clamp(min=0, max=sequence_length - 1)
+        batch_indices = torch.arange(batch_size, device=hidden_states.device)
+        pooled_hidden_states = hidden_states[batch_indices, sequence_indices]
+        logits = self.classifier(self.score_dropout(pooled_hidden_states))
+
+        loss = None
+        if labels is not None:
+            labels = labels.to(logits.device)
+            if getattr(self.config, "problem_type", None) is None:
+                if self.num_labels == 1:
+                    self.config.problem_type = "regression"
+                elif labels.dtype in (torch.long, torch.int):
+                    self.config.problem_type = "single_label_classification"
+                else:
+                    self.config.problem_type = "multi_label_classification"
+
+            if self.config.problem_type == "regression":
+                if self.num_labels == 1:
+                    loss = F.mse_loss(logits.squeeze(), labels.squeeze())
+                else:
+                    loss = F.mse_loss(logits, labels)
+            elif self.config.problem_type == "single_label_classification":
+                loss = F.cross_entropy(
+                    logits.view(-1, self.num_labels),
+                    labels.view(-1),
+                )
+            elif self.config.problem_type == "multi_label_classification":
+                loss = F.binary_cross_entropy_with_logits(logits, labels)
+
+        if not return_dict:
+            output = (logits,)
+            if outputs.hidden_states is not None:
+                output = output + (outputs.hidden_states,)
+            attentions = getattr(outputs, "attentions", None)
+            if attentions is not None:
+                output = output + (attentions,)
+            return ((loss,) + output) if loss is not None else output
+
+        return SequenceClassifierOutput(
+            loss=loss,
+            logits=logits,
+            hidden_states=outputs.hidden_states,
+            attentions=getattr(outputs, "attentions", None),
         )

@@ -6,7 +6,13 @@ import argparse
 from pathlib import Path
 
 import torch
-from transformers import AutoConfig, AutoModel, AutoModelForCausalLM, AutoTokenizer
+from transformers import (
+    AutoConfig,
+    AutoModel,
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+)
 
 
 DEFAULT_MODEL_PATH = Path("hf_models") / "hf_full_chinese_gpu3"
@@ -82,10 +88,27 @@ def main() -> None:
             f"expected {config.vocab_size}"
         )
 
+    classifier = AutoModelForSequenceClassification.from_pretrained(
+        args.model_path,
+        trust_remote_code=True,
+        num_labels=3,
+    )
+    classifier.eval()
+    labels = torch.tensor([0, 2], dtype=torch.long)
+    with torch.no_grad():
+        classifier_out = classifier(**batch, labels=labels)
+    if tuple(classifier_out.logits.shape) != (2, 3):
+        raise RuntimeError(
+            f"Unexpected classifier logits shape: {tuple(classifier_out.logits.shape)}"
+        )
+    if classifier_out.loss is None or not torch.isfinite(classifier_out.loss):
+        raise RuntimeError("Sequence-classification loss is not finite")
+
     print(config.model_type)
     print(tokenizer.__class__)
     print(base_out.last_hidden_state.shape)
     print(out.logits.shape)
+    print(classifier_out.logits.shape)
     print("ok")
 
 
