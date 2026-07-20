@@ -202,10 +202,30 @@ def build_vocab(args: argparse.Namespace) -> tuple[dict[str, int], dict[str, obj
     return vocab, metadata
 
 
+def token_scores_from_metadata(metadata: dict[str, object]) -> dict[str, float]:
+    """Return a token->frequency map for softmax scoring from build metadata.
+
+    Only whole-word entries carry a corpus frequency; atomic and preserved
+    tokens have no stored frequency and are left out (they score 0.0, which the
+    softmax treats as a constant that cancels out)."""
+    scores: dict[str, float] = {}
+    for entry in metadata.get("selected_word_frequencies", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        token = entry.get("token")
+        frequency = entry.get("frequency")
+        if isinstance(token, str) and isinstance(frequency, (int, float)):
+            scores[token] = float(frequency)
+    return scores
+
+
 def write_tokenizer_files(output_dir: Path, vocab: dict[str, int], metadata: dict[str, object]) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     write_json(output_dir / "vocab.json", vocab)
     write_json(output_dir / METADATA_NAME, metadata)
+    token_scores = token_scores_from_metadata(metadata)
+    if token_scores:
+        write_json(output_dir / "token_scores.json", token_scores)
     write_json(
         output_dir / "special_tokens_map.json",
         {
@@ -231,6 +251,15 @@ def write_tokenizer_files(output_dir: Path, vocab: dict[str, int], metadata: dic
             "add_eos_token": False,
             "strict_validation": not bool(metadata.get("permissive", False)),
             "readable_decode": False,
+            # Deterministic greedy longest-match is the default segmentation
+            # policy; softmax sampling is opt-in. These fields are optional and
+            # older tokenizer directories without them still load as greedy.
+            "tokenization_mode": "greedy",
+            "sampling_temperature": 1.0,
+            "sampling_alpha": 1.0,
+            "sampling_beta": 1.0,
+            "sampling_epsilon": 1e-8,
+            "sampling_seed": None,
             "pad_token": "<pad>",
             "unk_token": "<unk>",
             "bos_token": "<s>",

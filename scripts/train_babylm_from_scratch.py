@@ -301,6 +301,25 @@ def run_dataset(args: argparse.Namespace) -> None:
         "--seed",
         args.seed,
     )
+    # Segmentation modes only apply to the hybrid tokenizer; SentencePiece has a
+    # single deterministic segmentation and would ignore these flags.
+    if args.tokenizer_kind == "hybrid":
+        command += [
+            "--tokenization-mode",
+            args.train_tokenization_mode,
+            "--eval-tokenization-mode",
+            args.eval_tokenization_mode,
+            "--sampling-temperature",
+            args.sampling_temperature,
+            "--sampling-alpha",
+            args.sampling_alpha,
+            "--sampling-beta",
+            args.sampling_beta,
+            "--sampling-epsilon",
+            args.sampling_epsilon,
+        ]
+        if args.sampling_seed is not None:
+            command += ["--sampling-seed", args.sampling_seed]
     run_command("Create train/validation datasets", command, args)
 
 
@@ -563,6 +582,27 @@ def parse_args() -> argparse.Namespace:
     dataset.add_argument("--validation-fraction", type=float, default=0.05)
     dataset.add_argument("--block-size", type=int, default=512)
     dataset.add_argument("--stride", type=int, default=512)
+    dataset.add_argument(
+        "--train-tokenization-mode",
+        choices=("greedy", "softmax"),
+        default="greedy",
+        help=(
+            "Hybrid tokenizer segmentation policy for the training split. "
+            "'greedy' is the deterministic default; 'softmax' samples locally. "
+            "Ignored for --tokenizer-kind bpe."
+        ),
+    )
+    dataset.add_argument(
+        "--eval-tokenization-mode",
+        choices=("greedy", "softmax"),
+        default="greedy",
+        help="Hybrid tokenizer segmentation policy for validation. Defaults to greedy.",
+    )
+    dataset.add_argument("--sampling-temperature", type=float, default=1.0)
+    dataset.add_argument("--sampling-alpha", type=float, default=1.0)
+    dataset.add_argument("--sampling-beta", type=float, default=1.0)
+    dataset.add_argument("--sampling-epsilon", type=float, default=1e-8)
+    dataset.add_argument("--sampling-seed", type=int, default=None)
 
     training = parser.add_argument_group("training")
     training.add_argument("--model-output-dir", type=Path, default=None)

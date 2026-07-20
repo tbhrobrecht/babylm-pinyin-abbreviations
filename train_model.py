@@ -130,6 +130,9 @@ class JsonlTokenDataset(Dataset):
                 self.max_token_id = max(self.max_token_id, max(input_ids))
                 self.examples.append(torch.tensor(input_ids, dtype=torch.long))
 
+        # JSONL datasets carry no tokenization sidecar metadata.
+        self.tokenization: dict[str, Any] | None = None
+
         if not self.examples:
             raise ValueError(f"No examples found in {path}")
 
@@ -164,6 +167,11 @@ class BinaryTokenDataset(Dataset):
         self.num_examples = int(metadata["num_examples"])
         self.sequence_lengths = {self.block_size}
         self.max_token_id = int(metadata.get("max_token_id", -1))
+        # Tokenization settings recorded by create_dataset.py (optional).
+        tokenization = metadata.get("tokenization")
+        self.tokenization: dict[str, Any] | None = (
+            tokenization if isinstance(tokenization, dict) else None
+        )
 
         if self.num_examples <= 0:
             raise ValueError(f"No examples found in {path}")
@@ -657,6 +665,39 @@ def save_babylm_checkpoint(
     return path
 
 
+def log_tokenization_setup(tokenization: dict[str, Any] | None, vocab_size: int) -> None:
+    """Log the tokenizer/tokenization settings used to build the dataset.
+
+    The dataset is tokenized offline by create_dataset.py, so the segmentation
+    policy is a property of the dataset rather than the model. For greedy runs
+    (or datasets without recorded metadata) this never reports active sampling.
+    """
+    if not tokenization:
+        print(
+            "tokenizer_setup tokenizer=unknown vocab_size="
+            f"{vocab_size:,} train_tokenization_mode=unknown "
+            "(dataset has no recorded tokenization metadata; JSONL datasets and "
+            "pre-existing binary datasets do not carry it)"
+        )
+        return
+
+    train_mode = tokenization.get("train_tokenization_mode", "greedy")
+    is_softmax = str(train_mode).lower() == "softmax"
+    print(
+        "tokenizer_setup "
+        f"tokenizer={tokenization.get('tokenizer', 'unknown')} "
+        f"vocab_size={vocab_size:,} "
+        f"train_tokenization_mode={train_mode} "
+        f"eval_tokenization_mode={tokenization.get('eval_tokenization_mode', 'greedy')} "
+        f"sampling_active={is_softmax} "
+        f"sampling_temperature={tokenization.get('sampling_temperature') if is_softmax else 'n/a'} "
+        f"sampling_alpha={tokenization.get('sampling_alpha') if is_softmax else 'n/a'} "
+        f"sampling_beta={tokenization.get('sampling_beta') if is_softmax else 'n/a'} "
+        f"sampling_seed={tokenization.get('sampling_seed') if is_softmax else 'n/a'} "
+        "boundary_policy=jieba_whitespace atomic_fallback=enabled"
+    )
+
+
 def build_optimizer(
     model: nn.Module,
     args: argparse.Namespace,
@@ -734,6 +775,7 @@ def checkpoint_payload(
     validation_loss: float | None,
     best_loss: float | None,
     save_optimizer: bool,
+    tokenization_metadata: dict[str, Any] | None = None,
 ) -> dict:
     """Build a checkpoint, optionally including optimizer state for resuming."""
     config = canonical_model_config(config)
@@ -742,6 +784,7 @@ def checkpoint_payload(
         "model_config": asdict(config),
         "architecture": config.architecture,
         "tokenizer_type": "jieba_atomic",
+        "tokenization": tokenization_metadata,
         "vocab_size": config.vocab_size,
         "epoch": epoch,
         "global_step": global_step,
@@ -825,6 +868,7 @@ def train(args: argparse.Namespace) -> None:
     configure_runtime(args, device)
 
     dataset = load_token_dataset(args.dataset)
+    tokenization_metadata = getattr(dataset, "tokenization", None)
     config = canonical_model_config(ModelConfig(
         architecture=getattr(args, "architecture", "gpt2"),
         vocab_size=args.vocab_size,
@@ -943,6 +987,8 @@ def train(args: argparse.Namespace) -> None:
     if device.type == "cpu":
         print("warning: training on CPU; this will be much slower than CUDA-based runs.")
 
+    log_tokenization_setup(tokenization_metadata, summary["vocab_size"])
+
     tokens_since_log = 0
     log_start = time.perf_counter()
     metrics_mode = "a" if args.resume is not None and metrics_path.exists() else "w"
@@ -1025,6 +1071,7 @@ def train(args: argparse.Namespace) -> None:
                         best_loss if math.isfinite(best_loss) else None,
                         best_loss if math.isfinite(best_loss) else None,
                         args.save_optimizer,
+                        tokenization_metadata,
                     )
                     for checkpoint_target in checkpoint_targets:
                         saved_path = save_babylm_checkpoint(
@@ -1101,6 +1148,7 @@ def train(args: argparse.Namespace) -> None:
             valid_loss,
             checkpoint_best_loss,
             args.save_optimizer,
+            tokenization_metadata,
         )
         torch.save(checkpoint, args.output_dir / "last.pt")
         if valid_loss < best_loss:

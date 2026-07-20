@@ -37,6 +37,27 @@ def require_hybrid_tokenizer():
     return HybridPinyinCodeTokenizer
 
 
+TOKENIZATION_MODES = ("greedy", "softmax")
+
+
+def hybrid_tokenization_kwargs(settings: dict[str, Any] | None) -> dict[str, Any]:
+    """Return the subset of tokenization settings accepted by the hybrid tokenizer."""
+    if not settings:
+        return {}
+    kwargs: dict[str, Any] = {}
+    for source, target in (
+        ("tokenization_mode", "tokenization_mode"),
+        ("sampling_temperature", "sampling_temperature"),
+        ("sampling_alpha", "sampling_alpha"),
+        ("sampling_beta", "sampling_beta"),
+        ("sampling_epsilon", "sampling_epsilon"),
+        ("sampling_seed", "sampling_seed"),
+    ):
+        if settings.get(source) is not None:
+            kwargs[target] = settings[source]
+    return kwargs
+
+
 class HybridProcessorAdapter:
     """Expose the small SentencePiece-like API used by this script."""
 
@@ -54,12 +75,32 @@ class HybridProcessorAdapter:
         return eos_id if eos_id is not None else -1
 
 
-def load_tokenizer_processor(tokenizer_path: Path):
-    """Load either a legacy SentencePiece model or a hybrid tokenizer directory."""
+def apply_tokenization_mode(processor, mode: str | None) -> None:
+    """Set the tokenization mode on a hybrid processor; no-op for SentencePiece."""
+    if mode is None:
+        return
+    tokenizer = getattr(processor, "tokenizer", None)
+    setter = getattr(tokenizer, "set_tokenization_mode", None)
+    if callable(setter):
+        setter(mode)
+
+
+def load_tokenizer_processor(tokenizer_path: Path, tokenization_settings: dict[str, Any] | None = None):
+    """Load either a legacy SentencePiece model or a hybrid tokenizer directory.
+
+    ``tokenization_settings`` (tokenization_mode, sampling_*) only affects the
+    hybrid tokenizer; SentencePiece has a single deterministic segmentation and
+    ignores them.
+    """
     if tokenizer_path.is_dir() or tokenizer_path.name == "vocab.json":
         HybridPinyinCodeTokenizer = require_hybrid_tokenizer()
         load_path = tokenizer_path.parent if tokenizer_path.name == "vocab.json" else tokenizer_path
-        return HybridProcessorAdapter(HybridPinyinCodeTokenizer.from_pretrained(load_path))
+        return HybridProcessorAdapter(
+            HybridPinyinCodeTokenizer.from_pretrained(
+                load_path,
+                **hybrid_tokenization_kwargs(tokenization_settings),
+            )
+        )
 
     spm = require_sentencepiece()
     return spm.SentencePieceProcessor(model_file=str(tokenizer_path))
@@ -75,17 +116,28 @@ def iter_document_token_ids(input_paths: Iterable[Path], processor) -> Iterable[
     """Yield one token-id list per processed document, with EOS appended."""
     eos_id = processor.eos_id()
 
+    for text in iter_documents(input_paths):
+        token_ids = encode_document(processor, text, eos_id)
+        if token_ids:
+            yield token_ids
+
+
+def iter_documents(input_paths: Iterable[Path]) -> Iterable[str]:
+    """Yield each non-empty processed document line."""
     for input_path in input_paths:
         with input_path.open("r", encoding="utf-8-sig") as handle:
             for line in handle:
                 text = line.strip()
-                if not text:
-                    continue
-                token_ids = processor.encode(text, out_type=int)
-                if eos_id >= 0:
-                    token_ids.append(eos_id)
-                if token_ids:
-                    yield token_ids
+                if text:
+                    yield text
+
+
+def encode_document(processor, text: str, eos_id: int) -> list[int]:
+    """Encode one document and append EOS when the tokenizer defines one."""
+    token_ids = processor.encode(text, out_type=int)
+    if eos_id >= 0:
+        token_ids.append(eos_id)
+    return token_ids
 
 
 def iter_chunks(token_ids: Iterable[int], block_size: int, stride: int) -> Iterable[list[int]]:
@@ -174,7 +226,27 @@ def binary_metadata_path(path: Path) -> Path:
     return path.with_suffix(path.suffix + ".meta.json")
 
 
-def write_binary_metadata(path: Path, writer: ChunkWriter, args: argparse.Namespace) -> None:
+def tokenization_metadata(args: argparse.Namespace, mode: str) -> dict[str, Any]:
+    """Return tokenization settings recorded in a binary dataset sidecar."""
+    return {
+        "tokenizer": str(args.tokenizer),
+        "tokenization_mode": mode,
+        "train_tokenization_mode": getattr(args, "tokenization_mode", "greedy"),
+        "eval_tokenization_mode": getattr(args, "eval_tokenization_mode", "greedy"),
+        "sampling_temperature": getattr(args, "sampling_temperature", 1.0),
+        "sampling_alpha": getattr(args, "sampling_alpha", 1.0),
+        "sampling_beta": getattr(args, "sampling_beta", 1.0),
+        "sampling_epsilon": getattr(args, "sampling_epsilon", 1e-8),
+        "sampling_seed": getattr(args, "sampling_seed", None),
+    }
+
+
+def write_binary_metadata(
+    path: Path,
+    writer: ChunkWriter,
+    args: argparse.Namespace,
+    mode: str = "greedy",
+) -> None:
     """Write metadata needed to memory-map a binary dataset."""
     payload = {
         "format": "pinyin-code-chunks-v1",
@@ -186,6 +258,7 @@ def write_binary_metadata(path: Path, writer: ChunkWriter, args: argparse.Namesp
         "consumed_tokens": writer.consumed_tokens,
         "dropped_tail_tokens": writer.dropped_tail_tokens,
         "max_token_id": writer.max_token_id,
+        "tokenization": tokenization_metadata(args, mode),
     }
     binary_metadata_path(path).write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
@@ -204,6 +277,8 @@ def open_output(path: Path, output_format: str):
 
 def write_single_dataset(args: argparse.Namespace, processor) -> DatasetWriteStats:
     """Write all input documents into one chunked dataset."""
+    train_mode = getattr(args, "tokenization_mode", "greedy")
+    apply_tokenization_mode(processor, train_mode)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with open_output(args.output, args.format) as out:
         writer = make_chunk_writer(out, args)
@@ -211,7 +286,7 @@ def write_single_dataset(args: argparse.Namespace, processor) -> DatasetWriteSta
             writer.add_tokens(document_ids)
 
     if args.format == "bin":
-        write_binary_metadata(args.output, writer, args)
+        write_binary_metadata(args.output, writer, args, train_mode)
 
     return DatasetWriteStats(
         train_examples=writer.written,
@@ -231,6 +306,11 @@ def write_train_validation_datasets(args: argparse.Namespace, processor) -> Data
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.validation_output.parent.mkdir(parents=True, exist_ok=True)
 
+    train_mode = getattr(args, "tokenization_mode", "greedy")
+    eval_mode = getattr(args, "eval_tokenization_mode", "greedy")
+    same_mode = train_mode == eval_mode
+    eos_id = processor.eos_id()
+
     with (
         open_output(args.output, args.format) as train_out,
         open_output(args.validation_output, args.format) as valid_out,
@@ -238,13 +318,28 @@ def write_train_validation_datasets(args: argparse.Namespace, processor) -> Data
         train_writer = make_chunk_writer(train_out, args)
         valid_writer = make_chunk_writer(valid_out, args)
 
-        for document_ids in iter_document_token_ids(args.input, processor):
-            writer = valid_writer if rng.random() < args.validation_fraction else train_writer
-            writer.add_tokens(document_ids)
+        if same_mode:
+            # Encoding is mode-independent across splits, so keep the original
+            # routing order exactly: encode, then draw once per non-empty
+            # document. This preserves byte-for-byte greedy dataset outputs.
+            apply_tokenization_mode(processor, train_mode)
+            for document_ids in iter_document_token_ids(args.input, processor):
+                writer = valid_writer if rng.random() < args.validation_fraction else train_writer
+                writer.add_tokens(document_ids)
+        else:
+            # Train and eval use different segmentation policies, so decide the
+            # split first, then encode that document with the matching mode.
+            for text in iter_documents(args.input):
+                to_valid = rng.random() < args.validation_fraction
+                apply_tokenization_mode(processor, eval_mode if to_valid else train_mode)
+                document_ids = encode_document(processor, text, eos_id)
+                if not document_ids:
+                    continue
+                (valid_writer if to_valid else train_writer).add_tokens(document_ids)
 
     if args.format == "bin":
-        write_binary_metadata(args.output, train_writer, args)
-        write_binary_metadata(args.validation_output, valid_writer, args)
+        write_binary_metadata(args.output, train_writer, args, train_mode)
+        write_binary_metadata(args.validation_output, valid_writer, args, eval_mode)
 
     return DatasetWriteStats(
         train_examples=train_writer.written,
@@ -261,7 +356,15 @@ def write_dataset(args: argparse.Namespace) -> DatasetWriteStats:
     if args.format == "bin" and args.include_labels:
         raise ValueError("--include-labels is only supported for --format jsonl")
 
-    processor = load_tokenizer_processor(args.tokenizer)
+    tokenization_settings = {
+        "tokenization_mode": getattr(args, "tokenization_mode", "greedy"),
+        "sampling_temperature": getattr(args, "sampling_temperature", 1.0),
+        "sampling_alpha": getattr(args, "sampling_alpha", 1.0),
+        "sampling_beta": getattr(args, "sampling_beta", 1.0),
+        "sampling_epsilon": getattr(args, "sampling_epsilon", 1e-8),
+        "sampling_seed": getattr(args, "sampling_seed", None),
+    }
+    processor = load_tokenizer_processor(args.tokenizer, tokenization_settings)
 
     if args.validation_output is not None or args.validation_fraction is not None:
         validation_fraction = args.validation_fraction
@@ -350,11 +453,53 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--seed", type=int, default=1337)
+
+    tokenization = parser.add_argument_group("hybrid tokenization mode")
+    tokenization.add_argument(
+        "--tokenization-mode",
+        choices=TOKENIZATION_MODES,
+        default="greedy",
+        help=(
+            "Segmentation policy for the hybrid tokenizer's training split. "
+            "'greedy' is deterministic longest match (default); 'softmax' samples "
+            "locally at each atomic position. Ignored by SentencePiece tokenizers."
+        ),
+    )
+    tokenization.add_argument(
+        "--eval-tokenization-mode",
+        choices=TOKENIZATION_MODES,
+        default="greedy",
+        help=(
+            "Segmentation policy for the validation split. Defaults to greedy so "
+            "evaluation is deterministic even when training uses softmax."
+        ),
+    )
+    tokenization.add_argument("--sampling-temperature", type=float, default=1.0)
+    tokenization.add_argument("--sampling-alpha", type=float, default=1.0)
+    tokenization.add_argument("--sampling-beta", type=float, default=1.0)
+    tokenization.add_argument("--sampling-epsilon", type=float, default=1e-8)
+    tokenization.add_argument(
+        "--sampling-seed",
+        type=int,
+        default=None,
+        help="Seed for the hybrid softmax RNG. Makes softmax datasets reproducible.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    print(
+        "tokenization_setup "
+        f"tokenizer={args.tokenizer} "
+        f"train_tokenization_mode={args.tokenization_mode} "
+        f"eval_tokenization_mode={args.eval_tokenization_mode} "
+        f"sampling_temperature={args.sampling_temperature:g} "
+        f"sampling_alpha={args.sampling_alpha:g} "
+        f"sampling_beta={args.sampling_beta:g} "
+        f"sampling_epsilon={args.sampling_epsilon:g} "
+        f"sampling_seed={args.sampling_seed}"
+    )
     stats = write_dataset(args)
     print(f"Wrote {stats.train_examples:,} training examples to {args.output}")
     print(

@@ -176,6 +176,119 @@ tokenizer = HybridPinyinCodeTokenizer.from_pretrained("tokenizers/babylm_zho_hyb
 print(tokenizer.tokenize("Y0J7 H2 X4Q3"))
 ```
 
+### Tokenization modes: greedy and softmax
+
+The hybrid tokenizer supports two selectable segmentation policies over the
+*same* vocabulary, token ids, Jieba boundary policy, and atomic fallback. Both
+modes share one implementation and one candidate enumerator; only the way a
+token is chosen at each atomic position differs. This isolates the segmentation
+policy as an experiment variable: same corpus, same encoded representation, same
+vocabulary, different segmentation.
+
+For one encoded Jieba word, the tokenizer represents it as its atomic
+Initial+Digit units, e.g. `H2W7L6` becomes `["H2", "W7", "L6"]`, and never
+splits a unit internally (`Y6` stays `Y6`, never `Y` `6`). At each position it
+enumerates the *valid candidates* `C(i)` — the vocabulary tokens that match one
+or more complete atomic units starting at `i`. Because every atom is in the
+vocabulary, `C(i)` is non-empty for valid input; if it is ever empty the
+tokenizer raises a clear error instead of silently emitting `<unk>`.
+
+**Greedy (default)** — deterministic left-to-right longest match. At each
+position it picks the candidate covering the most atomic units and advances.
+Tie-breaking is stable and documented: (1) greater atomic length, (2) higher
+stored token frequency/score, (3) lower token id, (4) lexicographic token order.
+In practice the candidate for each covered length is uniquely determined by the
+atoms it spans, so rule 1 already decides the choice. Greedy never uses random
+state, so its output is fully reproducible and independent of any seed. It is
+the default and reproduces the previous hybrid tokenizer's output on the
+existing examples.
+
+Examples with valid tokens `H7 W7 L6 H7W7 W7L6 H7W7L6`:
+
+- `H7W7L6` → `[H7W7L6]`
+- without `H7W7L6`: `H7W7L6` → `[H7W7] [L6]`
+- with only atoms: `H7W7L6` → `[H7] [W7] [L6]`
+
+**Softmax** — stochastic left-to-right sampling. This is *local autoregressive
+segmentation sampling*: at each position it samples one token from the valid
+candidates and advances. It does **not** enumerate every complete segmentation
+path of the word. Each candidate `t` gets a score
+
+```text
+s(t) = alpha * log(f(t) + epsilon) + beta * |t|
+```
+
+where `f(t)` is the stored token frequency/score, `|t|` is the atomic length,
+`epsilon > 0` avoids `log(0)`, `alpha` weights frequency, and `beta` weights
+length. Selection uses a numerically stable softmax with temperature `tau`:
+
+```text
+P(t | i) = exp(s(t)/tau) / sum_u exp(s(u)/tau)
+```
+
+computed by subtracting `max_k z_k` from the logits so `exp` cannot overflow.
+`tau` must be greater than zero. Frequencies come from the strongest available
+signal — the whole-word corpus frequencies stored in
+`hybrid_tokenizer_metadata.json` / `token_scores.json`. When no frequency
+metadata exists, every `f(t)` is `0`, so the `alpha` term is a shared constant
+that cancels in the softmax and scoring is length-only (equivalent to
+`alpha = 0`); the softmax still works. Frequencies are never fabricated.
+
+Configure modes via the constructor / `from_pretrained`:
+
+```python
+tokenizer = HybridPinyinCodeTokenizer.from_pretrained(
+    "tokenizers/babylm_zho_hybrid_16k",
+    tokenization_mode="softmax",   # default is "greedy"
+    sampling_temperature=1.0,
+    sampling_alpha=1.0,
+    sampling_beta=1.0,
+    sampling_epsilon=1e-8,
+    sampling_seed=42,
+)
+```
+
+Switch modes at runtime without changing the vocabulary or token ids:
+
+```python
+tokenizer.set_tokenization_mode("softmax")
+with tokenizer.use_mode("greedy"):     # e.g. force deterministic evaluation
+    ids = tokenizer("Y0J7 H2 X4Q3")
+```
+
+**Reproducibility.** Softmax uses a tokenizer-local `random.Random(sampling_seed)`
+and never touches Python's global random state or reseeds per call. Two
+tokenizers with the same configuration and seed produce the same sampled
+segmentations when called in the same order; different seeds can differ. Greedy
+never depends on random state. Tokenization happens offline in a single process
+in `create_dataset.py`, so no per-worker seeding is required in the standard
+training path; `tokenizer.reseed(base_seed + worker_id + rank)` is available if
+you ever tokenize inside multiple worker processes. Epoch-aware reseeding is not
+performed, because datasets are tokenized once before training.
+
+**Recommendation.** Use softmax for the *training* split as a segmentation
+data-augmentation, and greedy for validation, generation, benchmark evaluation,
+and export, so evaluation stays deterministic. Stochastic tokenization is never
+the evaluation default.
+
+Both modes preserve the atomic Initial+Digit units and the whitespace-separated
+Jieba word boundaries: matching is confined to a single word, so no token spans
+a boundary (e.g. in `Y6J3 H7W7L6` a token can never cover `J3H7`).
+
+Inspect the segmentation, candidates, scores, and probabilities for an example
+(read-only; never modifies the tokenizer):
+
+```powershell
+py scripts\inspect_tokenizer.py --tokenizer tokenizers\babylm_zho_hybrid_16k --text "Y0J7 H2 X4Q3" --mode greedy
+py scripts\inspect_tokenizer.py --tokenizer tokenizers\babylm_zho_hybrid_16k --text "Y0J7 H2 X4Q3" --mode softmax --temperature 1.0 --samples 20 --seed 42
+```
+
+The tokenizer directory optionally stores the mode configuration in
+`tokenizer_config.json` and the per-token frequency signal in
+`token_scores.json`. Older tokenizer directories without these fields still
+load, default to `greedy`, and are not rewritten on load. Saving and reloading
+preserves the configured mode, sampling parameters, vocabulary, and token ids.
+
 The tokenizer directory also includes remote-code metadata, so this works in a
 Transformers environment when the directory contains
 `tokenization_hybrid_pinyin_code.py`:
@@ -247,6 +360,21 @@ py create_dataset.py --format bin --input data\processed\10k_babylm_zho.txt --ou
 
 Binary datasets write raw int32 token chunks plus a `.meta.json` sidecar.
 `train_model.py` automatically detects either JSONL or binary datasets.
+
+For a hybrid tokenizer, choose the segmentation policy per split. The training
+split can use stochastic `softmax` segmentation while the validation split stays
+deterministic `greedy` (the defaults keep both splits greedy, so existing
+commands are unchanged):
+
+```powershell
+py create_dataset.py --format bin --input data\processed\10k_babylm_zho.txt --output data\datasets\10k_train_hybrid_16k.bin --validation-output data\datasets\10k_valid_hybrid_16k.bin --validation-fraction 0.05 --tokenizer tokenizers\babylm_zho_hybrid_16k --block-size 512 --stride 512 --tokenization-mode softmax --eval-tokenization-mode greedy --sampling-temperature 1.0 --sampling-seed 42
+```
+
+The chosen modes and sampling parameters are recorded in the binary
+`.meta.json` sidecar, logged by `train_model.py` at startup, and stored in
+checkpoint metadata. SentencePiece tokenizers ignore these flags. GPT-2 and
+Qwen2 both consume either segmentation identically; the model architecture is
+independent of tokenizer mode and the vocabulary size is unchanged.
 
 ## Train the language model
 
@@ -548,6 +676,14 @@ architectures with both tokenizer families:
 
 ```powershell
 python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --architectures gpt2 qwen2 --tokenizer-kinds hybrid bpe --device cuda --vocab-size 16000 --block-size 512 --stride 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --preprocess-workers 8 --num-workers 4 --resume
+```
+
+To train the hybrid runs with stochastic softmax segmentation on the training
+split while keeping greedy evaluation, add the tokenization flags (they only
+affect `--tokenizer-kind hybrid`):
+
+```powershell
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --architectures gpt2 qwen2 --tokenizer-kinds hybrid --train-tokenization-mode softmax --eval-tokenization-mode greedy --sampling-temperature 1.0 --sampling-seed 42 --device cuda --resume
 ```
 
 This creates shared corpus artifacts and tokenizer-specific datasets, then
