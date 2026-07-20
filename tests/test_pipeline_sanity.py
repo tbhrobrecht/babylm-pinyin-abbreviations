@@ -25,6 +25,7 @@ from train_model import (
     JsonlTokenDataset,
     ModelConfig,
     PinyinCodeLanguageModel,
+    babylm_checkpoint_name,
     build_model,
     mask_padding_labels,
     model_config_from_mapping,
@@ -32,6 +33,7 @@ from train_model import (
     learning_rate_for_step,
     output_logits,
     output_loss,
+    pending_babylm_checkpoint_targets,
     split_dataset,
     train,
     validate_dataset_compatibility,
@@ -400,6 +402,18 @@ class PipelineSanityTests(unittest.TestCase):
             0.1,
         )
 
+    def test_babylm_checkpoint_names_and_targets(self) -> None:
+        self.assertEqual(babylm_checkpoint_name(1_000_000), "chck_1M")
+        self.assertEqual(babylm_checkpoint_name(100_000_000), "chck_100M")
+        self.assertEqual(
+            pending_babylm_checkpoint_targets(2_500_000, set()),
+            [1_000_000, 2_000_000],
+        )
+        self.assertEqual(
+            pending_babylm_checkpoint_targets(2_500_000, {1_000_000}),
+            [2_000_000],
+        )
+
     def test_tiny_model_forward_has_finite_loss(self) -> None:
         model = PinyinCodeLanguageModel(
             ModelConfig(vocab_size=32, block_size=8, n_layer=1, n_head=2, n_embd=16)
@@ -708,6 +722,9 @@ class PipelineSanityTests(unittest.TestCase):
         checkpoint = torch.load(output_dir / "best.pt", map_location="cpu", weights_only=False)
         self.assertIn("model_state_dict", checkpoint)
         self.assertNotIn("optimizer_state_dict", checkpoint)
+        self.assertTrue((output_dir / "final.pt").exists())
+        self.assertIn("training_tokens_seen", checkpoint)
+        self.assertIn("checkpoint_accounting", checkpoint)
         metrics = [
             json.loads(line)
             for line in (output_dir / "metrics.jsonl").read_text(encoding="utf-8").splitlines()

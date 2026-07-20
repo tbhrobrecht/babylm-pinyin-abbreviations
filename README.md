@@ -270,12 +270,23 @@ This writes checkpoints to `models\pinyin-code-gpt-small`:
 
 - `last.pt`
 - `best.pt`
+- `final.pt`
+- BabyLM interval checkpoints named `chck_1M`, `chck_2M`, ..., `chck_10M`,
+  then `chck_20M`, ..., `chck_100M`
 
 It also writes structured metrics to `metrics.jsonl` in the output directory by
 default. Training events include `train_loss`, learning rate, step, epoch, and
 token throughput; validation events include `validation_loss`, `best_loss`,
 step, and epoch. Pass `--metrics-log path\to\metrics.jsonl` to choose another
 location.
+
+BabyLM interval checkpoints are saved when the run crosses the corresponding
+number of training-token exposures. This means tokenizer-id tokens consumed by
+training batches, including repeated exposure across epochs; it is not a count
+of original corpus words or Jieba words. Each interval checkpoint uses the
+BabyLM revision-style name directly, for example `chck_1M`, so it can be
+converted with `hf\convert_to_transformers.py --checkpoint models\...\chck_1M`
+and uploaded to the matching Hugging Face revision.
 
 The default model uses 6 Transformer layers, 8 attention heads, 256 hidden
 dimensions, 128-token context windows, and the tokenizer's 8,000-token
@@ -509,6 +520,15 @@ After conversion, upload the generated Transformers model folder:
 
 ```powershell
 hf upload your-username/pinyin-code-gpt-small hf_pinyin_code_model --repo-type model
+```
+
+For BabyLM checkpoint revisions, convert each local interval checkpoint to its
+own temporary/export folder, then upload that folder to the matching revision
+name, for example:
+
+```powershell
+py hf\convert_to_transformers.py --checkpoint models\pinyin-code-gpt-small\chck_1M --tokenizer tokenizers\babylm_zho_pinyin_spm.model --output-dir hf_pinyin_code_model_chck_1M
+hf upload your-username/pinyin-code-gpt-small hf_pinyin_code_model_chck_1M --repo-type model --revision chck_1M
 ```
 
 For a private model, create the Hugging Face model repo as private first, then

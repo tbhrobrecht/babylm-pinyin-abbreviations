@@ -18,6 +18,10 @@ from torch.utils.data import DataLoader, Dataset, random_split
 
 
 SUPPORTED_ARCHITECTURES = ("gpt2", "qwen2")
+BABYLM_CHECKPOINT_TARGETS = tuple(
+    [index * 1_000_000 for index in range(1, 11)]
+    + [index * 10_000_000 for index in range(2, 11)]
+)
 
 
 @dataclass(frozen=True)
@@ -622,6 +626,37 @@ def write_metrics_event(metrics_log: TextIO, event: dict[str, Any]) -> None:
     metrics_log.flush()
 
 
+def babylm_checkpoint_name(token_target: int) -> str:
+    """Return the BabyLM-required checkpoint/revision name for a token target."""
+    return f"chck_{token_target // 1_000_000}M"
+
+
+def pending_babylm_checkpoint_targets(
+    current_tokens_seen: int,
+    saved_targets: set[int],
+) -> list[int]:
+    """Return unsaved BabyLM checkpoint targets reached by this training run."""
+    return [
+        target
+        for target in BABYLM_CHECKPOINT_TARGETS
+        if target <= current_tokens_seen and target not in saved_targets
+    ]
+
+
+def save_babylm_checkpoint(
+    checkpoint: dict[str, Any],
+    output_dir: Path,
+    token_target: int,
+) -> Path | None:
+    """Save one interval checkpoint without overwriting an existing artifact."""
+    path = output_dir / babylm_checkpoint_name(token_target)
+    if path.exists():
+        print(f"warning: BabyLM checkpoint already exists; leaving it unchanged: {path}")
+        return None
+    torch.save(checkpoint, path)
+    return path
+
+
 def build_optimizer(
     model: nn.Module,
     args: argparse.Namespace,
@@ -695,8 +730,9 @@ def checkpoint_payload(
     config: ModelConfig,
     epoch: int,
     global_step: int,
-    validation_loss: float,
-    best_loss: float,
+    training_tokens_seen: int,
+    validation_loss: float | None,
+    best_loss: float | None,
     save_optimizer: bool,
 ) -> dict:
     """Build a checkpoint, optionally including optimizer state for resuming."""
@@ -709,6 +745,12 @@ def checkpoint_payload(
         "vocab_size": config.vocab_size,
         "epoch": epoch,
         "global_step": global_step,
+        "training_tokens_seen": training_tokens_seen,
+        "checkpoint_accounting": (
+            "Counts tokenizer-id training tokens consumed by batches, including "
+            "repeated exposure across epochs. This is a consistent BabyLM progress "
+            "heuristic, not original-corpus/Jieba word counts."
+        ),
         "validation_loss": validation_loss,
         "best_loss": best_loss,
     }
@@ -723,8 +765,8 @@ def load_resume_checkpoint(
     optimizer: torch.optim.Optimizer,
     config: ModelConfig,
     device: torch.device,
-) -> tuple[int, int, float]:
-    """Load model/optimizer state and return start_epoch, global_step, best_loss."""
+) -> tuple[int, int, int, float]:
+    """Load state and return start_epoch, global_step, tokens_seen, best_loss."""
     if not path.exists():
         raise FileNotFoundError(f"Resume checkpoint not found: {path}")
 
@@ -745,9 +787,11 @@ def load_resume_checkpoint(
     completed_epoch = int(checkpoint.get("epoch", 0))
     start_epoch = completed_epoch + 1
     global_step = int(checkpoint.get("global_step", 0))
+    training_tokens_seen = int(checkpoint.get("training_tokens_seen", 0))
     validation_loss = checkpoint.get("validation_loss", float("inf"))
-    best_loss = float(checkpoint.get("best_loss", validation_loss))
-    return start_epoch, global_step, best_loss
+    best_loss_value = checkpoint.get("best_loss", validation_loss)
+    best_loss = float(best_loss_value) if best_loss_value is not None else float("inf")
+    return start_epoch, global_step, training_tokens_seen, best_loss
 
 
 @torch.no_grad()
@@ -838,15 +882,19 @@ def train(args: argparse.Namespace) -> None:
     optimizer = build_optimizer(raw_model, args, device)
     start_epoch = 1
     global_step = 0
+    training_tokens_seen = 0
     best_loss = float("inf")
     if args.resume is not None:
-        start_epoch, global_step, best_loss = load_resume_checkpoint(
+        start_epoch, global_step, training_tokens_seen, best_loss = load_resume_checkpoint(
             args.resume,
             raw_model,
             optimizer,
             config,
             device,
         )
+    saved_babylm_targets = {
+        target for target in BABYLM_CHECKPOINT_TARGETS if target <= training_tokens_seen
+    }
 
     model: nn.Module = raw_model
     if args.compile:
@@ -877,6 +925,8 @@ def train(args: argparse.Namespace) -> None:
         f"max_sequence_length={summary['max_sequence_length']} "
         f"examples={len(dataset):,} "
         f"train_tokens_per_epoch={tokens_per_train_epoch:,} "
+        f"checkpoint_accounting=training_token_ids_from_batches "
+        f"training_tokens_seen={training_tokens_seen:,} "
         f"gradient_accumulation_steps={args.gradient_accumulation_steps} "
         f"optimizer_steps_per_epoch={steps_per_epoch:,} "
         f"total_optimizer_steps={total_optimizer_steps:,} "
@@ -928,6 +978,7 @@ def train(args: argparse.Namespace) -> None:
                 accumulation_index == accumulation_target
                 or batch_index == len(train_loader)
             )
+            training_tokens_seen += batch.numel()
             if not should_step:
                 tokens_since_log += batch.numel()
                 continue
@@ -959,6 +1010,42 @@ def train(args: argparse.Namespace) -> None:
             if step_completed:
                 global_step += 1
 
+                checkpoint_targets = pending_babylm_checkpoint_targets(
+                    training_tokens_seen,
+                    saved_babylm_targets,
+                )
+                if checkpoint_targets:
+                    interval_checkpoint = checkpoint_payload(
+                        raw_model,
+                        optimizer,
+                        config,
+                        epoch,
+                        global_step,
+                        training_tokens_seen,
+                        best_loss if math.isfinite(best_loss) else None,
+                        best_loss if math.isfinite(best_loss) else None,
+                        args.save_optimizer,
+                    )
+                    for checkpoint_target in checkpoint_targets:
+                        saved_path = save_babylm_checkpoint(
+                            interval_checkpoint,
+                            args.output_dir,
+                            checkpoint_target,
+                        )
+                        write_metrics_event(
+                            metrics_log,
+                            {
+                                "event": "babylm_checkpoint",
+                                "epoch": epoch,
+                                "step": global_step,
+                                "training_tokens_seen": training_tokens_seen,
+                                "checkpoint_token_target": checkpoint_target,
+                                "checkpoint_name": babylm_checkpoint_name(checkpoint_target),
+                                "path": str(saved_path) if saved_path is not None else None,
+                            },
+                        )
+                        saved_babylm_targets.add(checkpoint_target)
+
             if step_completed and global_step % args.log_every == 0:
                 maybe_synchronize(device)
                 elapsed = max(time.perf_counter() - log_start, 1e-9)
@@ -976,6 +1063,7 @@ def train(args: argparse.Namespace) -> None:
                         "event": "train",
                         "epoch": epoch,
                         "step": global_step,
+                        "training_tokens_seen": training_tokens_seen,
                         "train_loss": train_loss,
                         "learning_rate": current_lr,
                         "tokens_per_second": tokens_per_second,
@@ -997,6 +1085,7 @@ def train(args: argparse.Namespace) -> None:
                 "event": "validation",
                 "epoch": epoch,
                 "step": global_step,
+                "training_tokens_seen": training_tokens_seen,
                 "validation_loss": valid_loss,
                 "best_loss": checkpoint_best_loss,
             },
@@ -1008,6 +1097,7 @@ def train(args: argparse.Namespace) -> None:
             config,
             epoch,
             global_step,
+            training_tokens_seen,
             valid_loss,
             checkpoint_best_loss,
             args.save_optimizer,
@@ -1016,6 +1106,8 @@ def train(args: argparse.Namespace) -> None:
         if valid_loss < best_loss:
             best_loss = valid_loss
             torch.save(checkpoint, args.output_dir / "best.pt")
+    if "checkpoint" in locals():
+        torch.save(checkpoint, args.output_dir / "final.pt")
     metrics_log.close()
 
 

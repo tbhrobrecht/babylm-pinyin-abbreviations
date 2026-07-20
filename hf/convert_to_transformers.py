@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import shutil
 import sys
 from pathlib import Path
@@ -367,6 +368,13 @@ def tokenizer_config_updates(args: argparse.Namespace, config) -> dict:
     return updates
 
 
+def json_safe_metric(value):
+    """Return finite numeric metadata values; encode missing/non-finite as null."""
+    if isinstance(value, (int, float)):
+        return value if math.isfinite(float(value)) else None
+    return value
+
+
 def convert(args: argparse.Namespace) -> None:
     """Convert and save the model, tokenizer, config, and remote-code files."""
     checkpoint = load_training_checkpoint(args.checkpoint)
@@ -451,7 +459,7 @@ def convert(args: argparse.Namespace) -> None:
         "tokenizer_kind": "hybrid" if is_hybrid_tokenizer(args.tokenizer) else "sentencepiece",
         "transliteration": args.transliteration,
         "use_jieba": args.jieba,
-        "validation_loss": checkpoint.get("validation_loss"),
+        "validation_loss": json_safe_metric(checkpoint.get("validation_loss")),
     }
     (args.output_dir / "training_metadata.json").write_text(
         json.dumps(metadata, indent=2, sort_keys=True) + "\n",
