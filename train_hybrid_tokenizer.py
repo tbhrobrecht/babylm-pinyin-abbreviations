@@ -267,10 +267,16 @@ def write_tokenizer_files(output_dir: Path, vocab: dict[str, int], metadata: dic
             "mask_token": "<mask>",
         },
     )
-    shutil.copy2(
-        Path(__file__).resolve().parent / "hf" / "tokenization_hybrid_pinyin_code.py",
-        output_dir / "tokenization_hybrid_pinyin_code.py",
-    )
+    # Copy both the hybrid tokenizer module and its sibling. The hybrid module
+    # relatively imports ``tokenization_pinyin_code`` to reuse the shared raw-text
+    # preprocessing helpers, so trust_remote_code loading needs both files
+    # present in the tokenizer directory to resolve that relative import.
+    hf_dir = Path(__file__).resolve().parent / "hf"
+    for module_name in (
+        "tokenization_hybrid_pinyin_code.py",
+        "tokenization_pinyin_code.py",
+    ):
+        shutil.copy2(hf_dir / module_name, output_dir / module_name)
 
 
 def print_summary(metadata: dict[str, object]) -> None:

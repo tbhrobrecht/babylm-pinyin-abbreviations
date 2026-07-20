@@ -30,6 +30,13 @@ from typing import Any, Sequence
 
 from transformers import PreTrainedTokenizer
 
+# Relative import only. Transformers dynamic module loading copies this file and
+# tokenization_pinyin_code.py into a generated package, where a relative import
+# resolves correctly. An absolute ``from tokenization_pinyin_code import ...``
+# would be treated as an external top-level package and can fail after HF
+# conversion, so no absolute fallback is added here.
+from .tokenization_pinyin_code import PinyinCodeTokenizer
+
 
 VOCAB_FILES_NAMES = {"vocab_file": "vocab.json"}
 ENCODED_WORD_RE = re.compile(r"^(?:[A-Za-z][0-9])+$")
@@ -72,9 +79,12 @@ class TokenMatch:
 class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
     """Tokenize encoded Jieba words with greedy or softmax segmentation.
 
-    The tokenizer expects text that has already passed through the repository's
-    pinyin-code preprocessing. Whitespace is used as word-boundary metadata and
-    never becomes a token.
+    Public call sites (``__call__``, :meth:`encode`, :meth:`encode_plus`,
+    :meth:`batch_encode_plus`) accept both raw Hanzi (e.g. ``"已经很晚了"``) and
+    already-preprocessed pinyin-code text (e.g. ``"Y6J3 H7W7 L6"``): raw text is
+    converted with the shared repository preprocessing before segmentation,
+    while already-preprocessed text passes through unchanged. Whitespace is used
+    as word-boundary metadata and never becomes a token.
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
@@ -94,6 +104,10 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
         sampling_epsilon: float = 1e-8,
         sampling_seed: int | None = None,
         token_scores: dict[str, float] | None = None,
+        transliteration: str = "pinyin-code",
+        pinyin_format: str | None = None,
+        use_jieba: bool = True,
+        jieba: bool | None = None,
         **kwargs: Any,
     ) -> None:
         self.vocab_file = vocab_file
@@ -103,6 +117,17 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
         self.add_eos_token = add_eos_token
         self.strict_validation = strict_validation
         self.readable_decode = readable_decode
+
+        # --- Raw-text preprocessing compatibility -----------------------------
+        # These mirror PinyinCodeTokenizer so the hybrid tokenizer can accept
+        # raw Hanzi (e.g. "已经很晚了") as well as already-preprocessed
+        # pinyin-code text (e.g. "Y6J3 H7W7 L6"). ``pinyin_format`` and
+        # ``jieba`` are accepted as aliases so tokenizer_config.json fields
+        # written by either tokenizer family round-trip.
+        self.transliteration = self._normalize_transliteration(
+            pinyin_format or transliteration
+        )
+        self.use_jieba = use_jieba if jieba is None else jieba
 
         # --- Tokenization mode configuration (shared by both modes) ----------
         self.tokenization_mode = self._normalize_mode(tokenization_mode)
@@ -135,6 +160,12 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
         kwargs.setdefault("add_eos_token", add_eos_token)
         kwargs.setdefault("strict_validation", strict_validation)
         kwargs.setdefault("readable_decode", readable_decode)
+        # Persist raw-text preprocessing configuration so tokenizer_config.json
+        # round-trips it. Both spellings are stored for cross-tokenizer parity.
+        kwargs.setdefault("transliteration", self.transliteration)
+        kwargs.setdefault("pinyin_format", self.transliteration)
+        kwargs.setdefault("use_jieba", self.use_jieba)
+        kwargs.setdefault("jieba", self.use_jieba)
         # Persist the mode configuration through tokenizer_config.json so that a
         # saved/reloaded tokenizer keeps its selection strategy. token_scores is
         # intentionally NOT serialized inline (it can be large); it round-trips
@@ -303,6 +334,72 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
         """
         self.sampling_seed = sampling_seed
         self._rng = random.Random(sampling_seed)
+
+    # ------------------------------------------------------------------ #
+    # Raw-text preprocessing compatibility
+    # ------------------------------------------------------------------ #
+    # Reuse the preprocessing helpers from PinyinCodeTokenizer verbatim so raw
+    # Hanzi is converted to pinyin-code exactly the same way for both tokenizer
+    # families. Already-preprocessed input (special markers or pinyin-code
+    # tokens with no Hanzi) is returned unchanged, so preprocessing is
+    # idempotent and safe to apply before the encoded-word segmentation.
+    _normalize_transliteration = PinyinCodeTokenizer._normalize_transliteration
+    _looks_preprocessed = PinyinCodeTokenizer._looks_preprocessed
+    _preprocess_raw_text = PinyinCodeTokenizer._preprocess_raw_text
+    _fallback_process_text = PinyinCodeTokenizer._fallback_process_text
+
+    def _preprocess_tokenizer_input(self, value: Any) -> Any:
+        """Preprocess raw text inputs, preserving structure.
+
+        Strings are converted to pinyin-code via :meth:`_preprocess_raw_text`
+        (a no-op for already-preprocessed text). Tuples/lists are handled
+        recursively so text-pair and batch inputs work. ``None`` and any other
+        value are returned unchanged.
+        """
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return self._preprocess_raw_text(value)
+        if isinstance(value, tuple):
+            return tuple(self._preprocess_tokenizer_input(item) for item in value)
+        if isinstance(value, list):
+            return [self._preprocess_tokenizer_input(item) for item in value]
+        return value
+
+    def __call__(self, text=None, text_pair=None, *args: Any, **kwargs: Any):
+        if "text_target" in kwargs:
+            kwargs["text_target"] = self._preprocess_tokenizer_input(kwargs["text_target"])
+        if "text_pair_target" in kwargs:
+            kwargs["text_pair_target"] = self._preprocess_tokenizer_input(
+                kwargs["text_pair_target"]
+            )
+
+        text = self._preprocess_tokenizer_input(text)
+        text_pair = self._preprocess_tokenizer_input(text_pair)
+        if text_pair is None:
+            return super().__call__(text, *args, **kwargs)
+        return super().__call__(text, text_pair, *args, **kwargs)
+
+    def encode(self, text, text_pair=None, add_special_tokens=True, *args: Any, **kwargs: Any):
+        kwargs["add_special_tokens"] = add_special_tokens
+        text = self._preprocess_tokenizer_input(text)
+        text_pair = self._preprocess_tokenizer_input(text_pair)
+        if text_pair is None:
+            return super().encode(text, *args, **kwargs)
+        return super().encode(text, text_pair, *args, **kwargs)
+
+    def encode_plus(self, text, text_pair=None, *args: Any, **kwargs: Any):
+        text = self._preprocess_tokenizer_input(text)
+        text_pair = self._preprocess_tokenizer_input(text_pair)
+        if text_pair is None:
+            return super().encode_plus(text, *args, **kwargs)
+        return super().encode_plus(text, text_pair, *args, **kwargs)
+
+    def batch_encode_plus(self, batch_text_or_text_pairs, *args: Any, **kwargs: Any):
+        batch_text_or_text_pairs = self._preprocess_tokenizer_input(
+            batch_text_or_text_pairs
+        )
+        return super().batch_encode_plus(batch_text_or_text_pairs, *args, **kwargs)
 
     # ------------------------------------------------------------------ #
     # Shared candidate enumeration (used by both modes)
