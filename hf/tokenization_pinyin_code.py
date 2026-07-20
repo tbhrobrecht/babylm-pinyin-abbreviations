@@ -14,7 +14,6 @@ import sentencepiece as spm
 from tokenizers import Tokenizer, decoders, normalizers
 from tokenizers.models import BPE
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
-from transformers.tokenization_utils_base import generate_merges
 
 
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
@@ -545,6 +544,33 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         if Path(self.vocab_file).resolve() != output_path.resolve():
             shutil.copyfile(self.vocab_file, output_path)
         return (str(output_path),)
+
+
+
+def generate_merges(vocab: dict[str, int]) -> list[tuple[str, str]]:
+    """Infer BPE merge pairs from a SentencePiece BPE vocabulary order."""
+    merges: list[tuple[str, str]] = []
+    known = {
+        token
+        for token in vocab
+        if len(token) == 1 or (token.startswith("<") and token.endswith(">"))
+    }
+    seen_merges: set[tuple[str, str]] = set()
+    for token, _ in sorted(vocab.items(), key=lambda item: item[1]):
+        if token.startswith("<") and token.endswith(">"):
+            known.add(token)
+            continue
+        best: tuple[str, str] | None = None
+        for split in range(1, len(token)):
+            left = token[:split]
+            right = token[split:]
+            if left in known and right in known:
+                best = (left, right)
+        if best is not None and best not in seen_merges:
+            merges.append(best)
+            seen_merges.add(best)
+        known.add(token)
+    return merges
 
 
 class EncodedMandarinTokenizer(PinyinCodeTokenizer):
