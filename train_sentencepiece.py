@@ -104,9 +104,9 @@ def train_tokenizer(args: argparse.Namespace) -> None:
                     f"max line {stats.max_input_chars:,} -> {stats.max_output_chars:,} chars"
                 )
 
-    # The corpus starts as whitespace-separated atomic tokens, but BPE is allowed
-    # to learn pieces that span adjacent atoms. Pinyin-code digits should still
-    # stay attached to their letters instead of becoming separate pieces.
+    # The corpus uses whitespace to preserve Jieba word boundaries. BPE may
+    # learn subword pieces within each encoded word, but must not merge across
+    # separate Jieba words.
     try:
         spm.SentencePieceTrainer.train(
             input=input_files,
@@ -134,7 +134,7 @@ def train_tokenizer(args: argparse.Namespace) -> None:
             eos_piece="</s>",
             normalization_rule_name="identity",
             remove_extra_whitespaces=False,
-            split_by_whitespace=False,
+            split_by_whitespace=True,
             split_by_number=False,
             allow_whitespace_only_pieces=False,
         )
