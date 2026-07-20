@@ -123,7 +123,10 @@ def tokenizer_auto_map(tokenizer_path: Path) -> list[str | None]:
     """Return the AutoTokenizer remote-code target for the tokenizer family."""
     if is_hybrid_tokenizer(tokenizer_path):
         return ["tokenization_hybrid_pinyin_code.HybridPinyinCodeTokenizer", None]
-    return ["tokenization_pinyin_code.EncodedMandarinTokenizer", None]
+    return [
+        "tokenization_pinyin_code.EncodedMandarinTokenizer",
+        "tokenization_pinyin_code.EncodedMandarinTokenizerFast",
+    ]
 
 
 def build_config(checkpoint: dict, tokenizer_path: Path) -> PinyinCodeConfig:
@@ -320,8 +323,9 @@ def load_export_tokenizer(args: argparse.Namespace):
             hybrid_tokenizer_dir(args.tokenizer)
         )
     from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
+    from hf.tokenization_pinyin_code import EncodedMandarinTokenizerFast
 
-    return EncodedMandarinTokenizer(
+    return EncodedMandarinTokenizerFast(
         vocab_file=str(args.tokenizer),
         transliteration=args.transliteration,
         use_jieba=args.jieba,
@@ -339,6 +343,7 @@ def copy_tokenizer_sidecars(tokenizer_path: Path, output_dir: Path) -> None:
     tokenizer_vocab = tokenizer_path.with_suffix(".vocab")
     if tokenizer_vocab.exists():
         shutil.copy2(tokenizer_vocab, output_dir / tokenizer_vocab.name)
+    shutil.copy2(tokenizer_path, output_dir / "tokenizer.model")
 
 
 def tokenizer_config_updates(args: argparse.Namespace, config) -> dict:
@@ -358,7 +363,7 @@ def tokenizer_config_updates(args: argparse.Namespace, config) -> dict:
     if is_hybrid_tokenizer(args.tokenizer):
         updates["tokenizer_class"] = "HybridPinyinCodeTokenizer"
     else:
-        updates["tokenizer_class"] = "EncodedMandarinTokenizer"
+        updates["tokenizer_class"] = "EncodedMandarinTokenizerFast"
     return updates
 
 

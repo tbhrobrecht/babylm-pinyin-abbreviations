@@ -50,9 +50,13 @@ try:
         PinyinCodeForSequenceClassification,
         PinyinCodeModel,
     )
-    from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
+    from hf.tokenization_pinyin_code import (
+        EncodedMandarinTokenizer,
+        EncodedMandarinTokenizerFast,
+    )
 except ModuleNotFoundError:
     EncodedMandarinTokenizer = None
+    EncodedMandarinTokenizerFast = None
     PinyinCodeConfig = None
     PinyinCodeForCausalLM = None
     PinyinCodeForSequenceClassification = None
@@ -144,6 +148,39 @@ class PipelineSanityTests(unittest.TestCase):
             tokenizer(["已经很晚了"], add_special_tokens=False)["input_ids"][0],
             direct_ids,
         )
+
+    def test_encoded_mandarin_fast_tokenizer_wraps_hanzi_input(self) -> None:
+        if EncodedMandarinTokenizer is None or EncodedMandarinTokenizerFast is None:
+            self.skipTest("transformers or sentencepiece is not installed")
+        tokenizer_path = Path("tokenizers/babylm_zho_pinyin_spm.model")
+        if not tokenizer_path.exists():
+            self.skipTest("SentencePiece tokenizer model is not available")
+
+        slow = EncodedMandarinTokenizer(vocab_file=str(tokenizer_path))
+        fast = EncodedMandarinTokenizerFast(vocab_file=str(tokenizer_path))
+        text = "已经很晚了"
+
+        self.assertTrue(fast.is_fast)
+        self.assertEqual(
+            fast.encode(text, add_special_tokens=False),
+            slow.encode(text, add_special_tokens=False),
+        )
+
+    def test_encoded_mandarin_fast_tokenizer_preserves_word_ids(self) -> None:
+        if EncodedMandarinTokenizerFast is None:
+            self.skipTest("transformers or sentencepiece is not installed")
+        tokenizer_path = Path("tokenizers/babylm_zho_pinyin_spm.model")
+        if not tokenizer_path.exists():
+            self.skipTest("SentencePiece tokenizer model is not available")
+
+        tokenizer = EncodedMandarinTokenizerFast(vocab_file=str(tokenizer_path))
+        batch = tokenizer(
+            [["我", "已经很晚了"]],
+            is_split_into_words=True,
+            add_special_tokens=False,
+        )
+
+        self.assertEqual(batch.word_ids(0), [0, 1, 1, 1, 1])
 
     def test_iter_chunks_rejects_stride_larger_than_block_size(self) -> None:
         with self.assertRaisesRegex(ValueError, "--stride"):
@@ -783,6 +820,111 @@ class PipelineSanityTests(unittest.TestCase):
         self.assertEqual(set(loading_info["unexpected_keys"]), set())
         self.assertTrue(torch.equal(base_model.token_embedding.weight, classifier.token_embedding.weight))
         self.assertTrue(torch.equal(causal_model.token_embedding.weight, classifier.token_embedding.weight))
+
+    def test_convert_to_transformers_supports_fast_sentencepiece_tokenizer(self) -> None:
+        if PinyinCodeConfig is None or EncodedMandarinTokenizer is None:
+            self.skipTest("transformers or sentencepiece is not installed")
+
+        from hf.convert_to_transformers import convert
+        from transformers import (
+            AutoModel,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoTokenizer,
+        )
+
+        tokenizer_path = Path("tokenizers/babylm_zho_pinyin_spm.model")
+        if not tokenizer_path.exists():
+            self.skipTest("SentencePiece tokenizer model is not available")
+
+        vocab_size = EncodedMandarinTokenizer(vocab_file=str(tokenizer_path)).vocab_size
+        model_config = ModelConfig(
+            vocab_size=vocab_size,
+            block_size=8,
+            n_layer=1,
+            n_head=1,
+            n_embd=8,
+            dropout=0.0,
+        )
+        model = PinyinCodeLanguageModel(model_config)
+        checkpoint_path = Path(self.temp_dir.name) / "spm-best.pt"
+        torch.save(
+            {
+                "model_state_dict": model.state_dict(),
+                "model_config": asdict(model_config),
+                "epoch": 1,
+                "global_step": 2,
+                "validation_loss": 1.23,
+            },
+            checkpoint_path,
+        )
+
+        output_dir = Path(self.temp_dir.name) / "hf-spm"
+        convert_args = SimpleNamespace(
+            checkpoint=checkpoint_path,
+            tokenizer=tokenizer_path,
+            output_dir=output_dir,
+            transliteration="pinyin-code",
+            jieba=True,
+            safe_serialization=False,
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            convert(convert_args)
+
+        tokenizer_config = json.loads(
+            (output_dir / "tokenizer_config.json").read_text(encoding="utf-8")
+        )
+        model_config_json = json.loads((output_dir / "config.json").read_text(encoding="utf-8"))
+        self.assertEqual(tokenizer_config["tokenizer_class"], "EncodedMandarinTokenizerFast")
+        self.assertEqual(
+            tokenizer_config["auto_map"]["AutoTokenizer"],
+            [
+                "tokenization_pinyin_code.EncodedMandarinTokenizer",
+                "tokenization_pinyin_code.EncodedMandarinTokenizerFast",
+            ],
+        )
+        self.assertEqual(
+            model_config_json["auto_map"]["AutoTokenizer"],
+            tokenizer_config["auto_map"]["AutoTokenizer"],
+        )
+        self.assertTrue((output_dir / "tokenizer.json").exists())
+        self.assertTrue((output_dir / "tokenizer.model").exists())
+        self.assertTrue((output_dir / "tokenization_pinyin_code.py").exists())
+
+        tokenizer = AutoTokenizer.from_pretrained(output_dir, trust_remote_code=True)
+        slow = EncodedMandarinTokenizer.from_pretrained(output_dir)
+        self.assertTrue(tokenizer.is_fast)
+        self.assertEqual(
+            tokenizer.encode("已经很晚了", add_special_tokens=False),
+            slow.encode("已经很晚了", add_special_tokens=False),
+        )
+        split_batch = tokenizer(
+            [["我", "已经很晚了"]],
+            is_split_into_words=True,
+            add_special_tokens=False,
+        )
+        self.assertEqual(split_batch.word_ids(0), [0, 1, 1, 1, 1])
+
+        batch = tokenizer(["已经很晚了"], return_tensors="pt")
+        base_model = AutoModel.from_pretrained(output_dir, trust_remote_code=True)
+        base_out = base_model(**batch)
+        self.assertEqual(tuple(base_out.last_hidden_state.shape[:2]), tuple(batch["input_ids"].shape))
+
+        causal_model = AutoModelForCausalLM.from_pretrained(output_dir, trust_remote_code=True)
+        causal_out = causal_model(**batch)
+        self.assertEqual(tuple(causal_out.logits.shape[:2]), tuple(batch["input_ids"].shape))
+
+        classifier, loading_info = AutoModelForSequenceClassification.from_pretrained(
+            output_dir,
+            trust_remote_code=True,
+            num_labels=3,
+            output_loading_info=True,
+        )
+        self.assertEqual(set(loading_info["missing_keys"]), {"classifier.weight", "classifier.bias"})
+        self.assertEqual(set(loading_info["unexpected_keys"]), set())
+        for key, value in base_model.state_dict().items():
+            self.assertTrue(torch.equal(value, classifier.state_dict()[key]), key)
 
     def test_train_loop_can_resume_from_compact_checkpoint(self) -> None:
         dataset_path = self.write_jsonl_dataset(

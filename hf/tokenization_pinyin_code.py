@@ -11,7 +11,10 @@ from pathlib import Path
 from typing import Any
 
 import sentencepiece as spm
-from transformers import PreTrainedTokenizer
+from tokenizers import Tokenizer, decoders, normalizers
+from tokenizers.models import BPE
+from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
+from transformers.tokenization_utils_base import generate_merges
 
 
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
@@ -546,3 +549,158 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
 
 class EncodedMandarinTokenizer(PinyinCodeTokenizer):
     """Tokenizer wrapper that hides Hanzi-to-encoded-Mandarin preprocessing."""
+
+
+def build_sentencepiece_bpe_backend(vocab_file: str) -> Tokenizer:
+    """Build a tokenizers backend equivalent to the trained SentencePiece BPE."""
+    processor = spm.SentencePieceProcessor(model_file=vocab_file)
+    vocab = {
+        processor.id_to_piece(index): index
+        for index in range(processor.get_piece_size())
+    }
+    tokenizer = Tokenizer(
+        BPE(
+            vocab=vocab,
+            merges=generate_merges(vocab),
+            unk_token=processor.id_to_piece(processor.unk_id()),
+            fuse_unk=False,
+        )
+    )
+    tokenizer.normalizer = normalizers.Sequence(
+        [normalizers.Prepend("▁"), normalizers.Replace(" ", "▁")]
+    )
+    tokenizer.decoder = decoders.Sequence([decoders.Replace("▁", " ")])
+    return tokenizer
+
+
+class EncodedMandarinTokenizerFast(PreTrainedTokenizerFast):
+    """Fast tokenizer preserving the raw-Hanzi pinyin-code preprocessing path."""
+
+    vocab_files_names = {
+        "vocab_file": "tokenizer.model",
+        "tokenizer_file": "tokenizer.json",
+    }
+    slow_tokenizer_class = EncodedMandarinTokenizer
+    model_input_names = ["input_ids", "attention_mask"]
+
+    def __init__(
+        self,
+        vocab_file: str | None = None,
+        tokenizer_file: str | None = None,
+        add_bos_token: bool = False,
+        add_eos_token: bool = False,
+        transliteration: str = "pinyin-code",
+        pinyin_format: str | None = None,
+        use_jieba: bool = True,
+        jieba: bool | None = None,
+        **kwargs,
+    ) -> None:
+        if vocab_file is None:
+            raise ValueError("EncodedMandarinTokenizerFast requires tokenizer.model")
+        self.vocab_file = vocab_file
+        self.sp_model = spm.SentencePieceProcessor(model_file=vocab_file)
+        self.transliteration = PinyinCodeTokenizer._normalize_transliteration(
+            self,
+            pinyin_format or transliteration,
+        )
+        self.use_jieba = use_jieba if jieba is None else jieba
+
+        kwargs.setdefault("unk_token", self._piece_or_none(self.sp_model.unk_id()))
+        kwargs.setdefault("bos_token", self._piece_or_none(self.sp_model.bos_id()))
+        kwargs.setdefault("eos_token", self._piece_or_none(self.sp_model.eos_id()))
+        kwargs.setdefault("pad_token", self._piece_or_none(self.sp_model.pad_id()))
+        kwargs.setdefault("transliteration", self.transliteration)
+        kwargs.setdefault("pinyin_format", self.transliteration)
+        kwargs.setdefault("use_jieba", self.use_jieba)
+        kwargs.setdefault("jieba", self.use_jieba)
+
+        if tokenizer_file is None:
+            kwargs["tokenizer_object"] = build_sentencepiece_bpe_backend(vocab_file)
+        super().__init__(
+            vocab_file=vocab_file,
+            tokenizer_file=tokenizer_file,
+            add_bos_token=add_bos_token,
+            add_eos_token=add_eos_token,
+            **kwargs,
+        )
+
+    _normalize_transliteration = PinyinCodeTokenizer._normalize_transliteration
+    _piece_or_none = PinyinCodeTokenizer._piece_or_none
+    _looks_preprocessed = PinyinCodeTokenizer._looks_preprocessed
+    _preprocess_raw_text = PinyinCodeTokenizer._preprocess_raw_text
+    _fallback_process_text = PinyinCodeTokenizer._fallback_process_text
+
+    def _preprocess_tokenizer_input(self, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return self._preprocess_raw_text(value)
+        if isinstance(value, tuple):
+            return tuple(self._preprocess_tokenizer_input(item) for item in value)
+        if isinstance(value, list):
+            return [self._preprocess_tokenizer_input(item) for item in value]
+        return value
+
+    def __call__(self, text=None, text_pair=None, *args, **kwargs):
+        if "text_target" in kwargs:
+            kwargs["text_target"] = self._preprocess_tokenizer_input(kwargs["text_target"])
+        if "text_pair_target" in kwargs:
+            kwargs["text_pair_target"] = self._preprocess_tokenizer_input(
+                kwargs["text_pair_target"]
+            )
+
+        text = self._preprocess_tokenizer_input(text)
+        text_pair = self._preprocess_tokenizer_input(text_pair)
+        if text_pair is None:
+            return super().__call__(text, *args, **kwargs)
+        return super().__call__(text, text_pair, *args, **kwargs)
+
+    def encode(self, text, text_pair=None, add_special_tokens=True, *args, **kwargs):
+        kwargs["add_special_tokens"] = add_special_tokens
+        text = self._preprocess_tokenizer_input(text)
+        text_pair = self._preprocess_tokenizer_input(text_pair)
+        if text_pair is None:
+            return super().encode(text, *args, **kwargs)
+        return super().encode(text, text_pair, *args, **kwargs)
+
+    def encode_plus(self, text, text_pair=None, *args, **kwargs):
+        text = self._preprocess_tokenizer_input(text)
+        text_pair = self._preprocess_tokenizer_input(text_pair)
+        if text_pair is None:
+            return super().encode_plus(text, *args, **kwargs)
+        return super().encode_plus(text, text_pair, *args, **kwargs)
+
+    def batch_encode_plus(self, batch_text_or_text_pairs, *args, **kwargs):
+        batch_text_or_text_pairs = self._preprocess_tokenizer_input(
+            batch_text_or_text_pairs
+        )
+        return super().batch_encode_plus(batch_text_or_text_pairs, *args, **kwargs)
+
+    def build_inputs_with_special_tokens(
+        self,
+        token_ids_0: list[int],
+        token_ids_1: list[int] | None = None,
+    ) -> list[int]:
+        output = list(token_ids_0)
+        if self.add_bos_token and self.bos_token_id is not None:
+            output = [self.bos_token_id] + output
+        if self.add_eos_token and self.eos_token_id is not None:
+            output = output + [self.eos_token_id]
+        if token_ids_1 is not None:
+            output += list(token_ids_1)
+            if self.add_eos_token and self.eos_token_id is not None:
+                output.append(self.eos_token_id)
+        return output
+
+    def save_vocabulary(
+        self,
+        save_directory: str,
+        filename_prefix: str | None = None,
+    ) -> tuple[str]:
+        output_name = "tokenizer.model"
+        if filename_prefix:
+            output_name = f"{filename_prefix}-{output_name}"
+        output_path = Path(save_directory) / output_name
+        if Path(self.vocab_file).resolve() != output_path.resolve():
+            shutil.copyfile(self.vocab_file, output_path)
+        return (str(output_path),)
