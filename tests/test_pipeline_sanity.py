@@ -275,7 +275,7 @@ class PipelineSanityTests(unittest.TestCase):
         self.assertEqual(dataset[0].tolist(), [1, 2, 3, 4])
         self.assertIsInstance(load_token_dataset(output_path), BinaryTokenDataset)
 
-    def test_sentencepiece_training_allows_cross_token_bpe_merges(self) -> None:
+    def test_sentencepiece_training_preserves_jieba_word_boundaries(self) -> None:
         captured = {}
 
         class FakeTrainer:
@@ -304,7 +304,7 @@ class PipelineSanityTests(unittest.TestCase):
         ):
             train_tokenizer(args)
 
-        self.assertFalse(captured["split_by_whitespace"])
+        self.assertTrue(captured["split_by_whitespace"])
         self.assertFalse(captured["split_by_number"])
         self.assertIn("<URL>", captured["user_defined_symbols"].split(","))
 

@@ -114,10 +114,12 @@ This writes:
 
 The default tokenizer uses an 8,000-piece BPE vocabulary, preserves the
 preprocessing special tokens such as `<NUM>`, `<MATH>`, and `<URL>`, and avoids
-splitting pinyin-code digits away from their letters. SentencePiece is allowed to
-learn BPE pieces that span adjacent whitespace-delimited atomic tokens, so
-frequent multi-token pinyin-code patterns can become single tokenizer pieces.
-For BPE training, long processed lines are split at whitespace boundaries before
+splitting pinyin-code digits away from their letters. Training enables
+`split_by_whitespace`, so BPE merges stay within each whitespace-delimited
+Jieba word and do not combine separate encoded words. Merges can still produce
+subword pieces inside a single encoded word (for example partial splits of a
+long pinyin-code token). For BPE training, long processed lines are split at
+whitespace boundaries before
 calling SentencePiece by default; this avoids SentencePiece's per-line 16-bit
 position limit on large corpora while preserving all tokens. Use
 `--no-split-long-lines` only if you are sure your input lines are already short
@@ -313,7 +315,7 @@ Current SentencePiece BPE:
 - learns recursive frequency-based merges;
 - may produce partial-word pieces;
 - may split letters and digits;
-- may merge across Jieba boundaries depending on configuration.
+- does not merge across Jieba word boundaries (`split_by_whitespace=True`).
 
 New hybrid tokenizer:
 
