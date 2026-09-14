@@ -1,8 +1,9 @@
 """Count BabyLM corpus tokens before SentencePiece/BPE.
 
-For this project, one corpus token is one whitespace-separated pinyin-code token
-in the processed text, where each code token corresponds to one Jieba-segmented
-Chinese word or preserved special/punctuation token.
+For this project, one corpus token is one encoded word or one preserved
+special/punctuation token in the processed text. Encoded Mandarin words are
+written without separators, so their boundaries come from the encoding rather
+than from whitespace.
 """
 
 from __future__ import annotations
@@ -10,6 +11,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 from typing import Iterable
+
+from preprocessing.encoding import iter_corpus_words
 
 
 def iter_text_files(path: Path) -> Iterable[Path]:
@@ -20,11 +23,11 @@ def iter_text_files(path: Path) -> Iterable[Path]:
     yield from sorted(path.glob("*.txt"))
 
 
-def count_whitespace_tokens(path: Path) -> int:
+def count_corpus_tokens(path: Path) -> int:
     total = 0
     with path.open("r", encoding="utf-8-sig") as handle:
         for line in handle:
-            total += len(line.split())
+            total += sum(1 for _ in iter_corpus_words(line))
     return total
 
 
@@ -55,7 +58,7 @@ def main() -> None:
     if not files:
         raise SystemExit(f"No processed .txt files found at {args.path}")
 
-    total_tokens = sum(count_whitespace_tokens(path) for path in files)
+    total_tokens = sum(count_corpus_tokens(path) for path in files)
     print(f"Corpus tokens: {total_tokens:,}")
 
     if args.epochs is not None:

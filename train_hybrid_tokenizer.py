@@ -16,7 +16,11 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from hf.tokenization_hybrid_pinyin_code import ENCODED_WORD_RE
+from hf.tokenization_hybrid_pinyin_code import (
+    ENCODED_WORD_RE,
+    is_encoded_run,
+    split_encoded_words,
+)
 from preprocessing.preprocess import LATIN_ALNUM_RE, PUNCTUATION, should_preserve_fallback_token
 from train_sentencepiece import SPECIAL_TOKENS
 
@@ -45,23 +49,34 @@ def is_supported_preserved_token(token: str) -> bool:
 
 
 def atomic_tokens(initial_alphabet: str, digits: str) -> list[str]:
+    """Return every syllable atom in both word positions.
+
+    A word-initial syllable is written ``initial + digit`` and a word-continuing
+    syllable is written ``digit + initial``, so both orders must exist in the
+    vocabulary for the atomic fallback to cover any position in any word.
+    """
     atoms: list[str] = []
     seen: set[str] = set()
     for initial in initial_alphabet:
         for digit in digits:
-            token = f"{initial}{digit}"
-            if token not in seen:
-                atoms.append(token)
-                seen.add(token)
+            for token in (f"{initial}{digit}", f"{digit}{initial}"):
+                if token not in seen:
+                    atoms.append(token)
+                    seen.add(token)
     return atoms
 
 
 def iter_corpus_items(input_paths: Iterable[Path]) -> Iterable[tuple[Path, int, str]]:
+    """Yield one corpus item at a time, expanding whitespace-free encoded runs."""
     for input_path in input_paths:
         with input_path.open("r", encoding="utf-8-sig") as handle:
             for line_number, line in enumerate(handle, start=1):
                 for item in line.strip().split():
-                    yield input_path, line_number, item
+                    if is_encoded_run(item):
+                        for word in split_encoded_words(item):
+                            yield input_path, line_number, word
+                    else:
+                        yield input_path, line_number, item
 
 
 def ordered_vocab(tokens: Iterable[str]) -> dict[str, int]:
@@ -124,7 +139,7 @@ def collect_counts(
 
     multi_atom_unique = sum(1 for token in encoded_counts if atom_count(token) > 1)
     stats = {
-        "total_whitespace_items": total_items,
+        "total_corpus_items": total_items,
         "valid_encoded_word_occurrences": valid_encoded_occurrences,
         "unique_encoded_words": len(encoded_counts),
         "unique_multi_atom_encoded_words": multi_atom_unique,
@@ -171,7 +186,7 @@ def build_vocab(args: argparse.Namespace) -> tuple[dict[str, int], dict[str, obj
     vocab = ordered_vocab([*base_vocab, *(token for token, _ in selected_words)])
     least_selected_frequency = selected_words[-1][1] if selected_words else None
     metadata = {
-        "format": "babylm-pinyin-code-hybrid-tokenizer-v1",
+        "format": "babylm-pinyin-code-hybrid-tokenizer-v2",
         "target_vocab_size": args.vocab_size,
         "actual_vocab_size": len(vocab),
         "minimum_word_frequency": args.min_word_frequency,
@@ -284,7 +299,7 @@ def print_summary(metadata: dict[str, object]) -> None:
     assert isinstance(stats, dict)
     print("Hybrid tokenizer build statistics:")
     for key in [
-        "total_whitespace_items",
+        "total_corpus_items",
         "valid_encoded_word_occurrences",
         "unique_encoded_words",
         "unique_multi_atom_encoded_words",

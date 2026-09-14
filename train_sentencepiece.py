@@ -104,9 +104,10 @@ def train_tokenizer(args: argparse.Namespace) -> None:
                     f"max line {stats.max_input_chars:,} -> {stats.max_output_chars:,} chars"
                 )
 
-    # The corpus uses whitespace to preserve Jieba word boundaries. BPE may
-    # learn subword pieces within each encoded word, but must not merge across
-    # separate Jieba words.
+    # The corpus carries Jieba word boundaries inside the encoding itself, so
+    # encoded words are not whitespace-separated and BPE merges can span them.
+    # Whitespace splitting still keeps markers, punctuation, and non-Mandarin
+    # words apart from the encoded runs next to them.
     try:
         spm.SentencePieceTrainer.train(
             input=input_files,

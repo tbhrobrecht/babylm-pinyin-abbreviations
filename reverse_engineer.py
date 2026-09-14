@@ -23,6 +23,7 @@ warnings.filterwarnings(
 import jieba
 from pypinyin import Style, pinyin
 
+from preprocessing.encoding import iter_corpus_words
 from preprocessing.preprocess import (
     CHINESE_RE,
     PUNCTUATION,
@@ -34,9 +35,7 @@ from preprocessing.preprocess import (
 )
 
 
-DEFAULT_MESSAGE = (
-    "W6M7 Y6 j2D6 z6J6 X2L6 s7 g6 H7 D6 r2 N6 Y6 s7 j2D6 z6J6 H7"
-)
+DEFAULT_MESSAGE = "W67MY6j26Dz66JX26Ls7g6H7D6r2N6Y6s7j26Dz66JH7"
 
 Codebook = dict[str, Counter[str]]
 
@@ -95,7 +94,7 @@ def decode_message(
     decoded_words: list[str] = []
     token_candidates: list[tuple[str, list[tuple[str, int]]]] = []
 
-    for token in encrypted.split():
+    for token in iter_corpus_words(encrypted):
         candidates = codebook.get(token, Counter()).most_common(max_candidates)
         token_candidates.append((token, candidates))
         decoded_words.append(candidates[0][0] if candidates else f"<{token}?>")
@@ -117,7 +116,7 @@ def parse_args() -> argparse.Namespace:
         "message",
         nargs="?",
         default=None,
-        help="Space-separated BabyLM pinyin-code message to decode.",
+        help="BabyLM pinyin-code message to decode.",
     )
     parser.add_argument(
         "--corpus",
@@ -167,7 +166,7 @@ def main() -> None:
     if not message:
         raise SystemExit("No input provided.")
 
-    target_codes = None if args.full_codebook else set(message.split())
+    target_codes = None if args.full_codebook else set(iter_corpus_words(message))
     codebook = build_codebook(args.corpus, args.max_docs, target_codes)
     best_guess, token_candidates = decode_message(
         message,

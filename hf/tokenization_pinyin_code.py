@@ -18,8 +18,11 @@ from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
 
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
 CHINESE_SPAN_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]+")
+# One whitespace-free run of encoded words. A word-initial syllable is written
+# ``initial + digit`` and a word-continuing syllable ``digit + initial``, so a
+# run alternates freely between the two forms.
 PINYIN_CODE_TOKEN_RE = re.compile(
-    r"(?<![A-Za-z0-9])[A-Za-z]\d(?:[A-Za-z]\d)*(?![A-Za-z0-9])"
+    r"(?<![A-Za-z0-9])[A-Za-z]\d(?:\d[A-Za-z]|[A-Za-z]\d)*(?![A-Za-z0-9])"
 )
 SPECIAL_MARKER_RE = re.compile(r"<[A-Z_]+>")
 PUNCTUATION = set(
@@ -233,6 +236,10 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
             plain, _ = split_tone3_syllable(syllable)
             return plain[:1].lower()
 
+        def continuation_form(code: str) -> str:
+            """Return the word-internal syllable form: digit before initial."""
+            return f"{code[1]}{code[0]}"
+
         def convert_word(word: str) -> str:
             if self.transliteration == "hanzi":
                 return word
@@ -243,7 +250,14 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
                     for item in syllables
                     if item and item[0]
                 ]
-                return "".join(code for code in codes if code)
+                codes = [code for code in codes if code]
+                if not codes:
+                    return ""
+                # Only the first syllable keeps initial+digit order, which makes
+                # the word self-delimiting without a trailing separator.
+                return codes[0] + "".join(
+                    continuation_form(code) for code in codes[1:]
+                )
             initials = [
                 syllable_to_initial_letter(item[0])
                 for item in syllables
@@ -262,22 +276,36 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
                         tokens.append(token)
             return tokens
 
-        tokens = []
+        # Adjacent pinyin-code words are concatenated because the encoding
+        # marks the boundary itself; every other neighbouring pair keeps a
+        # single space. pinyin-initial and hanzi have no self-delimiting
+        # property, so they stay fully space-separated.
+        self_delimiting = self.transliteration == "pinyin-code"
+        tokens: list[tuple[str, bool]] = []
         for part in TOKEN_RE.findall(normalize_text(text)):
             if part.startswith("<") and part.endswith(">"):
-                tokens.append(part)
+                tokens.append((part, False))
             elif CHINESE_SPAN_RE.fullmatch(part):
-                tokens.extend(tokenize_chinese_span(part))
+                tokens.extend(
+                    (token, self_delimiting) for token in tokenize_chinese_span(part)
+                )
             elif part in PUNCTUATION:
-                tokens.append(part)
+                tokens.append((part, False))
             elif LATIN_ALNUM_RE.fullmatch(part):
-                tokens.append(latin_token_to_model_token(part))
+                tokens.append((latin_token_to_model_token(part), False))
             elif part.isdigit():
-                tokens.append("<NUM>")
+                tokens.append(("<NUM>", False))
             elif should_preserve_fallback_token(part):
-                tokens.append(part.lower())
+                tokens.append((part.lower(), False))
 
-        return " ".join(tokens)
+        pieces: list[str] = []
+        previous_encoded = False
+        for token, is_encoded in tokens:
+            if pieces and not (is_encoded and previous_encoded):
+                pieces.append(" ")
+            pieces.append(token)
+            previous_encoded = is_encoded
+        return "".join(pieces)
 
     def _preprocess_tokenizer_input(self, value: Any) -> Any:
         if value is None:

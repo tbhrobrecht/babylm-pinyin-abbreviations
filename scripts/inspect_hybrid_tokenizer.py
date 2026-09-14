@@ -12,6 +12,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from hf.tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
+from preprocessing.encoding import iter_corpus_words
 from train_hybrid_tokenizer import METADATA_NAME, atom_count, is_encoded_word
 
 
@@ -80,7 +81,7 @@ def inspect_corpus(tokenizer: HybridPinyinCodeTokenizer, input_paths: list[Path]
                 total_lines += 1
                 line_tokens = tokenizer.tokenize(text)
                 total_line_tokens += len(line_tokens)
-                for item in text.split():
+                for item in iter_corpus_words(text):
                     if not is_encoded_word(item):
                         continue
                     encoded_occurrences += 1
@@ -114,7 +115,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--example",
         action="append",
-        default=["Y0J7 H2 X4Q3", "<QUESTION> Y0J7"],
+        default=["Y07JH2X43Q", "<QUESTION> Y07J"],
         help="Example encoded text to tokenize. Can be passed more than once.",
     )
     return parser.parse_args()

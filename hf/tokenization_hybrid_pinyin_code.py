@@ -8,9 +8,15 @@ selectable *tokenization modes* over the same vocabulary and boundary policy:
   that are valid at the current atomic position.
 
 Both modes enumerate candidates with the same :meth:`get_valid_matches` method,
-never split an atomic Initial+Digit unit, never cross a whitespace-separated
-Jieba boundary, and rely on the same atomic fallback. Only the *selection*
-strategy differs, so the experiment isolates the segmentation policy.
+never split an atomic syllable unit, never cross a Jieba word boundary, and rely
+on the same atomic fallback. Only the *selection* strategy differs, so the
+experiment isolates the segmentation policy.
+
+Word boundaries come from the encoding itself rather than from whitespace. The
+first syllable of a word is written ``initial + digit`` and every later syllable
+of the same word is written ``digit + initial``, so ``我 爱 北京`` is the single
+whitespace-free run ``W6a6B73J`` and still splits uniquely into ``W6``, ``a6``,
+and ``B73J``.
 
 The softmax mode is *local autoregressive segmentation sampling*: at each
 position it samples one token from the valid next tokens and advances. It does
@@ -39,8 +45,26 @@ from .tokenization_pinyin_code import PinyinCodeTokenizer
 
 
 VOCAB_FILES_NAMES = {"vocab_file": "vocab.json"}
-ENCODED_WORD_RE = re.compile(r"^(?:[A-Za-z][0-9])+$")
-ATOM_RE = re.compile(r"^[A-Za-z][0-9]$")
+
+# Encoding grammar. A word-initial syllable atom is ``initial + digit`` and a
+# word-continuing atom is ``digit + initial``, so words need no separator. This
+# mirrors ``preprocessing/encoding.py``, which cannot be imported here because
+# this module must load as a standalone Transformers remote-code file.
+HEAD_ATOM_PATTERN = r"[A-Za-z][0-9]"
+TAIL_ATOM_PATTERN = r"[0-9][A-Za-z]"
+ENCODED_WORD_PATTERN = rf"{HEAD_ATOM_PATTERN}(?:{TAIL_ATOM_PATTERN})*"
+# One complete encoded word.
+ENCODED_WORD_RE = re.compile(rf"^{ENCODED_WORD_PATTERN}$")
+# One or more encoded words written without any separator between them.
+ENCODED_RUN_RE = re.compile(rf"^(?:{ENCODED_WORD_PATTERN})+$")
+# Unanchored form used to scan a run for its successive words.
+ENCODED_WORD_SCAN_RE = re.compile(ENCODED_WORD_PATTERN)
+# One syllable atom in either word position.
+ATOM_RE = re.compile(rf"^(?:{HEAD_ATOM_PATTERN}|{TAIL_ATOM_PATTERN})$")
+# Any run of atoms, including a word-internal piece such as ``3J``.
+ENCODED_PIECE_RE = re.compile(
+    rf"^(?:{HEAD_ATOM_PATTERN}|{TAIL_ATOM_PATTERN})(?:{TAIL_ATOM_PATTERN})*$"
+)
 
 # Optional sidecar files used to recover per-token frequency/score signal.
 TOKEN_SCORES_FILE = "token_scores.json"
@@ -61,12 +85,29 @@ class HybridTokenizerError(ValueError):
     """
 
 
+def split_encoded_words(run: str) -> list[str]:
+    """Split a whitespace-free encoded run back into its Jieba words.
+
+    The scan is unambiguous: a word starts at every letter and absorbs every
+    following ``digit + initial`` atom.
+    """
+    words = ENCODED_WORD_SCAN_RE.findall(run)
+    if "".join(words) != run:
+        raise HybridTokenizerError(f"Not a valid encoded word run: {run!r}")
+    return words
+
+
+def is_encoded_run(text: str) -> bool:
+    """Return true for one or more encoded words written without separators."""
+    return bool(ENCODED_RUN_RE.fullmatch(text))
+
+
 @dataclass(frozen=True)
 class TokenMatch:
     """One vocabulary token that matches the atomic sequence at a position.
 
-    ``atomic_length`` is the number of atomic Initial+Digit units the token
-    covers; ``end`` is the exclusive atomic index after the match.
+    ``atomic_length`` is the number of atomic syllable units the token covers;
+    ``end`` is the exclusive atomic index after the match.
     """
 
     token: str
@@ -81,10 +122,12 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
 
     Public call sites (``__call__``, :meth:`encode`, :meth:`encode_plus`,
     :meth:`batch_encode_plus`) accept both raw Hanzi (e.g. ``"已经很晚了"``) and
-    already-preprocessed pinyin-code text (e.g. ``"Y6J3 H7W7 L6"``): raw text is
+    already-preprocessed pinyin-code text (e.g. ``"Y63JH77WL6"``): raw text is
     converted with the shared repository preprocessing before segmentation,
-    while already-preprocessed text passes through unchanged. Whitespace is used
-    as word-boundary metadata and never becomes a token.
+    while already-preprocessed text passes through unchanged. Word boundaries
+    are recovered from the encoding, so the input needs no whitespace; any
+    whitespace that is present is treated as a separator and never becomes a
+    token.
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
@@ -121,7 +164,7 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
         # --- Raw-text preprocessing compatibility -----------------------------
         # These mirror PinyinCodeTokenizer so the hybrid tokenizer can accept
         # raw Hanzi (e.g. "已经很晚了") as well as already-preprocessed
-        # pinyin-code text (e.g. "Y6J3 H7W7 L6"). ``pinyin_format`` and
+        # pinyin-code text (e.g. "Y63JH77WL6"). ``pinyin_format`` and
         # ``jieba`` are accepted as aliases so tokenizer_config.json fields
         # written by either tokenizer family round-trip.
         self.transliteration = self._normalize_transliteration(
@@ -236,7 +279,7 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
     def _compute_max_atomic_span(self) -> int:
         max_span = 1
         for token in self.vocab:
-            if ENCODED_WORD_RE.fullmatch(token):
+            if ENCODED_PIECE_RE.fullmatch(token):
                 span = len(token) // 2
                 if span > max_span:
                     max_span = span
@@ -406,7 +449,12 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
     # ------------------------------------------------------------------ #
     @staticmethod
     def _atomize(word: str) -> list[str]:
-        """Split a validated encoded word into its atomic Initial+Digit units."""
+        """Split a validated encoded word into its atomic syllable units.
+
+        The first unit is ``initial + digit`` and the rest are ``digit +
+        initial``, so the surface form of each unit records its position in the
+        word and decoding restores the word boundaries.
+        """
         return [word[index : index + 2] for index in range(0, len(word), 2)]
 
     def get_valid_matches(
@@ -417,7 +465,7 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
         """Return every vocabulary token that matches ``atomic_units`` at ``start``.
 
         Each candidate covers one or more complete atomic units, so an atomic
-        Initial+Digit unit can never be split. Enumeration is bounded by the
+        syllable unit can never be split. Enumeration is bounded by the
         longest whole-word span in the vocabulary. Because every atom is present
         in the vocabulary, the length-1 candidate is always available for valid
         encoded input, so the returned list is non-empty in the normal case.
@@ -539,8 +587,8 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
         """Segment one Jieba word's atomic units with the active mode.
 
         Both modes share candidate enumeration and only differ in selection.
-        Matching is confined to this single word, so no token crosses a
-        whitespace-separated Jieba boundary.
+        Matching is confined to this single word, so no token crosses a Jieba
+        word boundary.
         """
         tokens: list[str] = []
         position = 0
@@ -576,19 +624,21 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
             raise ValueError(
                 f"Unsupported or malformed pinyin-code token {token!r}. "
                 "Expected a known special/preserved token or text matching "
-                "^(?:[A-Za-z][0-9])+$."
+                f"^(?:{ENCODED_WORD_PATTERN})+$."
             )
         return [self.unk_token]
 
     def _tokenize(self, text: str) -> list[str]:
         output: list[str] = []
         for item in text.split():
-            if ENCODED_WORD_RE.fullmatch(item):
-                # Encoded Jieba word: segment its atoms with the active mode.
-                # A whole word that is itself in the vocabulary is selected as
-                # the longest match under greedy, matching the previous
-                # whole-word-lookup behavior.
-                output.extend(self._segment_atomic_units(self._atomize(item), item))
+            if is_encoded_run(item):
+                # One or more encoded Jieba words with no separator between
+                # them. Split on the encoding's own word boundaries first, then
+                # segment each word's atoms with the active mode. A whole word
+                # that is itself in the vocabulary is selected as the longest
+                # match under greedy.
+                for word in split_encoded_words(item):
+                    output.extend(self._segment_atomic_units(self._atomize(word), word))
             elif item in self.vocab:
                 # Special/preserved marker preserved verbatim.
                 output.append(item)
@@ -602,26 +652,29 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
     def _convert_id_to_token(self, index: int) -> str:
         return self.ids_to_tokens.get(index, self.unk_token)
 
-    def _token_is_atom(self, token: str) -> bool:
-        return bool(ATOM_RE.fullmatch(token))
+    @staticmethod
+    def _token_is_encoded_piece(token: str) -> bool:
+        return bool(ENCODED_PIECE_RE.fullmatch(token))
 
     def convert_tokens_to_string(self, tokens: list[str]) -> str:
+        """Join tokens back into corpus-format text.
+
+        Encoded pieces are concatenated, which reproduces the whitespace-free
+        corpus and keeps word boundaries readable from the encoding itself.
+        Special and preserved tokens keep single-space separation.
+        """
         if self.readable_decode:
             return " ".join(tokens)
 
         pieces: list[str] = []
-        atom_buffer: list[str] = []
+        previous_encoded = False
         for token in tokens:
-            if self._token_is_atom(token):
-                atom_buffer.append(token)
-                continue
-            if atom_buffer:
-                pieces.append("".join(atom_buffer))
-                atom_buffer.clear()
+            is_encoded = self._token_is_encoded_piece(token)
+            if pieces and not (is_encoded and previous_encoded):
+                pieces.append(" ")
             pieces.append(token)
-        if atom_buffer:
-            pieces.append("".join(atom_buffer))
-        return " ".join(pieces)
+            previous_encoded = is_encoded
+        return "".join(pieces)
 
     def decode(
         self,

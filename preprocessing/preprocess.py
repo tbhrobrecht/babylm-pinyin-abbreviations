@@ -15,6 +15,11 @@ from typing import Any, Iterable, Literal
 import jieba
 from pypinyin import Style, pinyin
 
+try:
+    from preprocessing.encoding import continuation_form, join_corpus_tokens
+except ImportError:  # Loaded as a standalone module, e.g. from an HF export.
+    from encoding import continuation_form, join_corpus_tokens
+
 
 LABELS = {
     "题干": "<QUESTION>",
@@ -163,13 +168,18 @@ def syllable_to_initial_letter(syllable: str) -> str:
 def chinese_word_to_initial_codes(word: str) -> str:
     """Convert one already-segmented Chinese word to one compact code token.
 
-    The important representation choice is preserved: jieba decides the word
-    boundary, and all syllable codes inside that word are concatenated. For
-    example, ``我们`` becomes ``W6M7`` rather than ``W6 M7``.
+    Jieba decides the word boundary and all syllable codes inside that word are
+    concatenated. Only the first syllable keeps the ``initial + digit`` order;
+    every later syllable of the same word is written ``digit + initial``, which
+    makes the word self-delimiting and removes the need for a separator between
+    words. For example, ``我们`` becomes ``W67M`` rather than ``W6 M7``.
     """
     syllables = pinyin(word, style=Style.TONE3, heteronym=False, errors="ignore")
     codes = [syllable_to_initial_code(item[0]) for item in syllables if item and item[0]]
-    return "".join(code for code in codes if code)
+    codes = [code for code in codes if code]
+    if not codes:
+        return ""
+    return codes[0] + "".join(continuation_form(code) for code in codes[1:])
 
 
 def chinese_word_to_initial_letters(word: str) -> str:
@@ -214,23 +224,34 @@ def process_text(
     transliteration: Transliteration = "pinyin-code",
     use_jieba: bool = True,
 ) -> str:
-    """Convert one raw document string into the final space-separated token line."""
-    tokens: list[str] = []
+    """Convert one raw document string into the final token line.
+
+    Neighbouring ``pinyin-code`` words are written without any separator because
+    the encoding itself marks where a word starts. Everything else — special
+    markers, punctuation, non-Mandarin words — keeps single-space separation, as
+    do the ``pinyin-initial`` and ``hanzi`` transliterations, which have no
+    self-delimiting property.
+    """
+    self_delimiting = transliteration == "pinyin-code"
+    tokens: list[tuple[str, bool]] = []
     for part in TOKEN_RE.findall(normalize_text(text)):
         if part.startswith("<") and part.endswith(">"):
-            tokens.append(part)
+            tokens.append((part, False))
         elif CHINESE_RE.fullmatch(part):
-            tokens.extend(tokenize_chinese_span(part, transliteration, use_jieba))
+            tokens.extend(
+                (token, self_delimiting)
+                for token in tokenize_chinese_span(part, transliteration, use_jieba)
+            )
         elif part in PUNCTUATION:
-            tokens.append(part)
+            tokens.append((part, False))
         elif LATIN_ALNUM_RE.fullmatch(part):
-            tokens.append(latin_token_to_model_token(part))
+            tokens.append((latin_token_to_model_token(part), False))
         elif part.isdigit():
-            tokens.append("<NUM>")
+            tokens.append(("<NUM>", False))
         elif should_preserve_fallback_token(part):
-            tokens.append(part.lower())
+            tokens.append((part.lower(), False))
 
-    return " ".join(tokens)
+    return join_corpus_tokens(tokens)
 
 
 def hanzi_to_encoded(text: str, use_jieba: bool = True) -> str:

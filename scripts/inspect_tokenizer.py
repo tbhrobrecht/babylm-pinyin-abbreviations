@@ -1,14 +1,14 @@
 """Inspect greedy/softmax segmentation of the hybrid pinyin-code tokenizer.
 
-Prints the atomic units, Jieba boundaries, valid candidates, softmax scores and
-probabilities, and the selected tokens for one encoded example. This script is
-read-only and never modifies tokenizer files.
+Prints the atomic units, recovered Jieba word boundaries, valid candidates,
+softmax scores and probabilities, and the selected tokens for one encoded
+example. This script is read-only and never modifies tokenizer files.
 
 Example::
 
     python scripts/inspect_tokenizer.py \
         --tokenizer tokenizers/babylm_zho_hybrid_16k \
-        --text "Y0J7 H2 X4Q3" \
+        --text "Y07JH2X43Q" \
         --mode softmax --temperature 1.0 --samples 20 --seed 42
 """
 
@@ -24,8 +24,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from hf.tokenization_hybrid_pinyin_code import (  # noqa: E402
+    ENCODED_PIECE_RE,
     ENCODED_WORD_RE,
     HybridPinyinCodeTokenizer,
+    is_encoded_run,
+    split_encoded_words,
 )
 
 
@@ -66,11 +69,22 @@ def reconstruct_atomic_sequence(tokens: list[str]) -> list[str]:
     """Return the atomic units implied by the selected encoded tokens."""
     atoms: list[str] = []
     for token in tokens:
-        if ENCODED_WORD_RE.fullmatch(token):
+        if ENCODED_PIECE_RE.fullmatch(token):
             atoms.extend(token[index : index + 2] for index in range(0, len(token), 2))
         else:
             atoms.append(token)
     return atoms
+
+
+def corpus_words(text: str) -> list[str]:
+    """Split inspected text into encoded words and special/preserved items."""
+    words: list[str] = []
+    for item in text.split():
+        if is_encoded_run(item):
+            words.extend(split_encoded_words(item))
+        else:
+            words.append(item)
+    return words
 
 
 def main() -> None:
@@ -100,9 +114,9 @@ def main() -> None:
         sampling_seed=args.seed,
     )
 
-    words = args.text.split()
+    words = corpus_words(args.text)
     print(f"Input encoded text: {args.text}")
-    print(f"Jieba boundaries (whitespace-separated words): {words}")
+    print(f"Jieba words recovered from the encoding: {words}")
     print(f"Active mode: {tokenizer.tokenization_mode}")
     print(f"Sampling temperature: {tokenizer.sampling_temperature:g}")
     print(f"Sampling alpha/beta/epsilon: {tokenizer.sampling_alpha:g}/"

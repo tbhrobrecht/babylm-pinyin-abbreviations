@@ -17,7 +17,9 @@ from torch.utils.data import TensorDataset
 
 from create_dataset import iter_chunks, write_dataset
 from generate import prepare_prompt
+from preprocessing.encoding import split_encoded_words
 from preprocessing.preprocess import hanzi_to_encoded, process_text
+from preprocessing.split_long_sentencepiece_lines import split_line_at_whitespace
 from train_hybrid_tokenizer import build_vocab, write_tokenizer_files
 from train_sentencepiece import train_tokenizer
 from train_model import (
@@ -78,6 +80,31 @@ class PipelineSanityTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
+    def test_encoded_words_are_self_delimiting(self) -> None:
+        # Only the first syllable of a word keeps initial+digit order, so the
+        # corpus needs no separator between consecutive words.
+        self.assertEqual(hanzi_to_encoded("中国"), "Z42g")
+        self.assertEqual(hanzi_to_encoded("我爱北京"), "W6a6B73J")
+
+    def test_encoded_run_splits_back_into_words(self) -> None:
+        self.assertEqual(split_encoded_words("W6a6B73J"), ["W6", "a6", "B73J"])
+        with self.assertRaises(ValueError):
+            split_encoded_words("Y0J")
+
+    def test_process_text_keeps_spaces_around_non_chinese_items(self) -> None:
+        self.assertEqual(process_text("已经很晚了，hello"), "Y63JH77WL6 , hello")
+
+    def test_non_self_delimiting_transliterations_keep_whitespace(self) -> None:
+        self.assertEqual(process_text("我爱北京", "pinyin-initial"), "w a bj")
+        self.assertEqual(process_text("我爱北京", "hanzi"), "我 爱 北京")
+
+    def test_long_encoded_run_splits_at_word_boundaries(self) -> None:
+        run = "A12B" * 5
+        chunks = split_line_at_whitespace(run, max_chars=8)
+
+        self.assertEqual(chunks, ["A12BA12B", "A12BA12B", "A12B"])
+        self.assertEqual("".join(chunks), run)
+
     def test_process_text_normalizes_task_markers(self) -> None:
         text = "题干：A. yes 3"
         self.assertEqual(process_text(text), "<QUESTION> A . <YES> <NUM>")
@@ -125,13 +152,13 @@ class PipelineSanityTests(unittest.TestCase):
 
     def test_prepare_prompt_preserves_pinyin_code_text(self) -> None:
         prompt = prepare_prompt(
-            "W6M7 Y6",
+            "W67MY6",
             raw_prompt=False,
             code_prompt=False,
             transliteration="pinyin-code",
             use_jieba=True,
         )
-        self.assertEqual(prompt, "W6M7 Y6")
+        self.assertEqual(prompt, "W67MY6")
 
     def test_encoded_mandarin_tokenizer_wraps_hanzi_input(self) -> None:
         if EncodedMandarinTokenizer is None:
@@ -150,6 +177,29 @@ class PipelineSanityTests(unittest.TestCase):
             tokenizer(["已经很晚了"], add_special_tokens=False)["input_ids"][0],
             direct_ids,
         )
+
+    def test_export_tokenizer_fallback_matches_main_preprocessing(self) -> None:
+        # tokenization_pinyin_code.py carries a standalone copy of the encoding
+        # for Transformers remote-code environments where preprocessing/ is not
+        # importable. Benchmark text must come out identical either way.
+        if EncodedMandarinTokenizer is None:
+            self.skipTest("transformers or sentencepiece is not installed")
+        tokenizer_path = Path("tokenizers/babylm_zho_pinyin_spm.model")
+        if not tokenizer_path.exists():
+            self.skipTest("SentencePiece tokenizer model is not available")
+
+        texts = ["已经很晚了，我们走吧。", "我爱北京 hello iPhone12 3", "中国的首都是北京。"]
+        for transliteration in ("pinyin-code", "pinyin-initial", "hanzi"):
+            tokenizer = EncodedMandarinTokenizer(
+                vocab_file=str(tokenizer_path),
+                transliteration=transliteration,
+            )
+            for text in texts:
+                with self.subTest(transliteration=transliteration, text=text):
+                    self.assertEqual(
+                        tokenizer._fallback_process_text(text),
+                        process_text(text, transliteration),
+                    )
 
     def test_encoded_mandarin_fast_tokenizer_wraps_hanzi_input(self) -> None:
         if EncodedMandarinTokenizer is None or EncodedMandarinTokenizerFast is None:
@@ -182,7 +232,12 @@ class PipelineSanityTests(unittest.TestCase):
             add_special_tokens=False,
         )
 
-        self.assertEqual(batch.word_ids(0), [0, 1, 1, 1, 1])
+        # The number of pieces per word depends on the trained BPE vocabulary,
+        # so only the word alignment itself is asserted.
+        word_ids = batch.word_ids(0)
+        self.assertGreater(len(word_ids), 1)
+        self.assertEqual(word_ids[0], 0)
+        self.assertTrue(all(word_id == 1 for word_id in word_ids[1:]))
 
     def test_iter_chunks_rejects_stride_larger_than_block_size(self) -> None:
         with self.assertRaisesRegex(ValueError, "--stride"):
@@ -745,12 +800,12 @@ class PipelineSanityTests(unittest.TestCase):
         )
 
         corpus_path = Path(self.temp_dir.name) / "hybrid-corpus.txt"
-        corpus_path.write_text("Y0J7 Y0J7 H2\n", encoding="utf-8")
+        corpus_path.write_text("Y07JY07JH2\n", encoding="utf-8")
         tokenizer_dir = Path(self.temp_dir.name) / "hybrid-tokenizer"
         tokenizer_args = SimpleNamespace(
             input=[corpus_path],
             output_dir=tokenizer_dir,
-            vocab_size=600,
+            vocab_size=1200,
             min_word_frequency=1,
             atomic_only=False,
             initial_alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
@@ -824,7 +879,7 @@ class PipelineSanityTests(unittest.TestCase):
         self.assertTrue((output_dir / "tokenization_hybrid_pinyin_code.py").exists())
 
         tokenizer = AutoTokenizer.from_pretrained(output_dir, trust_remote_code=True)
-        self.assertEqual(tokenizer.tokenize("Y0J7 H2 X4Q3"), ["Y0J7", "H2", "X4", "Q3"])
+        self.assertEqual(tokenizer.tokenize("Y07JH2X43Q"), ["Y07J", "H2", "X4", "3Q"])
         base_model = AutoModel.from_pretrained(output_dir, trust_remote_code=True)
         causal_model = AutoModelForCausalLM.from_pretrained(output_dir, trust_remote_code=True)
         classifier, loading_info = AutoModelForSequenceClassification.from_pretrained(
@@ -921,7 +976,10 @@ class PipelineSanityTests(unittest.TestCase):
             is_split_into_words=True,
             add_special_tokens=False,
         )
-        self.assertEqual(split_batch.word_ids(0), [0, 1, 1, 1, 1])
+        split_word_ids = split_batch.word_ids(0)
+        self.assertGreater(len(split_word_ids), 1)
+        self.assertEqual(split_word_ids[0], 0)
+        self.assertTrue(all(word_id == 1 for word_id in split_word_ids[1:]))
 
         batch = tokenizer(["已经很晚了"], return_tensors="pt")
         base_model = AutoModel.from_pretrained(output_dir, trust_remote_code=True)

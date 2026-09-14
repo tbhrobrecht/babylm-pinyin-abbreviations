@@ -22,8 +22,10 @@ from train_model import build_model, model_config_from_checkpoint, output_logits
 
 
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]")
+# One whitespace-free run of encoded words: a word-initial syllable is written
+# ``initial + digit`` and a word-continuing syllable ``digit + initial``.
 PINYIN_CODE_TOKEN_RE = re.compile(
-    r"(?<![A-Za-z0-9])[A-Za-z]\d(?:[A-Za-z]\d)*(?![A-Za-z0-9])"
+    r"(?<![A-Za-z0-9])[A-Za-z]\d(?:\d[A-Za-z]|[A-Za-z]\d)*(?![A-Za-z0-9])"
 )
 SPECIAL_MARKER_RE = re.compile(r"<[A-Z_]+>")
 

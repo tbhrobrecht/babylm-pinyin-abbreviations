@@ -2,7 +2,7 @@
 
 These tests verify that ``HybridPinyinCodeTokenizer`` accepts both raw Hanzi
 (e.g. ``"已经很晚了"``) and already-preprocessed pinyin-code text
-(e.g. ``"Y6J3 H7W7 L6"``) while preserving the greedy/softmax tokenization
+(e.g. ``"Y63JH77WL6"``) while preserving the greedy/softmax tokenization
 modes. They also confirm the behavior survives a ``trust_remote_code`` reload
 from an exported tokenizer directory.
 """
@@ -23,7 +23,7 @@ except ModuleNotFoundError:
     AutoTokenizer = None
 
 RAW_HANZI = "已经很晚了"
-PREPROCESSED = "Y6J3 H7W7 L6"
+PREPROCESSED = "Y63JH77WL6"
 
 
 def _preprocessing_available() -> bool:
@@ -45,7 +45,7 @@ class HybridRawTextTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def build_dir(self, corpus: str, vocab_size: int = 600) -> Path:
+    def build_dir(self, corpus: str, vocab_size: int = 1200) -> Path:
         corpus_path = self.root / f"corpus-{self.build_count}.txt"
         corpus_path.write_text(corpus, encoding="utf-8")
         self.build_count += 1
@@ -180,7 +180,7 @@ class HybridRawTextRemoteCodeTests(unittest.TestCase):
         args = argparse.Namespace(
             input=[corpus_path],
             output_dir=output_dir,
-            vocab_size=600,
+            vocab_size=1200,
             min_word_frequency=1,
             atomic_only=False,
             initial_alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
@@ -203,12 +203,12 @@ class HybridRawTextRemoteCodeTests(unittest.TestCase):
         self.assertTrue((output_dir / "tokenization_pinyin_code.py").exists())
 
         reference = HybridPinyinCodeTokenizer.from_pretrained(output_dir)
-        reference_pre = reference("Y6J3 H7W7 L6", add_special_tokens=False)["input_ids"]
+        reference_pre = reference(PREPROCESSED, add_special_tokens=False)["input_ids"]
 
         tokenizer = AutoTokenizer.from_pretrained(output_dir, trust_remote_code=True)
 
         # Preprocessed pinyin-code still works after HF reload.
-        reload_pre = tokenizer("Y6J3 H7W7 L6", add_special_tokens=False)["input_ids"]
+        reload_pre = tokenizer(PREPROCESSED, add_special_tokens=False)["input_ids"]
         self.assertEqual(reload_pre, reference_pre)
 
         if _preprocessing_available():

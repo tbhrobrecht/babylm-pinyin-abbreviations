@@ -57,11 +57,48 @@ py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\p
 ```
 
 The output file contains one preprocessed document per line. Chinese words are
-segmented with `jieba`, converted to compact pinyin-code tokens, and preserved
-as whitespace-delimited atomic tokens for downstream tokenizer training. The
+segmented with `jieba` and converted to compact pinyin-code words. The
 preprocessor also keeps visible punctuation, symbols, and non-Mandarin
 alphanumeric words such as English product names, while normalizing URLs, math
 blocks, and standalone numbers to stable markers.
+
+### The self-delimiting pinyin-code format
+
+Each syllable becomes two characters. The *first* syllable of a jieba word is
+written `initial + digit`, and every *later* syllable of the same word is
+written `digit + initial`:
+
+| Hanzi | Syllable codes | Encoded word |
+| --- | --- | --- |
+| 中国 | `Z4` `g2` | `Z42g` |
+| 我们 | `W6` `M7` | `W67M` |
+| 北京 | `B7` `J3` | `B73J` |
+
+Because a word can only *start* with a letter and can only *continue* with a
+digit, word boundaries are part of the encoding and the corpus carries no
+whitespace between encoded words at all:
+
+```text
+我 爱 北京  ->  W6a6B73J
+已经很晚了  ->  Y63JH77WL6
+```
+
+That run splits back into `W6`, `a6`, `B73J` deterministically by scanning for
+letters. Whitespace is still used around everything that is *not* an encoded
+word — special markers, punctuation, and non-Mandarin words — because those
+items have no self-delimiting property:
+
+```text
+已经很晚了，hello  ->  Y63JH77WL6 , hello
+```
+
+The `pinyin-initial` and `hanzi` transliterations carry no digits, so they stay
+fully space-separated.
+
+`preprocessing/encoding.py` holds this grammar (`split_encoded_words`,
+`ENCODED_WORD_RE`, and friends) for the preprocessing and tokenizer-training
+utilities; the exported Transformers tokenizers keep their own copy so they
+remain standalone remote-code modules.
 
 To disable `jieba` and preprocess Chinese character-by-character instead, add
 `--no-jieba`:
@@ -77,7 +114,7 @@ py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\p
 ```
 
 For example, the default `pinyin-code` transliteration keeps tone/length casing
-such as `Z4g2`, while `pinyin-initial` emits `zg`.
+such as `Z42g`, while `pinyin-initial` emits `zg`.
 
 To keep the same preprocessing pipeline but leave Mandarin words as segmented
 Hanzi instead of pinyin, use:
@@ -114,16 +151,20 @@ This writes:
 
 The default tokenizer uses an 8,000-piece BPE vocabulary, preserves the
 preprocessing special tokens such as `<NUM>`, `<MATH>`, and `<URL>`, and avoids
-splitting pinyin-code digits away from their letters. Training enables
-`split_by_whitespace`, so BPE merges stay within each whitespace-delimited
-Jieba word and do not combine separate encoded words. Merges can still produce
-subword pieces inside a single encoded word (for example partial splits of a
-long pinyin-code token). For BPE training, long processed lines are split at
-whitespace boundaries before
-calling SentencePiece by default; this avoids SentencePiece's per-line 16-bit
-position limit on large corpora while preserving all tokens. Use
-`--no-split-long-lines` only if you are sure your input lines are already short
-enough.
+splitting pinyin-code digits away from their letters. Because encoded words are
+no longer whitespace-delimited, BPE merges are free to span word boundaries: it
+sees one long encoded run per sentence and has to learn the word structure from
+the letter/digit alternation. `split_by_whitespace` still keeps markers,
+punctuation, and non-Mandarin words apart from the runs next to them. This is
+the main behavioural difference from the hybrid tokenizer, which enforces the
+boundaries explicitly.
+
+For BPE training, long processed lines are split before calling SentencePiece by
+default; this avoids SentencePiece's per-line 16-bit position limit on large
+corpora while preserving all tokens. Splits happen at whitespace, and inside an
+over-long encoded run at encoded-word boundaries, so no word or syllable atom is
+ever cut in half. Use `--no-split-long-lines` only if you are sure your input
+lines are already short enough.
 
 Useful options:
 
@@ -148,10 +189,14 @@ py train_hybrid_tokenizer.py --input data\processed\10k_babylm_zho.txt --output-
 
 The hybrid vocabulary uses fixed IDs for `<pad>`, `<unk>`, `<s>`, `</s>`, and
 `<mask>`, includes the preprocessing markers such as `<QUESTION>` and `<NUM>`,
-adds every configurable Initial+Digit atom (`A0` through `z9` by default), and
-then adds frequent multi-atom Jieba words by corpus frequency. Valid encoded
-words that are not in the whole-word vocabulary fall back to their two-character
-atoms, so they do not become `<unk>`.
+adds every configurable syllable atom in *both* word positions (`A0` through
+`z9` plus `0A` through `9z`, 1,040 atoms by default), and then adds frequent
+multi-atom Jieba words by corpus frequency. Both atom orders are required
+because a word-initial syllable is `initial + digit` while a word-continuing
+syllable is `digit + initial`. Valid encoded words that are not in the
+whole-word vocabulary fall back to their two-character atoms, so they do not
+become `<unk>`. Note that the atomic base vocabulary is therefore ~1,055
+entries, which is the minimum usable `--vocab-size`.
 
 Useful variants:
 
@@ -166,7 +211,7 @@ py train_hybrid_tokenizer.py --input data\processed\10k_babylm_zho.txt --output-
 Inspect a built tokenizer and optional corpus coverage:
 
 ```powershell
-py scripts\inspect_hybrid_tokenizer.py --tokenizer-dir tokenizers\babylm_zho_hybrid_16k --input data\processed\10k_babylm_zho.txt --example "Y0J7 H2 X4Q3"
+py scripts\inspect_hybrid_tokenizer.py --tokenizer-dir tokenizers\babylm_zho_hybrid_16k --input data\processed\10k_babylm_zho.txt --example "Y07JH2X43Q"
 ```
 
 Use the tokenizer directly:
@@ -175,7 +220,7 @@ Use the tokenizer directly:
 from hf.tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
 
 tokenizer = HybridPinyinCodeTokenizer.from_pretrained("tokenizers/babylm_zho_hybrid_16k")
-print(tokenizer.tokenize("Y0J7 H2 X4Q3"))
+print(tokenizer.tokenize("Y07JH2X43Q"))
 ```
 
 ### Tokenization modes: greedy and softmax
@@ -187,9 +232,12 @@ token is chosen at each atomic position differs. This isolates the segmentation
 policy as an experiment variable: same corpus, same encoded representation, same
 vocabulary, different segmentation.
 
-For one encoded Jieba word, the tokenizer represents it as its atomic
-Initial+Digit units, e.g. `H2W7L6` becomes `["H2", "W7", "L6"]`, and never
-splits a unit internally (`Y6` stays `Y6`, never `Y` `6`). At each position it
+The tokenizer first recovers the Jieba words from the encoding itself, so the
+whitespace-free run `Y63JH77WL6` is split into `Y63J`, `H77W`, and `L6` before
+any vocabulary lookup happens. For one encoded Jieba word, it then represents
+that word as its atomic syllable units, e.g. `H22W6L` becomes
+`["H2", "2W", "6L"]`, and never splits a unit internally (`Y6` stays `Y6`, never
+`Y` `6`). At each position it
 enumerates the *valid candidates* `C(i)` — the vocabulary tokens that match one
 or more complete atomic units starting at `i`. Because every atom is in the
 vocabulary, `C(i)` is non-empty for valid input; if it is ever empty the
@@ -205,11 +253,12 @@ state, so its output is fully reproducible and independent of any seed. It is
 the default and reproduces the previous hybrid tokenizer's output on the
 existing examples.
 
-Examples with valid tokens `H7 W7 L6 H7W7 W7L6 H7W7L6`:
+Examples for the word `H77W6L` (syllables `H7`, `W7`, `L6`) with valid tokens
+`H7 7W 6L H77W 7W6L H77W6L`:
 
-- `H7W7L6` → `[H7W7L6]`
-- without `H7W7L6`: `H7W7L6` → `[H7W7] [L6]`
-- with only atoms: `H7W7L6` → `[H7] [W7] [L6]`
+- `H77W6L` → `[H77W6L]`
+- without `H77W6L`: `H77W6L` → `[H77W] [6L]`
+- with only atoms: `H77W6L` → `[H7] [7W] [6L]`
 
 **Softmax** — stochastic left-to-right sampling. This is *local autoregressive
 segmentation sampling*: at each position it samples one token from the valid
@@ -255,7 +304,7 @@ Switch modes at runtime without changing the vocabulary or token ids:
 ```python
 tokenizer.set_tokenization_mode("softmax")
 with tokenizer.use_mode("greedy"):     # e.g. force deterministic evaluation
-    ids = tokenizer("Y0J7 H2 X4Q3")
+    ids = tokenizer("Y07JH2X43Q")
 ```
 
 **Reproducibility.** Softmax uses a tokenizer-local `random.Random(sampling_seed)`
@@ -273,16 +322,17 @@ data-augmentation, and greedy for validation, generation, benchmark evaluation,
 and export, so evaluation stays deterministic. Stochastic tokenization is never
 the evaluation default.
 
-Both modes preserve the atomic Initial+Digit units and the whitespace-separated
-Jieba word boundaries: matching is confined to a single word, so no token spans
-a boundary (e.g. in `Y6J3 H7W7L6` a token can never cover `J3H7`).
+Both modes preserve the atomic syllable units and the Jieba word boundaries:
+matching is confined to a single word, so no token spans a boundary (e.g. in the
+run `Y63JH77W6L`, which is the two words `Y63J` and `H77W6L`, a token can never
+cover `3JH7`).
 
 Inspect the segmentation, candidates, scores, and probabilities for an example
 (read-only; never modifies the tokenizer):
 
 ```powershell
-py scripts\inspect_tokenizer.py --tokenizer tokenizers\babylm_zho_hybrid_16k --text "Y0J7 H2 X4Q3" --mode greedy
-py scripts\inspect_tokenizer.py --tokenizer tokenizers\babylm_zho_hybrid_16k --text "Y0J7 H2 X4Q3" --mode softmax --temperature 1.0 --samples 20 --seed 42
+py scripts\inspect_tokenizer.py --tokenizer tokenizers\babylm_zho_hybrid_16k --text "Y07JH2X43Q" --mode greedy
+py scripts\inspect_tokenizer.py --tokenizer tokenizers\babylm_zho_hybrid_16k --text "Y07JH2X43Q" --mode softmax --temperature 1.0 --samples 20 --seed 42
 ```
 
 The tokenizer directory optionally stores the mode configuration in
@@ -304,26 +354,28 @@ tokenizer = AutoTokenizer.from_pretrained(
 )
 ```
 
-Decoding is deterministic back to encoded text, but it is not a lossless
-reconstruction of the original Hanzi or exact Jieba segmentation. Whole-word
-tokens decode as complete encoded words, while consecutive fallback atoms may be
-concatenated. Pass `readable=True` to `decode` when you want spaces between the
-emitted tokenizer pieces.
+Decoding reproduces the corpus format exactly: encoded pieces are concatenated
+back into whitespace-free runs, and markers and punctuation keep their spaces.
+Because the atoms record their position in the word, the Jieba boundaries
+survive decoding. It is still not a lossless reconstruction of the original
+Hanzi. Pass `readable=True` to `decode` when you want spaces between the emitted
+tokenizer pieces.
 
 Current SentencePiece BPE:
 
 - learns recursive frequency-based merges;
 - may produce partial-word pieces;
 - may split letters and digits;
-- does not merge across Jieba word boundaries (`split_by_whitespace=True`).
+- may merge across Jieba word boundaries, since encoded words are not separated
+  by whitespace.
 
 New hybrid tokenizer:
 
 - uses complete Jieba words selected directly by frequency;
 - never creates partial-word lexical tokens;
-- guarantees atomic Initial+Digit fallback;
+- guarantees atomic syllable fallback in both word positions;
 - never needs `<unk>` for valid encoded words;
-- uses whitespace only as preprocessing boundary metadata.
+- takes word boundaries from the encoding instead of from whitespace.
 
 ## Create a tokenized dataset
 

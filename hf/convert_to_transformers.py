@@ -197,7 +197,8 @@ def copy_remote_code(output_dir: Path) -> None:
         shutil.copy2(Path("hf") / filename, package_dir / filename)
         if filename != "__init__.py":
             shutil.copy2(Path("hf") / filename, output_dir / filename)
-    shutil.copy2(Path("preprocessing") / "preprocess.py", preprocessing_dir / "preprocess.py")
+    for filename in ("encoding.py", "preprocess.py"):
+        shutil.copy2(Path("preprocessing") / filename, preprocessing_dir / filename)
 
 
 def patch_json(path: Path, updates: dict) -> None:

@@ -3,7 +3,9 @@
 SentencePiece BPE can fail on very long lines when whitespace splitting is
 disabled. This utility writes a tokenizer-training copy of a processed corpus
 where long documents are split at whitespace boundaries while preserving all
-tokens.
+tokens. Because encoded Mandarin words carry their own boundaries and are
+written without whitespace, a single whitespace-delimited item can be longer
+than the limit; such runs are split at encoded-word boundaries instead.
 """
 
 from __future__ import annotations
@@ -13,6 +15,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+try:
+    from preprocessing.encoding import is_encoded_run, split_encoded_words
+except ImportError:  # Executed directly from the preprocessing directory.
+    from encoding import is_encoded_run, split_encoded_words
+
 
 @dataclass
 class SplitStats:
@@ -21,6 +28,37 @@ class SplitStats:
     split_lines: int = 0
     max_input_chars: int = 0
     max_output_chars: int = 0
+
+
+def split_encoded_run(run: str, max_chars: int) -> list[str]:
+    """Split one long encoded run into pieces of at most max_chars characters.
+
+    Splitting happens only between complete encoded words, so no word and no
+    syllable atom is ever cut in half.
+    """
+    pieces: list[str] = []
+    current: list[str] = []
+    current_len = 0
+
+    for word in split_encoded_words(run):
+        word_len = len(word)
+        if word_len > max_chars:
+            raise ValueError(
+                f"Encoded word longer than --max-chars ({word_len} > {max_chars}): "
+                f"{word[:80]!r}"
+            )
+        if current and current_len + word_len > max_chars:
+            pieces.append("".join(current))
+            current = [word]
+            current_len = word_len
+        else:
+            current.append(word)
+            current_len += word_len
+
+    if current:
+        pieces.append("".join(current))
+
+    return pieces
 
 
 def split_line_at_whitespace(line: str, max_chars: int) -> list[str]:
@@ -35,24 +73,35 @@ def split_line_at_whitespace(line: str, max_chars: int) -> list[str]:
     current: list[str] = []
     current_len = 0
 
+    def flush() -> None:
+        nonlocal current, current_len
+        if current:
+            chunks.append(" ".join(current))
+            current = []
+            current_len = 0
+
     for token in line.split():
         token_len = len(token)
         if token_len > max_chars:
-            raise ValueError(
-                f"Token longer than --max-chars ({token_len} > {max_chars}): {token[:80]!r}"
-            )
+            if not is_encoded_run(token):
+                raise ValueError(
+                    f"Token longer than --max-chars ({token_len} > {max_chars}): "
+                    f"{token[:80]!r}"
+                )
+            # Each piece is already near the limit, so emit them as their own
+            # lines rather than re-joining them with spaces a tokenizer would
+            # then treat as word boundaries.
+            flush()
+            chunks.extend(split_encoded_run(token, max_chars))
+            continue
 
         next_len = token_len if not current else current_len + 1 + token_len
         if current and next_len > max_chars:
-            chunks.append(" ".join(current))
-            current = [token]
-            current_len = token_len
-        else:
-            current.append(token)
-            current_len = next_len
+            flush()
+        current.append(token)
+        current_len = token_len if len(current) == 1 else next_len
 
-    if current:
-        chunks.append(" ".join(current))
+    flush()
 
     return chunks
 
