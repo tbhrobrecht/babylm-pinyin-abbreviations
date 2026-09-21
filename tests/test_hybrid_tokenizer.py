@@ -27,8 +27,9 @@ class HybridTokenizerTests(unittest.TestCase):
     def build_tokenizer(
         self,
         corpus: str,
-        vocab_size: int = 1200,
+        vocab_size: int = 2048,
         min_word_frequency: int = 1,
+        min_preserved_frequency: int | None = None,
     ) -> tuple[HybridPinyinCodeTokenizer, Path]:
         corpus_path = self.root / "corpus.txt"
         corpus_path.write_text(corpus, encoding="utf-8")
@@ -39,6 +40,7 @@ class HybridTokenizerTests(unittest.TestCase):
             output_dir=output_dir,
             vocab_size=vocab_size,
             min_word_frequency=min_word_frequency,
+            min_preserved_frequency=min_preserved_frequency,
             atomic_only=False,
             initial_alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
             digits="0123456789",
@@ -92,7 +94,8 @@ class HybridTokenizerTests(unittest.TestCase):
     def test_malformed_input_rejects_or_maps_to_unk(self) -> None:
         tokenizer, output_dir = self.build_tokenizer("Y07JY07J\n")
 
-        for value in ["Y0J", "Y00", "123", "ni3"]:
+        # Characters outside the surface-char alphabet still fail closed.
+        for value in ["你好", "🙂"]:
             with self.subTest(value=value):
                 with self.assertRaises(ValueError):
                     tokenizer.tokenize(value)
@@ -101,8 +104,42 @@ class HybridTokenizerTests(unittest.TestCase):
             vocab_file=str(output_dir / "vocab.json"),
             strict_validation=False,
         )
-        self.assertEqual(permissive.tokenize("ni3"), ["<unk>"])
+        self.assertEqual(permissive.tokenize("你好"), ["<unk>"])
 
+    def test_rare_preserved_tokens_use_character_fallback(self) -> None:
+        # "mother" is frequent enough to stay whole; "xylophone" is not.
+        corpus = " ".join(["mother"] * 5 + ["xylophone"] + ["Y07J"] * 5) + "\n"
+        tokenizer, _ = self.build_tokenizer(
+            corpus,
+            min_word_frequency=2,
+            min_preserved_frequency=2,
+        )
+
+        self.assertIn("mother", tokenizer.get_vocab())
+        self.assertNotIn("xylophone", tokenizer.get_vocab())
+        self.assertEqual(tokenizer.tokenize("mother"), ["mother"])
+        self.assertEqual(
+            tokenizer.tokenize("xylophone"),
+            list("xylophone"),
+        )
+
+    def test_frequency_gate_keeps_base_vocab_small(self) -> None:
+        rare_words = [f"rareword{index:04d}" for index in range(50)]
+        corpus = " ".join(["mother"] * 5 + rare_words + ["Y07J"] * 5) + "\n"
+        tokenizer, output_dir = self.build_tokenizer(
+            corpus,
+            vocab_size=2048,
+            min_word_frequency=2,
+            min_preserved_frequency=2,
+        )
+        metadata = json.loads(
+            (output_dir / "hybrid_tokenizer_metadata.json").read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(metadata["number_of_preserved_token_types"], 51)
+        self.assertEqual(metadata["number_of_preserved_tokens"], 1)
+        self.assertLess(metadata["statistics"]["base_vocabulary_entries"], 1300)
+        self.assertEqual(tokenizer.tokenize(rare_words[0]), list(rare_words[0]))
     def test_save_and_reload_preserves_ids_and_tokenization(self) -> None:
         tokenizer, output_dir = self.build_tokenizer("<QUESTION> Y07JY07JH2\n")
         reloaded = HybridPinyinCodeTokenizer.from_pretrained(output_dir)

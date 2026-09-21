@@ -39,11 +39,12 @@ def path_arg(path: Path) -> str:
         return str(path)
 
 
-def format_command(command: list[str]) -> str:
+def format_command(command: list[object]) -> str:
     """Return a shell-readable command line for logging."""
+    argv = [str(item) for item in command]
     if os.name == "nt":
-        return subprocess.list2cmdline(command)
-    return shlex.join(command)
+        return subprocess.list2cmdline(argv)
+    return shlex.join(argv)
 
 
 def default_tokenizer_name(
@@ -148,13 +149,13 @@ def step_selected(step: str, args: argparse.Namespace) -> bool:
     return start_index <= step_index <= stop_index
 
 
-def run_command(label: str, command: list[str], args: argparse.Namespace) -> None:
+def run_command(label: str, command: list[object], args: argparse.Namespace) -> None:
     print()
     print(f"==> {label}")
     print(format_command(command))
     if args.dry_run:
         return
-    subprocess.run(command, cwd=ROOT, check=True)
+    subprocess.run([str(item) for item in command], cwd=ROOT, check=True)
 
 
 def python_command(script: str, *items: object) -> list[str]:
@@ -236,6 +237,11 @@ def run_tokenizer(args: argparse.Namespace) -> None:
             "--max-invalid-examples",
             args.hybrid_max_invalid_examples,
         )
+        if args.hybrid_min_preserved_frequency is not None:
+            command += [
+                "--min-preserved-frequency",
+                args.hybrid_min_preserved_frequency,
+            ]
         if args.hybrid_atomic_only:
             command.append("--atomic-only")
         if args.hybrid_permissive:
@@ -310,16 +316,16 @@ def run_dataset(args: argparse.Namespace) -> None:
             "--eval-tokenization-mode",
             args.eval_tokenization_mode,
             "--sampling-temperature",
-            args.sampling_temperature,
+            str(args.sampling_temperature),
             "--sampling-alpha",
-            args.sampling_alpha,
+            str(args.sampling_alpha),
             "--sampling-beta",
-            args.sampling_beta,
+            str(args.sampling_beta),
             "--sampling-epsilon",
-            args.sampling_epsilon,
+            str(args.sampling_epsilon),
         ]
         if args.sampling_seed is not None:
-            command += ["--sampling-seed", args.sampling_seed]
+            command += ["--sampling-seed", str(args.sampling_seed)]
     run_command("Create train/validation datasets", command, args)
 
 
@@ -562,6 +568,16 @@ def parse_args() -> argparse.Namespace:
     )
     tokenizer.add_argument("--sentencepiece-hard-vocab-limit", action="store_true")
     tokenizer.add_argument("--hybrid-min-word-frequency", type=int, default=20)
+    tokenizer.add_argument(
+        "--hybrid-min-preserved-frequency",
+        type=int,
+        default=None,
+        help=(
+            "Minimum frequency for whole preserved surface tokens (English words, "
+            "etc.). Defaults to --hybrid-min-word-frequency. Rarer strings use "
+            "character fallback."
+        ),
+    )
     tokenizer.add_argument("--hybrid-atomic-only", action="store_true")
     tokenizer.add_argument("--hybrid-permissive", action="store_true")
     tokenizer.add_argument(

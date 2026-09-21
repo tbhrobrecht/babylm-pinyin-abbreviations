@@ -189,14 +189,18 @@ py train_hybrid_tokenizer.py --input data\processed\10k_babylm_zho.txt --output-
 
 The hybrid vocabulary uses fixed IDs for `<pad>`, `<unk>`, `<s>`, `</s>`, and
 `<mask>`, includes the preprocessing markers such as `<QUESTION>` and `<NUM>`,
-adds every configurable syllable atom in *both* word positions (`A0` through
-`z9` plus `0A` through `9z`, 1,040 atoms by default), and then adds frequent
-multi-atom Jieba words by corpus frequency. Both atom orders are required
+adds a small single-character surface alphabet for spelling rare
+English/punctuation strings, adds every configurable syllable atom in *both*
+word positions (`A0` through `z9` plus `0A` through `9z`, 1,040 atoms by
+default), and then adds frequent multi-atom Jieba words and frequent whole
+preserved surface tokens by corpus frequency. Both atom orders are required
 because a word-initial syllable is `initial + digit` while a word-continuing
 syllable is `digit + initial`. Valid encoded words that are not in the
-whole-word vocabulary fall back to their two-character atoms, so they do not
-become `<unk>`. Note that the atomic base vocabulary is therefore ~1,055
-entries, which is the minimum usable `--vocab-size`.
+whole-word vocabulary fall back to their two-character atoms; rare preserved
+strings that miss the frequency gate (default: same as
+`--min-word-frequency`) fall back to character spelling, so the base vocab
+stays small enough for 8k/16k BabyLM runs. Override the preserved gate with
+`--min-preserved-frequency` when needed.
 
 Useful variants:
 
@@ -372,7 +376,9 @@ Current SentencePiece BPE:
 New hybrid tokenizer:
 
 - uses complete Jieba words selected directly by frequency;
-- never creates partial-word lexical tokens;
+- keeps only frequent whole preserved surface tokens (English, etc.);
+- spells rare preserved strings with single-character fallback;
+- never creates partial-word lexical tokens for encoded Chinese;
 - guarantees atomic syllable fallback in both word positions;
 - never needs `<unk>` for valid encoded words;
 - takes word boundaries from the encoding instead of from whitespace.

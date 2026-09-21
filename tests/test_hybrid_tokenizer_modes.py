@@ -291,7 +291,7 @@ class TrainedTokenizerModeTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def build(self, corpus: str, vocab_size: int = 1200) -> Path:
+    def build(self, corpus: str, vocab_size: int = 2048) -> Path:
         corpus_path = self.root / f"corpus-{self._counter}.txt"
         corpus_path.write_text(corpus, encoding="utf-8")
         self._counter += 1
@@ -301,6 +301,7 @@ class TrainedTokenizerModeTests(unittest.TestCase):
             output_dir=output_dir,
             vocab_size=vocab_size,
             min_word_frequency=1,
+            min_preserved_frequency=None,
             atomic_only=False,
             initial_alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
             digits="0123456789",

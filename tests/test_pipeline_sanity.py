@@ -805,8 +805,9 @@ class PipelineSanityTests(unittest.TestCase):
         tokenizer_args = SimpleNamespace(
             input=[corpus_path],
             output_dir=tokenizer_dir,
-            vocab_size=1200,
+            vocab_size=2048,
             min_word_frequency=1,
+            min_preserved_frequency=None,
             atomic_only=False,
             initial_alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
             digits="0123456789",

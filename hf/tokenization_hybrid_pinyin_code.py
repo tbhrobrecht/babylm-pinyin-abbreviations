@@ -622,11 +622,25 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
     def _handle_unsupported_token(self, token: str) -> list[str]:
         if self.strict_validation:
             raise ValueError(
-                f"Unsupported or malformed pinyin-code token {token!r}. "
-                "Expected a known special/preserved token or text matching "
-                f"^(?:{ENCODED_WORD_PATTERN})+$."
+                f"Unsupported or malformed token {token!r}. "
+                "Expected a known special/preserved token, a whitespace-free "
+                f"encoded run matching ^(?:{ENCODED_WORD_PATTERN})+$, or a "
+                "surface string whose characters are all in the vocabulary."
             )
         return [self.unk_token]
+
+    def _surface_char_fallback(self, token: str) -> list[str] | None:
+        """Spell an unknown surface string with single-character vocab entries.
+
+        Used for rare English/punctuation strings that were frequency-gated out
+        of the whole-token vocabulary during hybrid training.
+        """
+        if not token:
+            return None
+        characters = list(token)
+        if all(character in self.vocab for character in characters):
+            return characters
+        return None
 
     def _tokenize(self, text: str) -> list[str]:
         output: list[str] = []
@@ -643,7 +657,11 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
                 # Special/preserved marker preserved verbatim.
                 output.append(item)
             else:
-                output.extend(self._handle_unsupported_token(item))
+                char_tokens = self._surface_char_fallback(item)
+                if char_tokens is not None:
+                    output.extend(char_tokens)
+                else:
+                    output.extend(self._handle_unsupported_token(item))
         return output
 
     def _convert_token_to_id(self, token: str) -> int:

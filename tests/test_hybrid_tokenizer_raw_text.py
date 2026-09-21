@@ -45,7 +45,7 @@ class HybridRawTextTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def build_dir(self, corpus: str, vocab_size: int = 1200) -> Path:
+    def build_dir(self, corpus: str, vocab_size: int = 2048) -> Path:
         corpus_path = self.root / f"corpus-{self.build_count}.txt"
         corpus_path.write_text(corpus, encoding="utf-8")
         self.build_count += 1
@@ -55,6 +55,7 @@ class HybridRawTextTests(unittest.TestCase):
             output_dir=output_dir,
             vocab_size=vocab_size,
             min_word_frequency=1,
+            min_preserved_frequency=None,
             atomic_only=False,
             initial_alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
             digits="0123456789",
@@ -180,8 +181,9 @@ class HybridRawTextRemoteCodeTests(unittest.TestCase):
         args = argparse.Namespace(
             input=[corpus_path],
             output_dir=output_dir,
-            vocab_size=1200,
+            vocab_size=2048,
             min_word_frequency=1,
+            min_preserved_frequency=None,
             atomic_only=False,
             initial_alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
             digits="0123456789",

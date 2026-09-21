@@ -66,6 +66,34 @@ def atomic_tokens(initial_alphabet: str, digits: str) -> list[str]:
     return atoms
 
 
+def surface_char_tokens() -> list[str]:
+    """Return single-character fallback tokens for rare preserved surface strings.
+
+    Whole preserved tokens (English words, product codes, …) are frequency-gated.
+    Characters in this set let those rare strings fall back to a character
+    spelling instead of forcing tens of thousands of vocab entries.
+    """
+    chars: list[str] = []
+    seen: set[str] = set()
+    extras = ["*", "\\", "{", "}", "#", "$", "%", "&", "+", "=", "@", "`", "|", "~", "^", "_"]
+    for token in [*string.ascii_letters, *string.digits, *sorted(PUNCTUATION), *extras]:
+        if len(token) != 1 or token in seen:
+            continue
+        chars.append(token)
+        seen.add(token)
+    return chars
+
+
+def resolve_min_preserved_frequency(args: argparse.Namespace) -> int:
+    """Return the frequency gate for whole preserved surface tokens."""
+    value = getattr(args, "min_preserved_frequency", None)
+    if value is None:
+        value = args.min_word_frequency
+    if value <= 0:
+        raise ValueError("--min-preserved-frequency must be greater than zero")
+    return int(value)
+
+
 def iter_corpus_items(input_paths: Iterable[Path]) -> Iterable[tuple[Path, int, str]]:
     """Yield one corpus item at a time, expanding whitespace-free encoded runs."""
     for input_path in input_paths:
@@ -157,21 +185,37 @@ def build_vocab(args: argparse.Namespace) -> tuple[dict[str, int], dict[str, obj
         raise ValueError("--vocab-size must be greater than zero")
     if args.min_word_frequency <= 0:
         raise ValueError("--min-word-frequency must be greater than zero")
+    min_preserved_frequency = resolve_min_preserved_frequency(args)
 
     atoms = atomic_tokens(args.initial_alphabet, args.digits)
+    surface_chars = surface_char_tokens()
     encoded_counts, special_counts, preserved_counts, stats = collect_counts(
         args.input,
         permissive=args.permissive,
         max_invalid_examples=args.max_invalid_examples,
     )
 
-    preserved_tokens = sorted(preserved_counts)
-    base_tokens = FIXED_SPECIAL_TOKENS + SPECIAL_TOKENS + preserved_tokens + atoms
+    # Keep frequent whole preserved strings (mother, target_child, …). Rare ones
+    # stay out of the vocab and are spelled with surface_chars at encode time.
+    selected_preserved = sorted(
+        (
+            token
+            for token, count in preserved_counts.items()
+            if len(token) > 1 and count >= min_preserved_frequency
+        )
+    )
+    base_tokens = (
+        FIXED_SPECIAL_TOKENS
+        + SPECIAL_TOKENS
+        + surface_chars
+        + selected_preserved
+        + atoms
+    )
     base_vocab = ordered_vocab(base_tokens)
     if len(base_vocab) > args.vocab_size and not args.atomic_only:
         raise ValueError(
-            "--vocab-size is smaller than the required special/preserved/atomic "
-            f"base vocabulary ({len(base_vocab)} tokens)"
+            "--vocab-size is smaller than the required special/surface-char/"
+            f"preserved/atomic base vocabulary ({len(base_vocab)} tokens)"
         )
 
     whole_word_budget = 0 if args.atomic_only else max(args.vocab_size - len(base_vocab), 0)
@@ -185,22 +229,35 @@ def build_vocab(args: argparse.Namespace) -> tuple[dict[str, int], dict[str, obj
 
     vocab = ordered_vocab([*base_vocab, *(token for token, _ in selected_words)])
     least_selected_frequency = selected_words[-1][1] if selected_words else None
+    least_preserved_frequency = (
+        min(preserved_counts[token] for token in selected_preserved)
+        if selected_preserved
+        else None
+    )
     metadata = {
-        "format": "babylm-pinyin-code-hybrid-tokenizer-v2",
+        "format": "babylm-pinyin-code-hybrid-tokenizer-v3",
         "target_vocab_size": args.vocab_size,
         "actual_vocab_size": len(vocab),
         "minimum_word_frequency": args.min_word_frequency,
+        "minimum_preserved_frequency": min_preserved_frequency,
         "permissive": args.permissive,
         "corpus_paths": [str(path) for path in args.input],
         "atomic_alphabet": args.initial_alphabet,
         "atomic_digits": args.digits,
         "number_of_atomic_tokens": len(atoms),
-        "number_of_preserved_tokens": len(preserved_tokens),
+        "number_of_surface_char_tokens": len(surface_chars),
+        "number_of_preserved_token_types": len(preserved_counts),
+        "number_of_preserved_tokens": len(selected_preserved),
         "number_of_word_tokens": len(selected_words),
         "creation_timestamp": datetime.now(timezone.utc).isoformat(),
         "least_frequent_selected_whole_word_frequency": least_selected_frequency,
+        "least_frequent_selected_preserved_frequency": least_preserved_frequency,
         "selected_word_frequencies": [
             {"token": token, "frequency": count} for token, count in selected_words
+        ],
+        "selected_preserved_frequencies": [
+            {"token": token, "frequency": preserved_counts[token]}
+            for token in selected_preserved
         ],
         "top_preserved_tokens": [
             {"token": token, "frequency": count}
@@ -209,9 +266,14 @@ def build_vocab(args: argparse.Namespace) -> tuple[dict[str, int], dict[str, obj
         "statistics": {
             **stats,
             "atomic_vocabulary_entries": len(atoms),
+            "surface_char_vocabulary_entries": len(surface_chars),
+            "unique_preserved_token_types": len(preserved_counts),
+            "selected_preserved_token_entries": len(selected_preserved),
             "selected_whole_word_entries": len(selected_words),
             "final_vocabulary_size": len(vocab),
             "least_frequent_selected_whole_word_frequency": least_selected_frequency,
+            "least_frequent_selected_preserved_frequency": least_preserved_frequency,
+            "base_vocabulary_entries": len(base_vocab),
         },
     }
     return vocab, metadata
@@ -305,11 +367,16 @@ def print_summary(metadata: dict[str, object]) -> None:
         "unique_multi_atom_encoded_words",
         "special_token_occurrences",
         "preserved_token_occurrences",
+        "unique_preserved_token_types",
         "invalid_or_unsupported_items",
         "atomic_vocabulary_entries",
+        "surface_char_vocabulary_entries",
+        "selected_preserved_token_entries",
         "selected_whole_word_entries",
+        "base_vocabulary_entries",
         "final_vocabulary_size",
         "least_frequent_selected_whole_word_frequency",
+        "least_frequent_selected_preserved_frequency",
     ]:
         print(f"  {key}: {stats.get(key)}")
 
@@ -329,9 +396,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--vocab-size", type=int, default=16000)
     parser.add_argument("--min-word-frequency", type=int, default=20)
     parser.add_argument(
+        "--min-preserved-frequency",
+        type=int,
+        default=None,
+        help=(
+            "Minimum corpus frequency for whole preserved surface tokens such as "
+            "English words. Defaults to --min-word-frequency. Rarer strings fall "
+            "back to single-character spelling."
+        ),
+    )
+    parser.add_argument(
         "--atomic-only",
         action="store_true",
-        help="Train only special/preserved/atomic tokens and no whole-word entries.",
+        help="Train only special/surface-char/preserved/atomic tokens and no whole-word entries.",
     )
     parser.add_argument("--initial-alphabet", default=DEFAULT_INITIAL_ALPHABET)
     parser.add_argument("--digits", default=DEFAULT_DIGITS)
