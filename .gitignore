@@ -225,3 +225,8 @@ __marimo__/
 data/
 tokenizers/
 models/
+
+# Generated LRZ training and evaluation artifacts
+/hf_nk_babylm_zho_*/
+/logs/
+*.bak

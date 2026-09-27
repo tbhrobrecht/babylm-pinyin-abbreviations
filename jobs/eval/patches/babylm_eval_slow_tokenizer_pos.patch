@@ -1,0 +1,79 @@
+diff --git a/multilingual/finetune/finetune_token_classification.py b/multilingual/finetune/finetune_token_classification.py
+--- a/multilingual/finetune/finetune_token_classification.py
++++ b/multilingual/finetune/finetune_token_classification.py
+@@ -334,8 +334,8 @@ def main():
+         tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, add_prefix_space=True, **tokenizer_kwargs)
+     except TypeError:
+         tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, **tokenizer_kwargs)
+-    if not tokenizer.is_fast:
+-        raise ValueError("A fast tokenizer is required for word_ids()-based subword pooling.")
++    if not tokenizer.is_fast:
++        logger.warning("Using explicit per-word tokenization because this tokenizer does not expose word_ids().")
+ 
+     model = PooledTokenClassifier(model_args, config)
+     if tokenizer.pad_token_id is not None:
+@@ -359,16 +359,56 @@ def main():
+     max_seq_length = min(data_args.max_seq_length, tokenizer.model_max_length)
+ 
+     def preprocess_function(examples):
+-        tokenized = tokenizer(
+-            examples["tokens"],
+-            is_split_into_words=True,
+-            truncation=True,
+-            max_length=max_seq_length,
+-            padding=False,
+-        )
++        if tokenizer.is_fast:
++            tokenized = tokenizer(
++                examples["tokens"],
++                is_split_into_words=True,
++                truncation=True,
++                max_length=max_seq_length,
++                padding=False,
++            )
++            slow_word_ids = None
++        else:
++            # Slow/custom tokenizers do not provide BatchEncoding.word_ids().
++            # Tokenize each UD word without specials, concatenate the pieces,
++            # then let prepare_for_model add/truncate specials.  The special
++            # token mask lets us reconstruct the exact subword-to-word map.
++            tokenized = {"input_ids": [], "attention_mask": []}
++            slow_word_ids = []
++            for words in examples["tokens"]:
++                flat_ids, flat_word_ids = [], []
++                for word_index, word in enumerate(words):
++                    word_ids = tokenizer(str(word), add_special_tokens=False)["input_ids"]
++                    if not word_ids:
++                        if tokenizer.unk_token_id is None:
++                            raise ValueError(f"Tokenizer produced no tokens for UD word {word!r}")
++                        word_ids = [tokenizer.unk_token_id]
++                    flat_ids.extend(word_ids)
++                    flat_word_ids.extend([word_index] * len(word_ids))
++                prepared = tokenizer.prepare_for_model(
++                    flat_ids,
++                    add_special_tokens=True,
++                    truncation=True,
++                    max_length=max_seq_length,
++                    padding=False,
++                    return_attention_mask=True,
++                    return_special_tokens_mask=True,
++                )
++                special_mask = prepared.pop("special_tokens_mask")
++                source_index = 0
++                item_word_ids = []
++                for is_special in special_mask:
++                    if is_special:
++                        item_word_ids.append(None)
++                    else:
++                        item_word_ids.append(flat_word_ids[source_index])
++                        source_index += 1
++                tokenized["input_ids"].append(prepared["input_ids"])
++                tokenized["attention_mask"].append(prepared["attention_mask"])
++                slow_word_ids.append(item_word_ids)
+         batch_word_ids, batch_labels = [], []
+         for i, upos in enumerate(examples["upos"]):
+-            word_ids = tokenized.word_ids(batch_index=i)
++            word_ids = tokenized.word_ids(batch_index=i) if tokenizer.is_fast else slow_word_ids[i]
+             # Words that survive truncation, in order of first appearance.
+             ordered = []
+             for wid in word_ids:

@@ -76,7 +76,9 @@ cd "$REPO"
 if [[ "$TASKS" == "all" ]]; then
   TASK_ARGS=(zhoblimp hanzi_structure hanzi_pinyin word_fmri fmri afqmc ocnli tnews cluewsc2020)
 else
-  read -r -a TASK_ARGS <<< "${TASKS//,/ }"
+  normalized_tasks="${TASKS//,/ }"
+  normalized_tasks="${normalized_tasks//:/ }"
+  read -r -a TASK_ARGS <<< "$normalized_tasks"
 fi
 
 echo "Model: $MODEL_DIR"
@@ -86,3 +88,28 @@ echo "Tasks: ${TASK_ARGS[*]}"
   --tasks "${TASK_ARGS[@]}"
 
 "$PYTHON" pipeline.py gather --config "$CONFIG_FILE"
+
+# pipeline.py historically swallowed some per-task exceptions. Treat a task as
+# successful only when it leaves at least one non-empty result artifact.
+model_basename="$(basename "$MODEL_DIR")"
+model_results="$RESULTS_DIR/$model_basename/main"
+for task in "${TASK_ARGS[@]}"; do
+  case "$task" in
+    zhoblimp|hanzi_structure|hanzi_pinyin)
+      task_dir="$model_results/zero_shot/causal/$task"
+      ;;
+    word_fmri|fmri)
+      task_dir="$model_results/cogbench/$task"
+      ;;
+    *)
+      task_dir="$model_results/finetune/$task"
+      ;;
+  esac
+  if [[ ! -d "$task_dir" ]] || \
+      [[ -z "$(find -L "$task_dir" -type f -size +0c -print -quit 2>/dev/null)" ]]; then
+    echo "Task produced no result artifact: $task ($task_dir)" >&2
+    exit 1
+  fi
+done
+
+echo "Validated ${#TASK_ARGS[@]} requested task artifact(s) for $model_basename."

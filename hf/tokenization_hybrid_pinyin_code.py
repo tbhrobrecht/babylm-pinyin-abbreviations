@@ -390,6 +390,10 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
     _looks_preprocessed = PinyinCodeTokenizer._looks_preprocessed
     _preprocess_raw_text = PinyinCodeTokenizer._preprocess_raw_text
     _fallback_process_text = PinyinCodeTokenizer._fallback_process_text
+    _offset_source_text = PinyinCodeTokenizer._offset_source_text
+    _processed_char_spans = PinyinCodeTokenizer._processed_char_spans
+    _remap_offset_sequence = PinyinCodeTokenizer._remap_offset_sequence
+    _remap_encoding_offsets = PinyinCodeTokenizer._remap_encoding_offsets
 
     def _preprocess_tokenizer_input(self, value: Any) -> Any:
         """Preprocess raw text inputs, preserving structure.
@@ -409,7 +413,93 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
             return [self._preprocess_tokenizer_input(item) for item in value]
         return value
 
+    def _processed_offsets_from_ids(
+        self, processed_text: Any, input_ids: Any
+    ) -> list[tuple[int, int]]:
+        """Recover exact processed-text spans for this Python tokenizer."""
+        text = self._offset_source_text(processed_text)
+        ids = input_ids.tolist() if hasattr(input_ids, "tolist") else input_ids
+        cursor = 0
+        offsets: list[tuple[int, int]] = []
+        special_ids = set(self.all_special_ids) - {self.unk_token_id}
+        for token_id in ids:
+            token_id = int(token_id)
+            if token_id in special_ids:
+                offsets.append((0, 0))
+                continue
+
+            while cursor < len(text) and text[cursor].isspace():
+                cursor += 1
+            if token_id == self.unk_token_id:
+                end = cursor
+                while end < len(text) and not text[end].isspace():
+                    end += 1
+                offsets.append((cursor, end))
+                cursor = end
+                continue
+
+            token = self.convert_ids_to_tokens(token_id)
+            start = cursor
+            if not text.startswith(token, start):
+                found = text.find(token, start)
+                if found < 0:
+                    raise ValueError(
+                        f"Cannot align hybrid token {token!r} after position {cursor}"
+                    )
+                start = found
+            end = start + len(token)
+            offsets.append((start, end))
+            cursor = end
+        return offsets
+
+    def _attach_raw_offsets(
+        self,
+        encoding: Any,
+        original_text: Any,
+        processed_text: Any,
+        is_split_into_words: bool = False,
+    ) -> Any:
+        ids = encoding["input_ids"]
+        values = ids.tolist() if hasattr(ids, "tolist") else ids
+        batched = bool(values and isinstance(values[0], (list, tuple)))
+        if batched:
+            processeds = (
+                processed_text
+                if isinstance(processed_text, list)
+                else [processed_text] * len(values)
+            )
+            offsets = [
+                self._processed_offsets_from_ids(processed, item_ids)
+                for processed, item_ids in zip(processeds, values)
+            ]
+        else:
+            offsets = self._processed_offsets_from_ids(
+                processed_text, values
+            )
+        if hasattr(ids, "ndim"):
+            try:
+                import torch
+
+                offsets = torch.tensor(offsets, dtype=torch.long, device=ids.device)
+            except ImportError:
+                pass
+        encoding["offset_mapping"] = offsets
+        return self._remap_encoding_offsets(
+            encoding,
+            original_text,
+            processed_text,
+            is_split_into_words=is_split_into_words,
+        )
+
     def __call__(self, text=None, text_pair=None, *args: Any, **kwargs: Any):
+        original_text = text
+        return_offsets = bool(kwargs.pop("return_offsets_mapping", False))
+        is_split_into_words = bool(kwargs.get("is_split_into_words", False))
+        if return_offsets and text_pair is not None:
+            raise NotImplementedError(
+                "Raw-text offset remapping is currently available only for "
+                "single-sequence inputs"
+            )
         if "text_target" in kwargs:
             kwargs["text_target"] = self._preprocess_tokenizer_input(kwargs["text_target"])
         if "text_pair_target" in kwargs:
@@ -420,8 +510,17 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
         text = self._preprocess_tokenizer_input(text)
         text_pair = self._preprocess_tokenizer_input(text_pair)
         if text_pair is None:
-            return super().__call__(text, *args, **kwargs)
-        return super().__call__(text, text_pair, *args, **kwargs)
+            encoding = super().__call__(text, *args, **kwargs)
+        else:
+            encoding = super().__call__(text, text_pair, *args, **kwargs)
+        if return_offsets:
+            encoding = self._attach_raw_offsets(
+                encoding,
+                original_text,
+                text,
+                is_split_into_words=is_split_into_words,
+            )
+        return encoding
 
     def encode(self, text, text_pair=None, add_special_tokens=True, *args: Any, **kwargs: Any):
         kwargs["add_special_tokens"] = add_special_tokens
@@ -432,17 +531,51 @@ class HybridPinyinCodeTokenizer(PreTrainedTokenizer):
         return super().encode(text, text_pair, *args, **kwargs)
 
     def encode_plus(self, text, text_pair=None, *args: Any, **kwargs: Any):
+        original_text = text
+        return_offsets = bool(kwargs.pop("return_offsets_mapping", False))
+        is_split_into_words = bool(kwargs.get("is_split_into_words", False))
+        if return_offsets and text_pair is not None:
+            raise NotImplementedError(
+                "Raw-text offset remapping is currently available only for "
+                "single-sequence inputs"
+            )
         text = self._preprocess_tokenizer_input(text)
         text_pair = self._preprocess_tokenizer_input(text_pair)
         if text_pair is None:
-            return super().encode_plus(text, *args, **kwargs)
-        return super().encode_plus(text, text_pair, *args, **kwargs)
+            encoding = super().encode_plus(text, *args, **kwargs)
+        else:
+            encoding = super().encode_plus(text, text_pair, *args, **kwargs)
+        if return_offsets:
+            encoding = self._attach_raw_offsets(
+                encoding,
+                original_text,
+                text,
+                is_split_into_words=is_split_into_words,
+            )
+        return encoding
 
     def batch_encode_plus(self, batch_text_or_text_pairs, *args: Any, **kwargs: Any):
-        batch_text_or_text_pairs = self._preprocess_tokenizer_input(
-            batch_text_or_text_pairs
-        )
-        return super().batch_encode_plus(batch_text_or_text_pairs, *args, **kwargs)
+        originals = batch_text_or_text_pairs
+        return_offsets = bool(kwargs.pop("return_offsets_mapping", False))
+        is_split_into_words = bool(kwargs.get("is_split_into_words", False))
+        if return_offsets and any(
+            isinstance(item, tuple) and len(item) == 2
+            for item in batch_text_or_text_pairs
+        ):
+            raise NotImplementedError(
+                "Raw-text offset remapping is currently available only for "
+                "single-sequence inputs"
+            )
+        processed = self._preprocess_tokenizer_input(batch_text_or_text_pairs)
+        encoding = super().batch_encode_plus(processed, *args, **kwargs)
+        if return_offsets:
+            encoding = self._attach_raw_offsets(
+                encoding,
+                originals,
+                processed,
+                is_split_into_words=is_split_into_words,
+            )
+        return encoding
 
     # ------------------------------------------------------------------ #
     # Shared candidate enumeration (used by both modes)

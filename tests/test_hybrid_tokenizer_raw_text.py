@@ -105,6 +105,23 @@ class HybridRawTextTests(unittest.TestCase):
         encode_ids = tokenizer.encode(RAW_HANZI, add_special_tokens=False)
         self.assertEqual(call_ids, encode_ids)
 
+    def test_raw_offsets_are_exact_and_do_not_change_ids(self) -> None:
+        if not _preprocessing_available():
+            self.skipTest("jieba/pypinyin not installed")
+        tokenizer = self.build_tokenizer(f"{PREPROCESSED}\n{PREPROCESSED}\n")
+        plain = tokenizer(RAW_HANZI, add_special_tokens=False)
+        mapped = tokenizer(
+            RAW_HANZI,
+            add_special_tokens=False,
+            return_offsets_mapping=True,
+        )
+
+        self.assertEqual(mapped["input_ids"], plain["input_ids"])
+        self.assertEqual(len(mapped["offset_mapping"]), len(plain["input_ids"]))
+        self.assertTrue(all(0 <= start <= end <= len(RAW_HANZI)
+                            for start, end in mapped["offset_mapping"]))
+        self.assertEqual(max(end for _, end in mapped["offset_mapping"]), len(RAW_HANZI))
+
     # -- Softmax still works, seed/reseed ------------------------------------
     def test_softmax_accepts_raw_hanzi_and_is_reproducible(self) -> None:
         if not _preprocessing_available():

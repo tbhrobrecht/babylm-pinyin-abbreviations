@@ -17,20 +17,25 @@ OFFICIAL_PYTHON="$ROOT/env/babylm-eval-official/bin/python"
 CHINESE_PYTHON="$ROOT/env/chinese-babylm-eval/bin/python"
 EVAL_DIR="$ROOT/cache/evaluation/chinese_pipeline"
 OFFICIAL_REPO="$ROOT/code/babylm-eval/multilingual"
+MODEL_REPO="$ROOT/code/babylm-pinyin-abbreviations"
 OFFICIAL_DATASETS_CACHE="$ROOT/cache/evaluation/official_datasets_v4"
+HF_MODULES_CACHE="$ROOT/cache/huggingface/modules_offsets_v2"
 UPOS_PATCH="$ROOT/code/babylm-pinyin-abbreviations/jobs/eval/patches/babylm_eval_datasets4_upos.patch"
+SLOW_POS_PATCH="$ROOT/code/babylm-pinyin-abbreviations/jobs/eval/patches/babylm_eval_slow_tokenizer_pos.patch"
 
 export UV_CACHE_DIR="$ROOT/cache/uv"
 export TMPDIR="$ROOT/tmp"
 export HF_HOME="$ROOT/cache/huggingface"
 export HF_DATASETS_CACHE="$OFFICIAL_DATASETS_CACHE"
 export HF_HUB_CACHE="$HF_HOME/hub"
+export HF_MODULES_CACHE
 mkdir -p \
   "$ROOT/logs/eval" \
   "$UV_CACHE_DIR" \
   "$TMPDIR" \
   "$HF_DATASETS_CACHE" \
-  "$HF_HUB_CACHE"
+  "$HF_HUB_CACHE" \
+  "$HF_MODULES_CACHE"
 
 "$UV_BIN" pip install --python "$OFFICIAL_PYTHON" \
   "transformers==4.51.3" \
@@ -70,6 +75,21 @@ elif patch --dry-run --reverse --strip=1 --directory="$ROOT/code/babylm-eval" \
   echo "BabyLM evaluation datasets-v4 UPOS patch already applied."
 else
   echo "Cannot apply or verify UPOS compatibility patch: $UPOS_PATCH" >&2
+  exit 1
+fi
+
+# The hybrid tokenizer is intentionally a Python tokenizer. POS evaluation
+# therefore needs an explicit per-word alignment fallback instead of the fast
+# tokenizer-only BatchEncoding.word_ids() API.
+if patch --dry-run --forward --strip=1 --directory="$ROOT/code/babylm-eval" \
+    --input="$SLOW_POS_PATCH" >/dev/null 2>&1; then
+  patch --forward --strip=1 --directory="$ROOT/code/babylm-eval" \
+    --input="$SLOW_POS_PATCH"
+elif patch --dry-run --reverse --strip=1 --directory="$ROOT/code/babylm-eval" \
+    --input="$SLOW_POS_PATCH" >/dev/null 2>&1; then
+  echo "BabyLM evaluation slow-tokenizer POS patch already applied."
+else
+  echo "Cannot apply or verify slow-tokenizer POS patch: $SLOW_POS_PATCH" >&2
   exit 1
 fi
 
@@ -124,6 +144,58 @@ PY
 "$OFFICIAL_PYTHON" -m py_compile \
   "$OFFICIAL_REPO/finetune/finetune_token_classification.py"
 
+# The exported models load these modules through trust_remote_code. Keep their
+# tokenizer implementation in sync with the exact raw-text offset repair used
+# by MECO, without touching configs, vocabularies, or model weights.
+model_dirs=(
+  "$MODEL_REPO/hf_nk_babylm_zho_gpt2_hybrid"
+  "$MODEL_REPO/hf_nk_babylm_zho_qwen2_hybrid"
+  "$MODEL_REPO/hf_nk_babylm_zho_gpt2_bpe"
+  "$MODEL_REPO/hf_nk_babylm_zho_qwen2_bpe"
+)
+for model_dir in "${model_dirs[@]}"; do
+  [[ -f "$model_dir/config.json" ]]
+  install -m 0644 "$MODEL_REPO/hf/tokenization_pinyin_code.py" \
+    "$model_dir/tokenization_pinyin_code.py"
+  install -m 0644 "$MODEL_REPO/hf/tokenization_hybrid_pinyin_code.py" \
+    "$model_dir/tokenization_hybrid_pinyin_code.py"
+done
+
+MODEL_REPO="$MODEL_REPO" "$OFFICIAL_PYTHON" - <<'PY'
+import os
+from pathlib import Path
+
+from transformers import AutoTokenizer
+
+root = Path(os.environ["MODEL_REPO"])
+raw = "已经很晚了"
+names = (
+    "hf_nk_babylm_zho_gpt2_hybrid",
+    "hf_nk_babylm_zho_qwen2_hybrid",
+    "hf_nk_babylm_zho_gpt2_bpe",
+    "hf_nk_babylm_zho_qwen2_bpe",
+)
+for name in names:
+    tokenizer = AutoTokenizer.from_pretrained(root / name, trust_remote_code=True)
+    plain = tokenizer(raw, add_special_tokens=False)
+    mapped = tokenizer(
+        raw,
+        add_special_tokens=False,
+        return_offsets_mapping=True,
+    )
+    offsets = [tuple(span) for span in mapped["offset_mapping"]]
+    assert mapped["input_ids"] == plain["input_ids"], name
+    assert len(offsets) == len(plain["input_ids"]), name
+    assert all(0 <= start <= end <= len(raw) for start, end in offsets), (name, offsets)
+    covered = {
+        position
+        for start, end in offsets
+        for position in range(start, end)
+    }
+    assert covered == set(range(len(raw))), (name, offsets, covered)
+    print("validated raw offsets", name, offsets)
+PY
+
 "$CHINESE_PYTHON" - <<'PY'
 import accelerate
 import transformers
@@ -132,4 +204,4 @@ print("chinese accelerate", accelerate.__version__)
 print("chinese transformers", transformers.__version__)
 PY
 
-echo "Evaluation environments and CogBench layout repaired."
+echo "Evaluation environments, data layout, and MECO tokenizer offsets repaired."
