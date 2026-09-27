@@ -1,0 +1,23 @@
+TEMPERATURE: 1.00
+
+### FIELD ACCURACY
+class1_disjoint_freqgap_balanced: 98.00
+class1_initial_diff_freqgap_balanced: 97.80
+class1_rhyme_diff_freqgap_balanced: 97.80
+class1_tone_diff_freqgap_balanced: 96.20
+
+### UID ACCURACY
+class1_disjoint_freqgap_balanced: 98.00
+class1_initial_diff_freqgap_balanced: 97.80
+class1_rhyme_diff_freqgap_balanced: 97.80
+class1_tone_diff_freqgap_balanced: 96.20
+
+### LINGUISTICS_TERM ACCURACY
+class1_disjoint_freqgap_balanced: 98.00
+class1_initial_diff_freqgap_balanced: 97.80
+class1_rhyme_diff_freqgap_balanced: 97.80
+class1_tone_diff_freqgap_balanced: 96.20
+
+### AVERAGE ACCURACY
+97.45
+

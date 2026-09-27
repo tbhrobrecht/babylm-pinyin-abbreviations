@@ -1,0 +1,110 @@
+[
+  {
+    "model_id": "hf_nk_babylm_zho_gpt2_hybrid",
+    "task": "hanzi_structure",
+    "status": "predictions_only",
+    "leaf_count": 6000,
+    "numeric_count": 4000,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_gpt2_hybrid",
+    "task": "hanzi_pinyin",
+    "status": "predictions_only",
+    "leaf_count": 6000,
+    "numeric_count": 4000,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_gpt2_hybrid",
+    "task": "meco_l1",
+    "status": "predictions_only",
+    "leaf_count": 2081,
+    "numeric_count": 2081,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_qwen2_hybrid",
+    "task": "hanzi_structure",
+    "status": "predictions_only",
+    "leaf_count": 6000,
+    "numeric_count": 4000,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_qwen2_hybrid",
+    "task": "hanzi_pinyin",
+    "status": "predictions_only",
+    "leaf_count": 6000,
+    "numeric_count": 4000,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_qwen2_hybrid",
+    "task": "meco_l1",
+    "status": "predictions_only",
+    "leaf_count": 2081,
+    "numeric_count": 2081,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_gpt2_bpe",
+    "task": "hanzi_structure",
+    "status": "predictions_only",
+    "leaf_count": 6000,
+    "numeric_count": 4000,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_gpt2_bpe_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_gpt2_bpe",
+    "task": "hanzi_pinyin",
+    "status": "predictions_only",
+    "leaf_count": 6000,
+    "numeric_count": 4000,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_gpt2_bpe_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_gpt2_bpe",
+    "task": "meco_l1",
+    "status": "predictions_only",
+    "leaf_count": 2081,
+    "numeric_count": 2081,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_gpt2_bpe_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_qwen2_bpe",
+    "task": "hanzi_structure",
+    "status": "predictions_only",
+    "leaf_count": 6000,
+    "numeric_count": 4000,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_qwen2_bpe_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_qwen2_bpe",
+    "task": "hanzi_pinyin",
+    "status": "predictions_only",
+    "leaf_count": 6000,
+    "numeric_count": 4000,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_qwen2_bpe_predictions.json"
+  },
+  {
+    "model_id": "hf_nk_babylm_zho_qwen2_bpe",
+    "task": "meco_l1",
+    "status": "predictions_only",
+    "leaf_count": 2081,
+    "numeric_count": 2081,
+    "all_numeric_finite": true,
+    "source_file": "results/eval/official/hf_nk_babylm_zho_qwen2_bpe_predictions.json"
+  }
+]

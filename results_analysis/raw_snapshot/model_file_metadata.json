@@ -1,0 +1,26 @@
+{
+  "hf_nk_babylm_zho_gpt2_hybrid": {
+    "stored_tensor_parameters": 33674240,
+    "tensor_count": 100,
+    "model_file_bytes": 134706152,
+    "model_file": "code/babylm-pinyin-abbreviations/hf_nk_babylm_zho_gpt2_hybrid/model.safetensors"
+  },
+  "hf_nk_babylm_zho_qwen2_hybrid": {
+    "stored_tensor_parameters": 31408640,
+    "tensor_count": 98,
+    "model_file_bytes": 125645184,
+    "model_file": "code/babylm-pinyin-abbreviations/hf_nk_babylm_zho_qwen2_hybrid/model.safetensors"
+  },
+  "hf_nk_babylm_zho_gpt2_bpe": {
+    "stored_tensor_parameters": 33674240,
+    "tensor_count": 100,
+    "model_file_bytes": 134706152,
+    "model_file": "code/babylm-pinyin-abbreviations/hf_nk_babylm_zho_gpt2_bpe/model.safetensors"
+  },
+  "hf_nk_babylm_zho_qwen2_bpe": {
+    "stored_tensor_parameters": 31408640,
+    "tensor_count": 98,
+    "model_file_bytes": 125645184,
+    "model_file": "code/babylm-pinyin-abbreviations/hf_nk_babylm_zho_qwen2_bpe/model.safetensors"
+  }
+}

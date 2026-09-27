@@ -1,0 +1,156 @@
+{
+  "task": "fmri",
+  "model_name": "hf_nk_babylm_zho_qwen2_hybrid",
+  "output_root": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri",
+  "fast": false,
+  "n_result_files": 36,
+  "mean": 0.08522304949140533,
+  "min": 0.008062732249223582,
+  "max": 0.22578355861678176,
+  "files": [
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Cognition/01_average.mat",
+      "value": 0.08911769443011895
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Cognition/02_average.mat",
+      "value": 0.09362059395560025
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Cognition/03_average.mat",
+      "value": 0.12456001829871138
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Cognition/04_average.mat",
+      "value": 0.05912902192731453
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Cognition/05_average.mat",
+      "value": 0.09711209482423187
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Cognition/06_average.mat",
+      "value": 0.10627520777167006
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Language/01_average.mat",
+      "value": 0.1794945685673076
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Language/02_average.mat",
+      "value": 0.12717784123954765
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Language/03_average.mat",
+      "value": 0.22578355861678176
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Language/04_average.mat",
+      "value": 0.12115408914098338
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Language/05_average.mat",
+      "value": 0.14811688126107325
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Language/06_average.mat",
+      "value": 0.22408314239442403
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Manipulation/01_average.mat",
+      "value": 0.10031587257193147
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Manipulation/02_average.mat",
+      "value": 0.07350917040898038
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Manipulation/03_average.mat",
+      "value": 0.12451671460307347
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Manipulation/04_average.mat",
+      "value": 0.07463720519118092
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Manipulation/05_average.mat",
+      "value": 0.08596390403358889
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Manipulation/06_average.mat",
+      "value": 0.10752498182154178
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Memory/01_average.mat",
+      "value": 0.06076667546570532
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Memory/02_average.mat",
+      "value": 0.047822813543943535
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Memory/03_average.mat",
+      "value": 0.06167089432151429
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Memory/04_average.mat",
+      "value": 0.012541284742244098
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Memory/05_average.mat",
+      "value": 0.03651150392226404
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Memory/06_average.mat",
+      "value": 0.04758283276480145
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Reward/01_average.mat",
+      "value": 0.017318318580424635
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Reward/02_average.mat",
+      "value": 0.020657977274878794
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Reward/03_average.mat",
+      "value": 0.0439171653062038
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Reward/04_average.mat",
+      "value": 0.008062732249223582
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Reward/05_average.mat",
+      "value": 0.031127787905285368
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Reward/06_average.mat",
+      "value": 0.01791971789976707
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Vision/01_average.mat",
+      "value": 0.09587336600843899
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Vision/02_average.mat",
+      "value": 0.06866002158776288
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Vision/03_average.mat",
+      "value": 0.11341346430377507
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Vision/04_average.mat",
+      "value": 0.05178966080065346
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Vision/05_average.mat",
+      "value": 0.06916745464830419
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/fmri/Vision/06_average.mat",
+      "value": 0.1011335493073398
+    }
+  ]
+}

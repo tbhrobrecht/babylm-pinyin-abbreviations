@@ -1,0 +1,36 @@
+{
+  "task": "word_fmri",
+  "model_name": "hf_nk_babylm_zho_qwen2_hybrid",
+  "output_root": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/word_fmri",
+  "fast": false,
+  "n_result_files": 6,
+  "mean": 0.5535447181865791,
+  "min": 0.5211886682390506,
+  "max": 0.6037490220472889,
+  "files": [
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/word_fmri/S04_score.mat",
+      "value": 0.5211886682390506
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/word_fmri/S05_score.mat",
+      "value": 0.5757393053393278
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/word_fmri/S07_score.mat",
+      "value": 0.52139997888174
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/word_fmri/S08_score.mat",
+      "value": 0.5350374240260434
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/word_fmri/S13_score.mat",
+      "value": 0.5641539105860246
+    },
+    {
+      "file": "/dss/dsshome1/0D/go56yiq2/babylm-lrz/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid/main/cogbench/word_fmri/S31_score.mat",
+      "value": 0.6037490220472889
+    }
+  ]
+}

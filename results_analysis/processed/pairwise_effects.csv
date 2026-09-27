@@ -1,0 +1,26 @@
+comparison_key,suite,task,metric,gpt2_hybrid_minus_bpe,qwen2_hybrid_minus_bpe,qwen2_minus_gpt2_hybrid,qwen2_minus_gpt2_bpe,tokenizer_architecture_interaction,winner
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,-0.008333325386047363,0.0062499940395355225,0.004166662693023682,-0.010416656732559204,0.014583319425582886,GPT2 BPE
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,0.056818172335624695,-0.005681812763214111,-0.051136359572410583,0.011363625526428223,-0.062499985098838806,GPT2 hybrid
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,0.005794703960418701,-0.003311246633529663,-0.014072835445404053,-0.0049668848514556885,-0.009105950593948364,GPT2 hybrid
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,0.0,0.020000000000000018,-0.030000000000000027,-0.050000000000000044,0.020000000000000018,GPT2 hybrid; GPT2 BPE
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,-0.009708737864077666,0.048543689320388356,0.03883495145631066,-0.01941747572815536,0.05825242718446602,Qwen2 hybrid
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,-0.001990269792127408,-0.0002211410880141873,0.0007739938080495445,-0.0009951348960636763,0.0017691287041132209,GPT2 BPE
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,0.0,-0.026785701513290405,-0.017857134342193604,0.008928567171096802,-0.026785701513290405,Qwen2 BPE
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,-0.02759009599685669,0.018018007278442383,0.03096848726272583,-0.014639616012573242,0.04560810327529907,Qwen2 hybrid
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,0.0333978533744812,0.022256016731262207,-0.0011502504348754883,0.009991586208343506,-0.011141836643218994,GPT2 hybrid
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,0.12999999523162842,0.06499999761581421,0.0,0.06499999761581421,-0.06499999761581421,GPT2 hybrid; Qwen2 hybrid
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,0.017857134342193604,0.008928582072257996,-0.026785701513290405,-0.017857149243354797,-0.008928552269935608,GPT2 hybrid
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,-0.004946413849958864,0.011541632316570516,0.0032976092333059093,-0.01319043693322347,0.01648804616652938,GPT2 BPE
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,0.029858017817371962,0.024707683741648112,-0.004315144766147028,0.0008351893095768226,-0.00515033407572385,GPT2 hybrid
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,-0.021999984979629517,-0.027500003576278687,0.01199999451637268,0.01750001311302185,-0.00550001859664917,Qwen2 BPE
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,0.06037151702786381,0.05340557275541796,0.0007739938080495445,0.00773993808049539,-0.006965944272445845,Qwen2 hybrid
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,0.1475141242937853,0.13991525423728812,0.016327683615819155,0.02392655367231633,-0.007598870056497176,Qwen2 hybrid
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,-0.0023169601482854185,-0.0023169601482854185,-0.0016218721037998263,-0.0016218721037998263,0.0,GPT2 BPE
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,0.0,0.0,-0.003289473684210509,-0.003289473684210509,0.0,GPT2 hybrid; GPT2 BPE
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,0.013898305084745766,0.025084745762711802,0.021016949152542375,0.009830508474576338,0.011186440677966036,Qwen2 hybrid
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,0.03989999999999999,0.022399999999999975,0.006299999999999972,0.023799999999999988,-0.017500000000000016,Qwen2 hybrid
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,0.19299999999999995,0.21650000000000014,0.008000000000000007,-0.01550000000000018,0.023500000000000187,Qwen2 hybrid
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,-0.0050000000000000044,0.0014999999999999458,0.01749999999999996,0.01100000000000001,0.00649999999999995,Qwen2 hybrid
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,0.11490000000000011,0.13559999999999994,0.03929999999999989,0.01860000000000006,0.02069999999999983,Qwen2 hybrid
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,0.010872647728310952,0.004925882754709426,-0.004759842836948358,0.001186922136653168,-0.005946764973601526,GPT2 hybrid
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,0.010152772038551028,0.007340226354764057,-0.0037253479174319537,-0.0009128022336449826,-0.002812545683786971,GPT2 hybrid

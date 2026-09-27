@@ -1,0 +1,23 @@
+TEMPERATURE: 1.00
+
+### FIELD ACCURACY
+bw: 54.76
+sx: 54.94
+szx: 50.88
+zy: 58.01
+zzy: 57.83
+
+### UID ACCURACY
+component2whole: 60.30
+whole2component: 52.10
+
+### LINGUISTICS_TERM ACCURACY
+bw: 54.76
+sx: 54.94
+szx: 50.88
+zy: 58.01
+zzy: 57.83
+
+### AVERAGE ACCURACY
+56.20
+
