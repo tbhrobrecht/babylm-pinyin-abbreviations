@@ -1,0 +1,42 @@
+diff --git a/multilingual/finetune/finetune_token_classification.py b/multilingual/finetune/finetune_token_classification.py
+--- a/multilingual/finetune/finetune_token_classification.py
++++ b/multilingual/finetune/finetune_token_classification.py
+@@ -295,9 +295,22 @@ def main():
+     logger.info(f"Loaded UD config(s) {data_args.ud_configs}: "
+                 f"{ {k: len(v) for k, v in raw_datasets.items()} }")
+ 
+-    # `upos` is a Sequence(ClassLabel); pull the tag names (ids are already 0..N-1).
++    # Older UD dataset metadata exposes `upos` as Sequence(ClassLabel), while
++    # datasets 4.x exposes the same tags as Sequence(Value). Support both.
+     upos_feature = raw_datasets["train"].features["upos"]
+-    label_list = upos_feature.feature.names
++    upos_value_feature = getattr(upos_feature, "feature", upos_feature)
++    if getattr(upos_value_feature, "names", None) is not None:
++        label_list = upos_value_feature.names
++        label_to_id = None
++    else:
++        label_values = sorted({
++            label
++            for split in raw_datasets.values()
++            for row in split["upos"]
++            for label in row
++        })
++        label_list = [str(label) for label in label_values]
++        label_to_id = {label: index for index, label in enumerate(label_values)}
+     num_labels = len(label_list)
+ 
+     config = AutoConfig.from_pretrained(
+@@ -361,7 +374,12 @@ def main():
+                     ordered.append(wid)
+             remap = {wid: new for new, wid in enumerate(ordered)}
+             batch_word_ids.append([remap[wid] if wid is not None else -1 for wid in word_ids])
+-            batch_labels.append([upos[wid] for wid in ordered])
++            if label_to_id is None:
++                batch_labels.append([upos[wid] for wid in ordered])
++            else:
++                batch_labels.append(
++                    [label_to_id[upos[wid]] for wid in ordered]
++                )
+         return {
+             "input_ids": tokenized["input_ids"],
+             "attention_mask": tokenized["attention_mask"],

@@ -76,7 +76,7 @@ cd "$REPO"
 if [[ "$TASKS" == "all" ]]; then
   TASK_ARGS=(zhoblimp hanzi_structure hanzi_pinyin word_fmri fmri afqmc ocnli tnews cluewsc2020)
 else
-  read -r -a TASK_ARGS <<< "$TASKS"
+  read -r -a TASK_ARGS <<< "${TASKS//,/ }"
 fi
 
 echo "Model: $MODEL_DIR"

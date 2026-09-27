@@ -17,11 +17,20 @@ REPO="$ROOT/code/babylm-eval/multilingual"
 ENV_DIR="$ROOT/env/babylm-eval-official"
 
 : "${MODEL_DIR:?Submit with --export=ALL,MODEL_DIR=/absolute/path/to/hf_model}"
+if [[ ! -f "$MODEL_DIR/config.json" ]]; then
+  echo "MODEL_DIR is not a converted Hugging Face model: $MODEL_DIR" >&2
+  exit 1
+fi
 
 export HF_HOME="$ROOT/cache/huggingface"
-export HF_DATASETS_CACHE="$HF_HOME/datasets"
+export HF_DATASETS_CACHE="$ROOT/cache/evaluation/official_datasets_v4"
+export HF_HUB_CACHE="$HF_HOME/hub"
 export TMPDIR="$ROOT/tmp"
 export TOKENIZERS_PARALLELISM=false
+export WANDB_DISABLED=true
+export WANDB_MODE=disabled
+
+mkdir -p "$HF_DATASETS_CACHE" "$HF_HUB_CACHE" "$TMPDIR"
 
 source "$ENV_DIR/bin/activate"
 cd "$REPO"

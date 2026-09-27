@@ -32,6 +32,8 @@ export HF_DATASETS_CACHE="$HF_HOME/datasets"
 export TRANSFORMERS_CACHE="$HF_HOME/transformers"
 export TMPDIR="$ROOT/tmp"
 export TOKENIZERS_PARALLELISM=false
+export WANDB_DISABLED=true
+export WANDB_MODE=disabled
 
 mkdir -p "$ROOT/logs/eval" "$HF_HOME" "$TMPDIR"
 
