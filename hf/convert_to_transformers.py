@@ -19,6 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from hf.configuration_pinyin_code import PinyinCodeConfig
 from hf.modeling_pinyin_code import PinyinCodeForCausalLM
+from hf.tokenization_atomic_bpe_pinyin_code import AtomicBPEPinyinCodeTokenizer
 from hf.tokenization_hybrid_pinyin_code import HybridPinyinCodeTokenizer
 from train_model import (
     build_model,
@@ -34,6 +35,8 @@ DEFAULT_CHECKPOINT_CANDIDATES = (
     Path("models/pinyin-code-gpt-small/best_model.pt"),
 )
 HYBRID_METADATA_NAME = "hybrid_tokenizer_metadata.json"
+ATOMIC_BPE_METADATA_NAME = "atomic_bpe_tokenizer_metadata.json"
+ATOMIC_BPE_MERGES_NAME = "atomic_bpe_merges.json"
 
 
 def require_sentencepiece():
@@ -71,9 +74,22 @@ def load_training_checkpoint(path: Path) -> dict:
 
 def is_hybrid_tokenizer(tokenizer_path: Path) -> bool:
     """Return true when the tokenizer path points at a hybrid tokenizer."""
-    if tokenizer_path.name == "vocab.json":
-        return True
-    return tokenizer_path.is_dir() and (tokenizer_path / "vocab.json").exists()
+    directory = tokenizer_path.parent if tokenizer_path.name == "vocab.json" else tokenizer_path
+    return (
+        directory.is_dir()
+        and (directory / "vocab.json").exists()
+        and not (directory / ATOMIC_BPE_MERGES_NAME).exists()
+    )
+
+
+def is_atomic_bpe_tokenizer(tokenizer_path: Path) -> bool:
+    """Return true for either boundary policy of the syllable-atomic BPE."""
+    directory = tokenizer_path.parent if tokenizer_path.name == "vocab.json" else tokenizer_path
+    return directory.is_dir() and (directory / ATOMIC_BPE_MERGES_NAME).exists()
+
+
+def is_directory_tokenizer(tokenizer_path: Path) -> bool:
+    return is_hybrid_tokenizer(tokenizer_path) or is_atomic_bpe_tokenizer(tokenizer_path)
 
 
 def hybrid_tokenizer_dir(tokenizer_path: Path) -> Path:
@@ -83,12 +99,25 @@ def hybrid_tokenizer_dir(tokenizer_path: Path) -> Path:
     return tokenizer_path
 
 
+def tokenizer_kind(tokenizer_path: Path) -> str:
+    if is_atomic_bpe_tokenizer(tokenizer_path):
+        directory = hybrid_tokenizer_dir(tokenizer_path)
+        payload = json.loads((directory / ATOMIC_BPE_MERGES_NAME).read_text(encoding="utf-8"))
+        return f"atomic_bpe_{payload['boundary_policy'].removesuffix('_word')}"
+    if is_hybrid_tokenizer(tokenizer_path):
+        return "hybrid"
+    return "sentencepiece"
+
+
 def tokenizer_special_ids(tokenizer_path: Path) -> dict[str, int | None]:
     """Read special token ids from the existing tokenizer."""
-    if is_hybrid_tokenizer(tokenizer_path):
-        tokenizer = HybridPinyinCodeTokenizer.from_pretrained(
-            hybrid_tokenizer_dir(tokenizer_path)
+    if is_directory_tokenizer(tokenizer_path):
+        tokenizer_class = (
+            AtomicBPEPinyinCodeTokenizer
+            if is_atomic_bpe_tokenizer(tokenizer_path)
+            else HybridPinyinCodeTokenizer
         )
+        tokenizer = tokenizer_class.from_pretrained(hybrid_tokenizer_dir(tokenizer_path))
         return {
             "bos_token_id": tokenizer.bos_token_id,
             "eos_token_id": tokenizer.eos_token_id,
@@ -109,10 +138,13 @@ def tokenizer_special_ids(tokenizer_path: Path) -> dict[str, int | None]:
 
 def tokenizer_vocab_size(tokenizer_path: Path) -> int:
     """Return the vocabulary size of a SentencePiece or hybrid tokenizer."""
-    if is_hybrid_tokenizer(tokenizer_path):
-        tokenizer = HybridPinyinCodeTokenizer.from_pretrained(
-            hybrid_tokenizer_dir(tokenizer_path)
+    if is_directory_tokenizer(tokenizer_path):
+        tokenizer_class = (
+            AtomicBPEPinyinCodeTokenizer
+            if is_atomic_bpe_tokenizer(tokenizer_path)
+            else HybridPinyinCodeTokenizer
         )
+        tokenizer = tokenizer_class.from_pretrained(hybrid_tokenizer_dir(tokenizer_path))
         return tokenizer.vocab_size
 
     spm = require_sentencepiece()
@@ -124,6 +156,11 @@ def tokenizer_auto_map(tokenizer_path: Path) -> list[str | None]:
     """Return the AutoTokenizer remote-code target for the tokenizer family."""
     if is_hybrid_tokenizer(tokenizer_path):
         return ["tokenization_hybrid_pinyin_code.HybridPinyinCodeTokenizer", None]
+    if is_atomic_bpe_tokenizer(tokenizer_path):
+        return [
+            "tokenization_atomic_bpe_pinyin_code.AtomicBPEPinyinCodeTokenizer",
+            None,
+        ]
     return [
         "tokenization_pinyin_code.EncodedMandarinTokenizer",
         "tokenization_pinyin_code.EncodedMandarinTokenizerFast",
@@ -180,20 +217,23 @@ def convert_state_dict(state_dict: dict[str, torch.Tensor]) -> dict[str, torch.T
     return mapped
 
 
-def copy_remote_code(output_dir: Path) -> None:
+def copy_remote_code(output_dir: Path, include_atomic_bpe: bool = False) -> None:
     """Copy custom modeling code into the saved model folder."""
     package_dir = output_dir / "hf"
     package_dir.mkdir(parents=True, exist_ok=True)
     preprocessing_dir = output_dir / "preprocessing"
     preprocessing_dir.mkdir(parents=True, exist_ok=True)
     (preprocessing_dir / "__init__.py").write_text("", encoding="utf-8")
-    for filename in (
+    filenames = [
         "__init__.py",
         "configuration_pinyin_code.py",
         "modeling_pinyin_code.py",
         "tokenization_hybrid_pinyin_code.py",
         "tokenization_pinyin_code.py",
-    ):
+    ]
+    if include_atomic_bpe:
+        filenames.append("tokenization_atomic_bpe_pinyin_code.py")
+    for filename in filenames:
         shutil.copy2(Path("hf") / filename, package_dir / filename)
         if filename != "__init__.py":
             shutil.copy2(Path("hf") / filename, output_dir / filename)
@@ -215,7 +255,7 @@ def write_model_readme(
     tokenizer_kind: str,
 ) -> None:
     """Write a minimal model-card README for external evaluation users."""
-    tokenizer_tag = "sentencepiece" if tokenizer_kind == "sentencepiece" else "hybrid-tokenizer"
+    tokenizer_tag = tokenizer_kind.replace("_", "-")
     install_command = (
         "pip install torch transformers safetensors sentencepiece pypinyin jieba"
         if tokenizer_kind == "sentencepiece"
@@ -224,7 +264,7 @@ def write_model_readme(
     dependency_note = (
         "`sentencepiece` is required for the SentencePiece tokenizer. "
         if tokenizer_kind == "sentencepiece"
-        else "This export uses the repository's hybrid tokenizer and does not require SentencePiece. "
+        else "This export uses a repository-native tokenizer and does not require SentencePiece. "
     )
     tokenizer_note = (
         "The tokenizer accepts raw text through standard calls such as\n"
@@ -233,7 +273,7 @@ def write_model_readme(
         "        It also accepts `return_offsets_mapping=True` for compatibility with\n"
         "        completion-ranking evaluators that need suffix masks."
         if tokenizer_kind == "sentencepiece"
-        else "The hybrid tokenizer accepts preprocessed pinyin-code text through standard\n"
+        else "The tokenizer accepts preprocessed pinyin-code text through standard\n"
         "        calls such as `tokenizer(text)`, `tokenizer(text, add_special_tokens=False)`,\n"
         "        and `tokenizer(texts, padding=True, truncation=True, return_tensors=\"pt\")`."
     )
@@ -320,10 +360,13 @@ def write_model_readme(
 
 def load_export_tokenizer(args: argparse.Namespace):
     """Load the tokenizer implementation matching the input tokenizer path."""
-    if is_hybrid_tokenizer(args.tokenizer):
-        return HybridPinyinCodeTokenizer.from_pretrained(
-            hybrid_tokenizer_dir(args.tokenizer)
+    if is_directory_tokenizer(args.tokenizer):
+        tokenizer_class = (
+            AtomicBPEPinyinCodeTokenizer
+            if is_atomic_bpe_tokenizer(args.tokenizer)
+            else HybridPinyinCodeTokenizer
         )
+        return tokenizer_class.from_pretrained(hybrid_tokenizer_dir(args.tokenizer))
     from hf.tokenization_pinyin_code import EncodedMandarinTokenizer
     from hf.tokenization_pinyin_code import EncodedMandarinTokenizerFast
 
@@ -336,8 +379,13 @@ def load_export_tokenizer(args: argparse.Namespace):
 
 def copy_tokenizer_sidecars(tokenizer_path: Path, output_dir: Path) -> None:
     """Copy optional tokenizer metadata files that save_pretrained does not own."""
-    if is_hybrid_tokenizer(tokenizer_path):
-        metadata_path = hybrid_tokenizer_dir(tokenizer_path) / HYBRID_METADATA_NAME
+    if is_directory_tokenizer(tokenizer_path):
+        metadata_name = (
+            ATOMIC_BPE_METADATA_NAME
+            if is_atomic_bpe_tokenizer(tokenizer_path)
+            else HYBRID_METADATA_NAME
+        )
+        metadata_path = hybrid_tokenizer_dir(tokenizer_path) / metadata_name
         if metadata_path.exists():
             shutil.copy2(metadata_path, output_dir / metadata_path.name)
         return
@@ -358,12 +406,14 @@ def tokenizer_config_updates(args: argparse.Namespace, config) -> dict:
         "model_max_length": model_max_length,
         "pinyin_format": args.transliteration,
         "jieba": args.jieba,
-        "tokenizer_kind": "hybrid" if is_hybrid_tokenizer(args.tokenizer) else "sentencepiece",
+        "tokenizer_kind": tokenizer_kind(args.tokenizer),
         "transliteration": args.transliteration,
         "use_jieba": args.jieba,
     }
     if is_hybrid_tokenizer(args.tokenizer):
         updates["tokenizer_class"] = "HybridPinyinCodeTokenizer"
+    elif is_atomic_bpe_tokenizer(args.tokenizer):
+        updates["tokenizer_class"] = "AtomicBPEPinyinCodeTokenizer"
     else:
         updates["tokenizer_class"] = "EncodedMandarinTokenizerFast"
     return updates
@@ -412,7 +462,10 @@ def convert(args: argparse.Namespace) -> None:
     model.eval()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    copy_remote_code(args.output_dir)
+    copy_remote_code(
+        args.output_dir,
+        include_atomic_bpe=is_atomic_bpe_tokenizer(args.tokenizer),
+    )
     model.save_pretrained(args.output_dir, safe_serialization=args.safe_serialization)
 
     tokenizer = load_export_tokenizer(args)
@@ -457,7 +510,7 @@ def convert(args: argparse.Namespace) -> None:
         "epoch": checkpoint.get("epoch"),
         "global_step": checkpoint.get("global_step"),
         "jieba": args.jieba,
-        "tokenizer_kind": "hybrid" if is_hybrid_tokenizer(args.tokenizer) else "sentencepiece",
+        "tokenizer_kind": tokenizer_kind(args.tokenizer),
         "transliteration": args.transliteration,
         "use_jieba": args.jieba,
         "validation_loss": json_safe_metric(checkpoint.get("validation_loss")),
@@ -470,7 +523,7 @@ def convert(args: argparse.Namespace) -> None:
         args.output_dir,
         args.transliteration,
         args.jieba,
-        "hybrid" if is_hybrid_tokenizer(args.tokenizer) else "sentencepiece",
+        tokenizer_kind(args.tokenizer),
     )
     print(f"Saved Transformers model to {args.output_dir}")
 

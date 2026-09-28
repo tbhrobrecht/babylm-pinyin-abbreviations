@@ -29,6 +29,8 @@ PIPELINE_STEPS = (
     "convert",
     "upload",
 )
+DIRECTORY_TOKENIZER_KINDS = {"hybrid", "atomic_bpe_within", "atomic_bpe_cross"}
+ATOMIC_BPE_KINDS = {"atomic_bpe_within", "atomic_bpe_cross"}
 
 
 def path_arg(path: Path) -> str:
@@ -55,7 +57,11 @@ def default_tokenizer_name(
     """Return the default tokenizer artifact name for this run."""
     if matrix_mode:
         return f"{model_name}_{tokenizer_kind}"
-    return f"{model_name}_hybrid" if tokenizer_kind == "hybrid" else model_name
+    return (
+        f"{model_name}_{tokenizer_kind}"
+        if tokenizer_kind in DIRECTORY_TOKENIZER_KINDS
+        else model_name
+    )
 
 
 def default_paths(
@@ -66,7 +72,7 @@ def default_paths(
     args: argparse.Namespace,
 ) -> None:
     """Fill derived paths after parsing model_name."""
-    dataset_suffix = "hybrid" if args.tokenizer_kind == "hybrid" else "spm"
+    dataset_suffix = "spm" if args.tokenizer_kind == "bpe" else args.tokenizer_kind
     if args.raw_output is None:
         args.raw_output = Path("data") / f"{corpus_name}.jsonl"
     if args.processed_output is None:
@@ -89,19 +95,19 @@ def default_paths(
 
 
 def tokenizer_path(args: argparse.Namespace) -> Path:
-    if args.tokenizer_kind == "hybrid":
+    if args.tokenizer_kind in DIRECTORY_TOKENIZER_KINDS:
         return args.tokenizer_dir / args.tokenizer_name
     return args.tokenizer_dir / f"{args.tokenizer_name}.model"
 
 
 def tokenizer_done_path(args: argparse.Namespace) -> Path:
-    if args.tokenizer_kind == "hybrid":
+    if args.tokenizer_kind in DIRECTORY_TOKENIZER_KINDS:
         return tokenizer_path(args) / "vocab.json"
     return tokenizer_path(args)
 
 
 def training_vocab_size(args: argparse.Namespace) -> int:
-    if args.tokenizer_kind != "hybrid":
+    if args.tokenizer_kind not in DIRECTORY_TOKENIZER_KINDS:
         return args.vocab_size
     vocab_path = tokenizer_done_path(args)
     if not vocab_path.exists():
@@ -247,6 +253,38 @@ def run_tokenizer(args: argparse.Namespace) -> None:
         if args.hybrid_permissive:
             command.append("--permissive")
         run_command("Train hybrid tokenizer", command, args)
+        return
+
+    if args.tokenizer_kind in ATOMIC_BPE_KINDS:
+        boundary_policy = (
+            "within_word"
+            if args.tokenizer_kind == "atomic_bpe_within"
+            else "cross_word"
+        )
+        command = python_command(
+            "train_atomic_bpe_tokenizer.py",
+            "--input",
+            path_arg(args.processed_output),
+            "--output-dir",
+            path_arg(tokenizer_path(args)),
+            "--boundary-policy",
+            boundary_policy,
+            "--vocab-size",
+            args.vocab_size,
+            "--min-frequency",
+            args.atomic_bpe_min_frequency,
+            "--min-preserved-frequency",
+            args.atomic_bpe_min_preserved_frequency,
+            "--initial-alphabet",
+            args.hybrid_initial_alphabet,
+            "--digits",
+            args.hybrid_digits,
+            "--max-invalid-examples",
+            args.hybrid_max_invalid_examples,
+        )
+        if args.hybrid_permissive:
+            command.append("--permissive")
+        run_command(f"Train {boundary_policy} atomic BPE tokenizer", command, args)
         return
 
     command = python_command(
@@ -526,13 +564,16 @@ def parse_args() -> argparse.Namespace:
     tokenizer = parser.add_argument_group("tokenizer")
     tokenizer.add_argument(
         "--tokenizer-kind",
-        choices=("hybrid", "bpe"),
+        choices=("hybrid", "bpe", "atomic_bpe_within", "atomic_bpe_cross"),
         default="hybrid",
-        help="Tokenizer family to train. Hybrid is the default; bpe uses SentencePiece.",
+        help=(
+            "Tokenizer family to train. `bpe` is character-level SentencePiece; "
+            "the two atomic_bpe variants learn merges over complete syllable pairs."
+        ),
     )
     tokenizer.add_argument(
         "--tokenizer-kinds",
-        choices=("hybrid", "bpe"),
+        choices=("hybrid", "bpe", "atomic_bpe_within", "atomic_bpe_cross"),
         nargs="+",
         default=None,
         help=(
@@ -591,6 +632,8 @@ def parse_args() -> argparse.Namespace:
         help="Digit alphabet passed to train_hybrid_tokenizer.py.",
     )
     tokenizer.add_argument("--hybrid-max-invalid-examples", type=int, default=20)
+    tokenizer.add_argument("--atomic-bpe-min-frequency", type=int, default=2)
+    tokenizer.add_argument("--atomic-bpe-min-preserved-frequency", type=int, default=20)
 
     dataset = parser.add_argument_group("dataset")
     dataset.add_argument("--train-dataset", type=Path, default=None)

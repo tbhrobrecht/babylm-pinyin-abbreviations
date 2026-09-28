@@ -37,6 +37,18 @@ def require_hybrid_tokenizer():
     return HybridPinyinCodeTokenizer
 
 
+def require_atomic_bpe_tokenizer():
+    """Import the syllable-atomic BPE tokenizer or stop with an install hint."""
+    try:
+        from hf.tokenization_atomic_bpe_pinyin_code import AtomicBPEPinyinCodeTokenizer
+    except ImportError as exc:
+        raise SystemExit(
+            "Missing dependency for the atomic BPE tokenizer: install "
+            "`transformers` with `py -m pip install transformers`."
+        ) from exc
+    return AtomicBPEPinyinCodeTokenizer
+
+
 TOKENIZATION_MODES = ("greedy", "softmax")
 
 
@@ -93,12 +105,17 @@ def load_tokenizer_processor(tokenizer_path: Path, tokenization_settings: dict[s
     ignores them.
     """
     if tokenizer_path.is_dir() or tokenizer_path.name == "vocab.json":
-        HybridPinyinCodeTokenizer = require_hybrid_tokenizer()
         load_path = tokenizer_path.parent if tokenizer_path.name == "vocab.json" else tokenizer_path
+        if (load_path / "atomic_bpe_merges.json").exists():
+            tokenizer_class = require_atomic_bpe_tokenizer()
+            kwargs: dict[str, Any] = {}
+        else:
+            tokenizer_class = require_hybrid_tokenizer()
+            kwargs = hybrid_tokenization_kwargs(tokenization_settings)
         return HybridProcessorAdapter(
-            HybridPinyinCodeTokenizer.from_pretrained(
+            tokenizer_class.from_pretrained(
                 load_path,
-                **hybrid_tokenization_kwargs(tokenization_settings),
+                **kwargs,
             )
         )
 
@@ -396,7 +413,7 @@ def parse_args() -> argparse.Namespace:
         default=Path("tokenizers/babylm_zho_pinyin_spm.model"),
         help=(
             "Tokenizer used to encode the dataset. Pass a SentencePiece .model "
-            "file or a hybrid tokenizer directory containing vocab.json."
+            "file or a hybrid/atomic-BPE tokenizer directory containing vocab.json."
         ),
     )
     parser.add_argument(

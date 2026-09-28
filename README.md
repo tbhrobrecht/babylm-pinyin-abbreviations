@@ -383,6 +383,30 @@ New hybrid tokenizer:
 - never needs `<unk>` for valid encoded words;
 - takes word boundaries from the encoding instead of from whitespace.
 
+### Syllable-atomic BPE variants
+
+`train_atomic_bpe_tokenizer.py` provides two additional, independently named
+tokenizer families. Both force every two-character pinyin-code syllable pair
+into the base vocabulary and train recursive BPE merges over those indivisible
+atoms. Consequently, every encoded Mandarin vocabulary piece has an even
+length, and any unseen sequence can fall back to complete syllable pairs.
+
+```powershell
+py train_atomic_bpe_tokenizer.py --input data\processed\nk_babylm_zho.txt --output-dir tokenizers\nk_babylm_zho_atomic_bpe_within --boundary-policy within_word --vocab-size 16000 --permissive
+py train_atomic_bpe_tokenizer.py --input data\processed\nk_babylm_zho.txt --output-dir tokenizers\nk_babylm_zho_atomic_bpe_cross --boundary-policy cross_word --vocab-size 16000 --permissive
+```
+
+- `within_word` resets BPE at every Jieba boundary recovered from the reversed
+  continuation atoms. A learned token cannot cross a word boundary.
+- `cross_word` applies BPE to the complete contiguous encoded run, so merges may
+  cross adjacent Jieba words. It still stops at whitespace-separated markers,
+  punctuation, and preserved surface text.
+
+The trainer temporarily maps every syllable pair to one private-use character
+only while learning merges. The saved vocabulary and ranked merge artifact use
+the original readable pinyin-code strings. These are new artifacts and do not
+overwrite or modify existing hybrid or SentencePiece tokenizers.
+
 ## Create a tokenized dataset
 
 Build a chunked JSONL language-modeling dataset from the processed text and
@@ -416,6 +440,12 @@ SentencePiece `.model` file:
 
 ```powershell
 py create_dataset.py --format bin --input data\processed\10k_babylm_zho.txt --output data\datasets\10k_train_hybrid_16k.bin --validation-output data\datasets\10k_valid_hybrid_16k.bin --validation-fraction 0.05 --tokenizer tokenizers\babylm_zho_hybrid_16k --block-size 512 --stride 512
+```
+
+Atomic-BPE tokenizers are also directory artifacts and use the same command:
+
+```powershell
+py create_dataset.py --format bin --input data\processed\nk_babylm_zho.txt --output data\datasets\nk_train_atomic_bpe_within.bin --validation-output data\datasets\nk_valid_atomic_bpe_within.bin --validation-fraction 0.05 --tokenizer tokenizers\nk_babylm_zho_atomic_bpe_within --block-size 512 --stride 512
 ```
 
 Binary datasets write raw int32 token chunks plus a `.meta.json` sidecar.
@@ -737,6 +767,16 @@ architectures with both tokenizer families:
 ```powershell
 python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --architectures gpt2 qwen2 --tokenizer-kinds hybrid bpe --device cuda --vocab-size 16000 --block-size 512 --stride 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --preprocess-workers 8 --num-workers 4 --resume
 ```
+
+To add the two syllable-atomic BPE boundary conditions, run:
+
+```powershell
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --architectures gpt2 qwen2 --tokenizer-kinds atomic_bpe_within atomic_bpe_cross --device cuda --vocab-size 16000 --block-size 512 --stride 512 --epochs 5 --batch-size 64 --learning-rate 3e-4 --hybrid-permissive --resume
+```
+
+This creates new `*_atomic_bpe_within` and `*_atomic_bpe_cross` tokenizer,
+dataset, checkpoint, and Hugging Face export paths. Existing `*_hybrid` and
+`*_bpe` artifacts are neither reused as outputs nor removed.
 
 To train the hybrid runs with stochastic softmax segmentation on the training
 split while keeping greedy evaluation, add the tokenization flags (they only
