@@ -1,114 +1,160 @@
-# Mandarin BabyLM model comparison
+# Mandarin BabyLM 12-model comparison
 
-## Snapshot integrity
+## Validation and scope
 
-- Verified `46` downloaded source files against `SOURCE_MANIFEST.sha256`.
-- Parsed `820` scored metric rows and `25` directly comparable primary metrics.
-- Hidden tasks are listed as `predictions_only`; no hidden score is invented or treated as zero.
-- CogBench reports show `fast=False`, indicating the full configured runs.
+- Compared `12` models across `25` comparable primary metrics.
+- Parsed `2460` total metric rows, including supplementary metrics.
+- Verified `46` legacy snapshot files against `SOURCE_MANIFEST.sha256`.
+- Raw official outputs use evaluator collation rules: Global PIQA uses normalized accuracy; other zero-shot tasks use accuracy.
+- Server-scored tasks are excluded from official local scores; Chinese-pipeline Hanzi scores remain a separate local suite.
 
 ## Model metadata
 
-| Model | Architecture | Tokenizer | Stored tensor parameters | Layers | Hidden | Vocab |
-| --- | --- | --- | --- | --- | --- | --- |
-| GPT2 hybrid | GPT2 | Hybrid | 33,674,240 | 8 | 512 | 16000 |
-| Qwen2 hybrid | Qwen2 | Hybrid | 31,408,640 | 8 | 512 | 16000 |
-| GPT2 BPE | GPT2 | BPE | 33,674,240 | 8 | 512 | 16000 |
-| Qwen2 BPE | Qwen2 | BPE | 31,408,640 | 8 | 512 | 16000 |
+| Model | Scale | Architecture | Tokenizer | Stored parameters | Layers | Hidden | Vocab |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 30M GPT2 Hybrid | 30M | GPT2 | Hybrid | 33,674,240 | 8 | 512 | 16000 |
+| 30M Qwen2 Hybrid | 30M | Qwen2 | Hybrid | 31,408,640 | 8 | 512 | 16000 |
+| 30M GPT2 BPE | 30M | GPT2 | BPE | 33,674,240 | 8 | 512 | 16000 |
+| 30M Qwen2 BPE | 30M | Qwen2 | BPE | 31,408,640 | 8 | 512 | 16000 |
+| 100M GPT2 Hybrid | 100M | GPT2 | Hybrid | 97,737,216 | 12 | 768 | 16000 |
+| 100M Qwen2 Hybrid | 100M | Qwen2 | Hybrid | 97,260,288 | 12 | 768 | 16000 |
+| 100M GPT2 BPE | 100M | GPT2 | BPE | 97,737,216 | 12 | 768 | 16000 |
+| 100M Qwen2 BPE | 100M | Qwen2 | BPE | 97,260,288 | 12 | 768 | 16000 |
+| 30M GPT2 Atomic Within | 30M | GPT2 | Atomic BPE within | 33,674,240 | 8 | 512 | 16000 |
+| 30M Qwen2 Atomic Within | 30M | Qwen2 | Atomic BPE within | 31,408,640 | 8 | 512 | 16000 |
+| 30M GPT2 Atomic Cross | 30M | GPT2 | Atomic BPE cross | 33,674,240 | 8 | 512 | 16000 |
+| 30M Qwen2 Atomic Cross | 30M | Qwen2 | Atomic BPE cross | 31,408,640 | 8 | 512 | 16000 |
 
-`Stored tensor parameters` is counted directly from the safetensors header. It is not an estimate based on file size.
+## Suite-level descriptive averages
 
-## Official Chinese results
+| Model | Official (16) | Chinese zero-shot (3) | Chinese fine-tune (4) | CogBench (2) |
+| --- | --- | --- | --- | --- |
+| 30M GPT2 Hybrid | 0.4446 | 0.7466 | 0.6166 | 0.3236 |
+| 30M Qwen2 Hybrid | 0.4422 | 0.7682 | 0.6222 | 0.3194 |
+| 30M GPT2 BPE | 0.4192 | 0.6456 | 0.6037 | 0.3131 |
+| 30M Qwen2 BPE | 0.4201 | 0.6503 | 0.6109 | 0.3133 |
+| 100M GPT2 Hybrid | 0.4512 | 0.7628 | 0.6188 | 0.3236 |
+| 100M Qwen2 Hybrid | 0.4373 | 0.7638 | 0.6170 | 0.3198 |
+| 100M GPT2 BPE | 0.4237 | 0.6335 | 0.6101 | 0.3136 |
+| 100M Qwen2 BPE | 0.4122 | 0.6343 | 0.6081 | 0.3135 |
+| 30M GPT2 Atomic Within | 0.4461 | 0.7404 | 0.6181 | 0.3227 |
+| 30M Qwen2 Atomic Within | 0.4493 | 0.7623 | 0.6161 | 0.3200 |
+| 30M GPT2 Atomic Cross | 0.4403 | 0.7488 | 0.6085 | 0.3227 |
+| 30M Qwen2 Atomic Cross | 0.4351 | 0.7588 | 0.6082 | 0.3201 |
 
-| Model | Unweighted macro-average | Task wins (ties count for each) |
+These are unweighted descriptive averages within each suite; do not average across suites because their metrics and scales differ.
+
+## Selected mean paired contrasts
+
+| Suite | Contrast | Mean difference |
 | --- | --- | --- |
-| GPT2 hybrid | 0.4446 | 7 |
-| Qwen2 hybrid | 0.4422 | 5 |
-| GPT2 BPE | 0.4192 | 4 |
-| Qwen2 BPE | 0.4201 | 2 |
+| BabyLM official Chinese | 30M GPT2: Atomic cross - within | -0.0058 |
+| BabyLM official Chinese | 30M Qwen2: Atomic cross - within | -0.0142 |
+| BabyLM official Chinese | GPT2 BPE: 100M - 30M | +0.0046 |
+| BabyLM official Chinese | GPT2 Hybrid: 100M - 30M | +0.0066 |
+| BabyLM official Chinese | Qwen2 BPE: 100M - 30M | -0.0078 |
+| BabyLM official Chinese | Qwen2 Hybrid: 100M - 30M | -0.0050 |
+| Chinese fine-tune | 30M GPT2: Atomic cross - within | -0.0096 |
+| Chinese fine-tune | 30M Qwen2: Atomic cross - within | -0.0079 |
+| Chinese fine-tune | GPT2 BPE: 100M - 30M | +0.0064 |
+| Chinese fine-tune | GPT2 Hybrid: 100M - 30M | +0.0022 |
+| Chinese fine-tune | Qwen2 BPE: 100M - 30M | -0.0028 |
+| Chinese fine-tune | Qwen2 Hybrid: 100M - 30M | -0.0052 |
+| Chinese zero-shot | 30M GPT2: Atomic cross - within | +0.0083 |
+| Chinese zero-shot | 30M Qwen2: Atomic cross - within | -0.0035 |
+| Chinese zero-shot | GPT2 BPE: 100M - 30M | -0.0122 |
+| Chinese zero-shot | GPT2 Hybrid: 100M - 30M | +0.0162 |
+| Chinese zero-shot | Qwen2 BPE: 100M - 30M | -0.0161 |
+| Chinese zero-shot | Qwen2 Hybrid: 100M - 30M | -0.0044 |
+| CogBench | 30M GPT2: Atomic cross - within | -0.0000 |
+| CogBench | 30M Qwen2: Atomic cross - within | +0.0001 |
+| CogBench | GPT2 BPE: 100M - 30M | +0.0005 |
+| CogBench | GPT2 Hybrid: 100M - 30M | -0.0000 |
+| CogBench | Qwen2 BPE: 100M - 30M | +0.0003 |
+| CogBench | Qwen2 Hybrid: 100M - 30M | +0.0005 |
 
-The macro-average is descriptive: tasks differ in size, difficulty, and variance.
+Positive values favor the condition before the minus sign.
 
-### Mean paired effects across the 16 official tasks
+## Official task scores by cohort
 
-| Contrast | Mean score difference |
-| --- | --- |
-| GPT2: Hybrid - BPE | +0.0254 |
-| Qwen2: Hybrid - BPE | +0.0222 |
-| Hybrid: Qwen2 - GPT2 | -0.0024 |
-| BPE: Qwen2 - GPT2 | +0.0009 |
-| Tokenizer x architecture interaction | -0.0032 |
+### Original 30M
 
-Positive tokenizer effects favor Hybrid. Positive architecture effects favor Qwen2.
-
-### Task-level official scores
-
-| Task | GPT2 hybrid | Qwen2 hybrid | GPT2 BPE | Qwen2 BPE | Winner |
+| Task | 30M GPT2 Hybrid | 30M Qwen2 Hybrid | 30M GPT2 BPE | 30M Qwen2 BPE | Best in cohort |
 | --- | --- | --- | --- | --- | --- |
-| arc | 0.2562 | 0.2604 | 0.2646 | 0.2542 | GPT2 BPE |
-| belebele | 0.2557 | 0.2045 | 0.1989 | 0.2102 | GPT2 hybrid |
-| bmlama | 0.1730 | 0.1589 | 0.1672 | 0.1623 | GPT2 hybrid |
-| global_piqa_nonparallel_zh | 0.5300 | 0.5000 | 0.5300 | 0.4800 | GPT2 hybrid; GPT2 BPE |
-| global_piqa_parallel_zh | 0.2233 | 0.2621 | 0.2330 | 0.2136 | Qwen2 hybrid |
-| hellaswag_zh_mubench | 0.2663 | 0.2671 | 0.2683 | 0.2673 | GPT2 BPE |
-| include | 0.2589 | 0.2411 | 0.2589 | 0.2679 | Qwen2 BPE |
-| mnli | 0.5236 | 0.5546 | 0.5512 | 0.5366 | Qwen2 hybrid |
-| pos | 0.8446 | 0.8435 | 0.8112 | 0.8212 | GPT2 hybrid |
-| sib200 | 0.7700 | 0.7700 | 0.6400 | 0.7050 | GPT2 hybrid; Qwen2 hybrid |
-| truthfulqa | 0.2679 | 0.2411 | 0.2500 | 0.2321 | GPT2 hybrid |
-| winogrande_zh_mubench | 0.5004 | 0.5037 | 0.5054 | 0.4922 | GPT2 BPE |
-| xcomps_zh | 0.5408 | 0.5364 | 0.5109 | 0.5117 | GPT2 hybrid |
-| xnli | 0.4510 | 0.4630 | 0.4730 | 0.4905 | Qwen2 BPE |
-| xstorycloze_zh_mubench | 0.5101 | 0.5108 | 0.4497 | 0.4574 | Qwen2 hybrid |
-| zhoblimp | 0.7423 | 0.7586 | 0.5948 | 0.6187 | Qwen2 hybrid |
+| arc | 0.2562 | 0.2604 | 0.2646 | 0.2542 | 30M GPT2 BPE |
+| belebele | 0.2557 | 0.2045 | 0.1989 | 0.2102 | 30M GPT2 Hybrid |
+| bmlama | 0.1730 | 0.1589 | 0.1672 | 0.1623 | 30M GPT2 Hybrid |
+| global_piqa_nonparallel_zh | 0.5300 | 0.5000 | 0.5300 | 0.4800 | 30M GPT2 Hybrid; 30M GPT2 BPE |
+| global_piqa_parallel_zh | 0.2233 | 0.2621 | 0.2330 | 0.2136 | 30M Qwen2 Hybrid |
+| hellaswag_zh_mubench | 0.2663 | 0.2671 | 0.2683 | 0.2673 | 30M GPT2 BPE |
+| include | 0.2589 | 0.2411 | 0.2589 | 0.2679 | 30M Qwen2 BPE |
+| mnli | 0.5236 | 0.5546 | 0.5512 | 0.5366 | 30M Qwen2 Hybrid |
+| pos | 0.8446 | 0.8435 | 0.8112 | 0.8212 | 30M GPT2 Hybrid |
+| sib200 | 0.7700 | 0.7700 | 0.6400 | 0.7050 | 30M GPT2 Hybrid; 30M Qwen2 Hybrid |
+| truthfulqa | 0.2679 | 0.2411 | 0.2500 | 0.2321 | 30M GPT2 Hybrid |
+| winogrande_zh_mubench | 0.5004 | 0.5037 | 0.5054 | 0.4922 | 30M GPT2 BPE |
+| xcomps_zh | 0.5408 | 0.5364 | 0.5109 | 0.5117 | 30M GPT2 Hybrid |
+| xnli | 0.4510 | 0.4630 | 0.4730 | 0.4905 | 30M Qwen2 BPE |
+| xstorycloze_zh_mubench | 0.5101 | 0.5108 | 0.4497 | 0.4574 | 30M Qwen2 Hybrid |
+| zhoblimp | 0.7423 | 0.7586 | 0.5948 | 0.6187 | 30M Qwen2 Hybrid |
 
-## Chinese-pipeline primary metrics
+### 100M
 
-### Zero-shot average accuracy
-
-| Task | GPT2 hybrid | Qwen2 hybrid | GPT2 BPE | Qwen2 BPE | Winner |
+| Task | 100M GPT2 Hybrid | 100M Qwen2 Hybrid | 100M GPT2 BPE | 100M Qwen2 BPE | Best in cohort |
 | --- | --- | --- | --- | --- | --- |
-| hanzi_pinyin | 0.9745 | 0.9825 | 0.7815 | 0.7660 | Qwen2 hybrid |
-| hanzi_structure | 0.5460 | 0.5635 | 0.5510 | 0.5620 | Qwen2 hybrid |
-| zhoblimp | 0.7193 | 0.7586 | 0.6044 | 0.6230 | Qwen2 hybrid |
+| arc | 0.2729 | 0.2521 | 0.2458 | 0.2688 | 100M GPT2 Hybrid |
+| belebele | 0.2102 | 0.2159 | 0.2045 | 0.1591 | 100M Qwen2 Hybrid |
+| bmlama | 0.1664 | 0.1382 | 0.1589 | 0.1233 | 100M GPT2 Hybrid |
+| global_piqa_nonparallel_zh | 0.4900 | 0.4700 | 0.5100 | 0.5600 | 100M Qwen2 BPE |
+| global_piqa_parallel_zh | 0.2718 | 0.2621 | 0.2524 | 0.2039 | 100M GPT2 Hybrid |
+| hellaswag_zh_mubench | 0.2735 | 0.2717 | 0.2706 | 0.2691 | 100M GPT2 Hybrid |
+| include | 0.1607 | 0.2500 | 0.2857 | 0.2946 | 100M Qwen2 BPE |
+| mnli | 0.5861 | 0.5619 | 0.5462 | 0.5343 | 100M GPT2 Hybrid |
+| pos | 0.8525 | 0.8517 | 0.8217 | 0.8205 | 100M GPT2 Hybrid |
+| sib200 | 0.8300 | 0.7350 | 0.6150 | 0.5800 | 100M GPT2 Hybrid |
+| truthfulqa | 0.2946 | 0.1696 | 0.3304 | 0.2232 | 100M GPT2 BPE |
+| winogrande_zh_mubench | 0.5037 | 0.4938 | 0.5136 | 0.5021 | 100M GPT2 BPE |
+| xcomps_zh | 0.5374 | 0.5418 | 0.5107 | 0.5145 | 100M Qwen2 Hybrid |
+| xnli | 0.4980 | 0.5060 | 0.4630 | 0.4830 | 100M Qwen2 Hybrid |
+| xstorycloze_zh_mubench | 0.5201 | 0.5201 | 0.4489 | 0.4474 | 100M GPT2 Hybrid; 100M Qwen2 Hybrid |
+| zhoblimp | 0.7513 | 0.7560 | 0.6024 | 0.6119 | 100M Qwen2 Hybrid |
 
-### Fine-tuned accuracy
+### Atomic BPE 30M
 
-| Task | GPT2 hybrid | Qwen2 hybrid | GPT2 BPE | Qwen2 BPE | Winner |
+| Task | 30M GPT2 Atomic Within | 30M Qwen2 Atomic Within | 30M GPT2 Atomic Cross | 30M Qwen2 Atomic Cross | Best in cohort |
 | --- | --- | --- | --- | --- | --- |
-| afqmc | 0.6895 | 0.6879 | 0.6918 | 0.6902 | GPT2 BPE |
-| cluewsc2020 | 0.6349 | 0.6316 | 0.6349 | 0.6316 | GPT2 hybrid; GPT2 BPE |
-| ocnli | 0.6156 | 0.6366 | 0.6017 | 0.6115 | Qwen2 hybrid |
-| tnews | 0.5264 | 0.5327 | 0.4865 | 0.5103 | Qwen2 hybrid |
+| arc | 0.2438 | 0.2583 | 0.2479 | 0.2396 | 30M Qwen2 Atomic Within |
+| belebele | 0.2386 | 0.2614 | 0.2557 | 0.2216 | 30M Qwen2 Atomic Within |
+| bmlama | 0.1697 | 0.1854 | 0.1995 | 0.1474 | 30M GPT2 Atomic Cross |
+| global_piqa_nonparallel_zh | 0.5300 | 0.5800 | 0.4500 | 0.5100 | 30M Qwen2 Atomic Within |
+| global_piqa_parallel_zh | 0.2718 | 0.2427 | 0.2718 | 0.2913 | 30M Qwen2 Atomic Cross |
+| hellaswag_zh_mubench | 0.2656 | 0.2675 | 0.2711 | 0.2726 | 30M Qwen2 Atomic Cross |
+| include | 0.1786 | 0.2679 | 0.2946 | 0.2143 | 30M GPT2 Atomic Cross |
+| mnli | 0.5220 | 0.5608 | 0.5203 | 0.5608 | 30M Qwen2 Atomic Within; 30M Qwen2 Atomic Cross |
+| pos | 0.8475 | 0.8428 | 0.8397 | 0.8326 | 30M GPT2 Atomic Within |
+| sib200 | 0.8100 | 0.7350 | 0.7700 | 0.6950 | 30M GPT2 Atomic Within |
+| truthfulqa | 0.2946 | 0.2321 | 0.2589 | 0.2679 | 30M GPT2 Atomic Within |
+| winogrande_zh_mubench | 0.5054 | 0.5111 | 0.4831 | 0.4880 | 30M Qwen2 Atomic Within |
+| xcomps_zh | 0.5343 | 0.5292 | 0.5337 | 0.5259 | 30M GPT2 Atomic Within |
+| xnli | 0.4705 | 0.4530 | 0.4485 | 0.4695 | 30M GPT2 Atomic Within |
+| xstorycloze_zh_mubench | 0.5015 | 0.5077 | 0.4899 | 0.4946 | 30M Qwen2 Atomic Within |
+| zhoblimp | 0.7535 | 0.7533 | 0.7104 | 0.7307 | 30M GPT2 Atomic Within |
 
-F1 and MCC are preserved in `metrics_long.csv` as supplementary metrics; they are not mixed into the accuracy comparison.
+## Generated files
 
-## CogBench aggregates
-
-| Task | GPT2 hybrid | Qwen2 hybrid | GPT2 BPE | Qwen2 BPE | Winner |
-| --- | --- | --- | --- | --- | --- |
-| fmri | 0.0900 | 0.0852 | 0.0791 | 0.0803 | GPT2 hybrid |
-| word_fmri | 0.5573 | 0.5535 | 0.5471 | 0.5462 | GPT2 hybrid |
-
-The original CogBench logs emitted ill-conditioned ridge-regression warnings. Outputs were complete, but small differences may be numerically sensitive.
-
-## Hidden tasks
-
-The snapshot records `12` model/task prediction manifests covering `hanzi_pinyin`, `hanzi_structure`, and `meco_l1`.
-Authoritative scores require the evaluation server and are intentionally absent here.
-
-## Files produced
-
-- `metrics_long.csv`: every parsed scored metric, including supplementary metrics and zero-shot subsections.
-- `primary_scores_wide.csv`: one comparable row per primary task metric.
-- `pairwise_effects.csv`: tokenizer, architecture, and interaction contrasts.
-- `cogbench_detail.csv`: subject/region-level CogBench values.
-- `model_metadata.csv`: exact exported-model metadata.
-- `hidden_tasks.csv`: predictions-only task coverage and integrity counts.
+- `metrics_long.csv`: every parsed metric with scale and cohort metadata.
+- `primary_scores_wide.csv`: all 12 models side by side for every primary task.
+- `suite_averages.csv`: descriptive per-model means within each suite.
+- `pairwise_effects.csv`: task-level size, tokenizer, boundary, and architecture contrasts.
+- `contrast_summary.csv`: mean paired contrast by suite.
+- `cogbench_detail.csv`: subject/region-level CogBench results.
+- `model_metadata.csv`: configuration and exact stored tensor counts.
+- `hidden_tasks.csv`: archival prediction-only coverage for the original four models.
 
 ## Interpretation cautions
 
-1. Do not combine accuracy, F1, MCC, and fMRI correlations into a single inferential statistic.
-2. The descriptive macro-average weights tasks equally, not examples equally.
-3. No confidence intervals are available from aggregate-only files; example-level predictions would be needed for bootstrap testing.
-4. Differences between architectures and tokenizers are based on one trained model per condition, so they should not be presented as seed-robust effects.
+1. Do not combine accuracy, F1, MCC, and fMRI correlation into one score.
+2. Suite averages weight tasks equally, not examples equally.
+3. Aggregate files do not provide confidence intervals.
+4. One seed exists per condition, so differences are not seed-robust evidence.
+5. 30M/100M are experiment families; exact stored parameter counts appear above.

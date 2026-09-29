@@ -1,26 +1,501 @@
-comparison_key,suite,task,metric,gpt2_hybrid_minus_bpe,qwen2_hybrid_minus_bpe,qwen2_minus_gpt2_hybrid,qwen2_minus_gpt2_bpe,tokenizer_architecture_interaction,winner
-BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,-0.008333325386047363,0.0062499940395355225,0.004166662693023682,-0.010416656732559204,0.014583319425582886,GPT2 BPE
-BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,0.056818172335624695,-0.005681812763214111,-0.051136359572410583,0.011363625526428223,-0.062499985098838806,GPT2 hybrid
-BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,0.005794703960418701,-0.003311246633529663,-0.014072835445404053,-0.0049668848514556885,-0.009105950593948364,GPT2 hybrid
-BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,0.0,0.020000000000000018,-0.030000000000000027,-0.050000000000000044,0.020000000000000018,GPT2 hybrid; GPT2 BPE
-BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,-0.009708737864077666,0.048543689320388356,0.03883495145631066,-0.01941747572815536,0.05825242718446602,Qwen2 hybrid
-BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,-0.001990269792127408,-0.0002211410880141873,0.0007739938080495445,-0.0009951348960636763,0.0017691287041132209,GPT2 BPE
-BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,0.0,-0.026785701513290405,-0.017857134342193604,0.008928567171096802,-0.026785701513290405,Qwen2 BPE
-BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,-0.02759009599685669,0.018018007278442383,0.03096848726272583,-0.014639616012573242,0.04560810327529907,Qwen2 hybrid
-BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,0.0333978533744812,0.022256016731262207,-0.0011502504348754883,0.009991586208343506,-0.011141836643218994,GPT2 hybrid
-BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,0.12999999523162842,0.06499999761581421,0.0,0.06499999761581421,-0.06499999761581421,GPT2 hybrid; Qwen2 hybrid
-BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,0.017857134342193604,0.008928582072257996,-0.026785701513290405,-0.017857149243354797,-0.008928552269935608,GPT2 hybrid
-BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,-0.004946413849958864,0.011541632316570516,0.0032976092333059093,-0.01319043693322347,0.01648804616652938,GPT2 BPE
-BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,0.029858017817371962,0.024707683741648112,-0.004315144766147028,0.0008351893095768226,-0.00515033407572385,GPT2 hybrid
-BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,-0.021999984979629517,-0.027500003576278687,0.01199999451637268,0.01750001311302185,-0.00550001859664917,Qwen2 BPE
-BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,0.06037151702786381,0.05340557275541796,0.0007739938080495445,0.00773993808049539,-0.006965944272445845,Qwen2 hybrid
-BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,0.1475141242937853,0.13991525423728812,0.016327683615819155,0.02392655367231633,-0.007598870056497176,Qwen2 hybrid
-Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,-0.0023169601482854185,-0.0023169601482854185,-0.0016218721037998263,-0.0016218721037998263,0.0,GPT2 BPE
-Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,0.0,0.0,-0.003289473684210509,-0.003289473684210509,0.0,GPT2 hybrid; GPT2 BPE
-Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,0.013898305084745766,0.025084745762711802,0.021016949152542375,0.009830508474576338,0.011186440677966036,Qwen2 hybrid
-Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,0.03989999999999999,0.022399999999999975,0.006299999999999972,0.023799999999999988,-0.017500000000000016,Qwen2 hybrid
-Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,0.19299999999999995,0.21650000000000014,0.008000000000000007,-0.01550000000000018,0.023500000000000187,Qwen2 hybrid
-Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,-0.0050000000000000044,0.0014999999999999458,0.01749999999999996,0.01100000000000001,0.00649999999999995,Qwen2 hybrid
-Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,0.11490000000000011,0.13559999999999994,0.03929999999999989,0.01860000000000006,0.02069999999999983,Qwen2 hybrid
-CogBench | fmri | aggregate | mean,CogBench,fmri,mean,0.010872647728310952,0.004925882754709426,-0.004759842836948358,0.001186922136653168,-0.005946764973601526,GPT2 hybrid
-CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,0.010152772038551028,0.007340226354764057,-0.0037253479174319537,-0.0009128022336449826,-0.002812545683786971,GPT2 hybrid
+comparison_key,suite,task,metric,contrast,category,minuend,subtrahend,difference
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.016666680574417114
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.018749982118606567
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,-0.008333325386047363
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.02708333730697632
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.004166662693023682
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,-0.020833313465118408
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,-0.016666650772094727
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.008333325386047363
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,0.014583349227905273
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.0062499940395355225
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,-0.016666680574417114
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.01874999701976776
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.004166662693023682
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.01458333432674408
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.004166662693023682
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.010416656732559204
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.020833343267440796
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.022916674613952637
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.014583319425582886
+BabyLM official Chinese | arc | zh | score,BabyLM official Chinese,arc,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.008333340287208557
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,-0.04545454680919647
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.005681812763214111
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.056818172335624695
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.005681812763214111
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.017045453190803528
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.03977271914482117
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.056818172335624695
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.011363640427589417
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.051136359572410583
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,-0.005681812763214111
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.05681818723678589
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.03977271914482117
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.051136359572410583
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.011363640427589417
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.051136359572410583
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.011363625526428223
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.005681827664375305
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.04545454680919647
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.02272726595401764
+BabyLM official Chinese | belebele | zh | score,BabyLM official Chinese,belebele,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.034090906381607056
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,-0.00662250816822052
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.008278131484985352
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.005794703960418701
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.007450327277183533
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.029801324009895325
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.002483457326889038
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.03228478133678436
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.02069537341594696
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.038907282054424286
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,-0.003311246633529663
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.014900662004947662
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.03807947039604187
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.023178815841674805
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.014900654554367065
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.014072835445404053
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.0049668848514556885
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.028145700693130493
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.03559603542089462
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.015728473663330078
+BabyLM official Chinese | bmlama | zh | score,BabyLM official Chinese,bmlama,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.05215232074260712
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,-0.040000000000000036
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.020000000000000018
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.0
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,-0.020000000000000018
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.08000000000000002
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.0
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,-0.08000000000000002
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.030000000000000027
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,0.08000000000000007
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.020000000000000018
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,-0.09000000000000008
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.06999999999999995
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.09999999999999998
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.030000000000000027
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.030000000000000027
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.050000000000000044
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.020000000000000018
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.050000000000000044
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.04999999999999993
+BabyLM official Chinese | global_piqa_nonparallel_zh | global_piqa_nonparallel_zh | score,BabyLM official Chinese,global_piqa_nonparallel_zh,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.06
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.04854368932038833
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.01941747572815533
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,-0.009708737864077666
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.01941747572815533
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.0
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.03883495145631066
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.03883495145631066
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.0
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.009708737864077666
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.048543689320388356
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.05825242718446602
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,0.04854368932038833
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.029126213592233025
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.07766990291262135
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.03883495145631066
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.01941747572815536
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.009708737864077666
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.048543689320388356
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.029126213592232997
+BabyLM official Chinese | global_piqa_parallel_zh | global_piqa_parallel_zh | score,BabyLM official Chinese,global_piqa_parallel_zh,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.01941747572815533
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.007187085360459977
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.002321981424148578
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,-0.001990269792127408
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.002874834144183991
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.005417956656346756
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,-0.002653693056169859
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.002764263600176897
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.004643962848297212
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,0.0017691287041132209
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,-0.0002211410880141873
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.0026536930561698036
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,0.005086245024325531
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.0002211410880141318
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.005307386112339663
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.0007739938080495445
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.0009951348960636763
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.0017691287041132209
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.0015479876160990336
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.0018796992481203145
+BabyLM official Chinese | hellaswag_zh_mubench | hellaswag_zh_mubench | score,BabyLM official Chinese,hellaswag_zh_mubench,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.001547987616099089
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,-0.0982142835855484
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.026785731315612793
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.0
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,-0.1250000149011612
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.1160714328289032
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,-0.0803571343421936
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.035714298486709595
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.008928567171096802
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,0.026785731315612793
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,-0.026785701513290405
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,-0.044642865657806396
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.053571417927742004
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.0
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.053571417927742004
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.017857134342193604
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.008928567171096802
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.0892857164144516
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.008928567171096802
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.0892857015132904
+BabyLM official Chinese | include | zh | score,BabyLM official Chinese,include,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.0803571492433548
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.0625
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.0050675272941589355
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,-0.02759009599685669
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.039977431297302246
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.0016891956329345703
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,-0.029279232025146484
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,-0.030968427658081055
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.007319808006286621
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.0022522807121276855
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.018018007278442383
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.02759009599685669
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,0.0
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.02421170473098755
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.02421170473098755
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.03096848726272583
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.014639616012573242
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.02421170473098755
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.011824369430541992
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.03885132074356079
+BabyLM official Chinese | mnli | zh | score,BabyLM official Chinese,mnli,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.04054051637649536
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.007842719554901123
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.010517477989196777
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.0333978533744812
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.030723094940185547
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.007842719554901123
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.036325812339782715
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.028483092784881592
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.008260965347290039
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.0007361769676208496
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.022256016731262207
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.031253159046173096
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.01024782657623291
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.02162855863571167
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.01138073205947876
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.0011502504348754883
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.009991586208343506
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.0007320046424865723
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.001262068748474121
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.004705667495727539
+BabyLM official Chinese | pos | zh | score,BabyLM official Chinese,pos,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.007110774517059326
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.06000000238418579
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.02499997615814209
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.12999999523162842
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.2149999737739563
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.04000002145767212
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.17000001668930054
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.12999999523162842
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.034999966621398926
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.125
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.06499999761581421
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.15500003099441528
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.04000002145767212
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.030000030994415283
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.009999990463256836
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.0
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.06499999761581421
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.09499996900558472
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.0350000262260437
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.07499998807907104
+BabyLM official Chinese | sib200 | zh | score,BabyLM official Chinese,sib200,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.07499998807907104
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.026785731315612793
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.0803571343421936
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.017857134342193604
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,-0.03571426868438721
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.035714298486709595
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.044642865657806396
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.008928567171096802
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.071428582072258
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.008928567171096802
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.008928582072257996
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,-0.0535714328289032
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,0.0357142835855484
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.0
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.0357142835855484
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.026785701513290405
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.017857149243354797
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.1250000149011612
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.1071428507566452
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.0625000149011612
+BabyLM official Chinese | truthfulqa | zh | score,BabyLM official Chinese,truthfulqa,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.008928567171096802
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.0032976092333059093
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.008244023083264551
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,-0.004946413849958864
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,-0.009892827699917506
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.022258862324814555
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.0
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,-0.022258862324814555
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.009892827699917561
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,0.009892827699917561
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.011541632316570516
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,-0.008244023083264607
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.023083264633140976
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.0189612530915087
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.004122011541632276
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.0032976092333059093
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.01319043693322347
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.009892827699917561
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.01154163231657046
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.00577081615828523
+BabyLM official Chinese | winogrande_zh_mubench | winogrande_zh_mubench | score,BabyLM official Chinese,winogrande_zh_mubench,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.004946413849958808
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,-0.0033407572383074013
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.00020879732739420565
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.029858017817371962
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.026726057906458767
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.0006263919821826169
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.023385300668151476
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.02275890868596886
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.005359131403118056
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,0.0027839643652561863
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.024707683741648112
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.02728285077950998
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.0032711581291758884
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.017469376391982205
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.014198218262806317
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.004315144766147028
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.0008351893095768226
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.00438474387527843
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.0038279510022272145
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.005080734966592448
+BabyLM official Chinese | xcomps_zh | xcomps_zh | score,BabyLM official Chinese,xcomps_zh,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.00772550111358572
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.046999990940093994
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.009999990463256836
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,-0.021999984979629517
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.034999996423721313
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.021999984979629517
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,-0.002499997615814209
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,-0.024499982595443726
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.042999982833862305
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.007499992847442627
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,-0.027500003576278687
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.022999972105026245
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,0.016499996185302734
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,-0.03749999403953552
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.020999997854232788
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.01199999451637268
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.01750001311302185
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.007999986410140991
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.02000001072883606
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.017499983310699463
+BabyLM official Chinese | xnli | zh | score,BabyLM official Chinese,xnli,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.020999997854232788
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.010061919504643968
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.000773993808049489
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.06037151702786381
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.07120743034055727
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.011609907120743057
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.05185758513931893
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.04024767801857587
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.009287925696594423
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.010061919504643968
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.05340557275541796
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.07275541795665635
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.01315789473684209
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.050309597523219785
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.037151702786377694
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.0007739938080495445
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.00773993808049539
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.0
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.001547987616099089
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.006191950464396245
+BabyLM official Chinese | xstorycloze_zh_mubench | xstorycloze_zh_mubench | score,BabyLM official Chinese,xstorycloze_zh_mubench,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.004643962848297212
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.009067796610169432
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.0076836158192090664
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.1475141242937853
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.14889830508474566
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.04307909604519777
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.158728813559322
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.11564971751412423
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.002570621468926504
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.00683615819209038
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.13991525423728812
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.144180790960452
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.022627118644067745
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.13466101694915256
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.11203389830508481
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.016327683615819155
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.02392655367231633
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.0046892655367232194
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.009406779661016884
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.00014124293785311437
+BabyLM official Chinese | zhoblimp | zhoblimp | score,BabyLM official Chinese,zhoblimp,score,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.020310734463276914
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,-0.004865616311399479
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.0016218721037998263
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,-0.0023169601482854185
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,-0.008804448563484724
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.0006950880444857033
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,-0.001853568118628357
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,-0.0025486561631140603
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.0041705282669138866
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.012743280815569968
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,-0.0023169601482854185
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.006255792400370663
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.00023169601482853075
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,-0.003707136237256714
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.003938832252085245
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.0016218721037998263
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.0016218721037998263
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.000926784059314234
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.01598702502316962
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.0034754402224281833
+Chinese fine-tune | afqmc | zh | accuracy,Chinese fine-tune,afqmc,accuracy,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.0030120481927710108
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,-0.013157894736842035
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.00328947368421062
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.0
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,-0.016447368421052655
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.009868421052631637
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,-0.006578947368421018
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.00328947368421062
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.009868421052631526
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,0.006578947368421129
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.0
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,-0.016447368421052655
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,0.003289473684210509
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,-0.013157894736842035
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.009868421052631526
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.003289473684210509
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.003289473684210509
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.0
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.0
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.009868421052631526
+Chinese fine-tune | cluewsc2020 | zh | accuracy,Chinese fine-tune,cluewsc2020,accuracy,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.016447368421052655
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.021016949152542375
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.008474576271186529
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.013898305084745766
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.02644067796610161
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.031525423728813506
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.025084745762711913
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,-0.006440677966101593
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.010847457627118584
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.0115254237288136
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.025084745762711802
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.025762711864406818
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.01457627118644067
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.014237288135593218
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.0003389830508474523
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.021016949152542375
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.009830508474576338
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.010847457627118584
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.01016949152542379
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.0010169491525423568
+Chinese fine-tune | ocnli | zh | accuracy,Chinese fine-tune,ocnli,accuracy,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.01593220338983048
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.005900000000000016
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.012199999999999989
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.03989999999999999
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.03360000000000002
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.016199999999999992
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.04089999999999999
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.0247
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.0039000000000000146
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,0.006400000000000072
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.022399999999999975
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.019899999999999918
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.019999999999999907
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.023399999999999976
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.0034000000000000696
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.006299999999999972
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.023799999999999988
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.0042999999999999705
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.01800000000000007
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.006299999999999972
+Chinese fine-tune | tnews | zh | accuracy,Chinese fine-tune,tnews,accuracy,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.0025000000000000577
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.01200000000000001
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.04200000000000004
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.19299999999999995
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.247
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.013500000000000179
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.16699999999999982
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.1805
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.015499999999999958
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.021999999999999797
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.21650000000000014
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.22299999999999998
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,0.0044999999999999485
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.21500000000000008
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.21950000000000003
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.008000000000000007
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.01550000000000018
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.019499999999999962
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.0045000000000000595
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.032500000000000084
+Chinese zero-shot | hanzi_pinyin | aggregate | accuracy,Chinese zero-shot,hanzi_pinyin,accuracy,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.023499999999999854
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.01749999999999996
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.01200000000000001
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,-0.0050000000000000044
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.024499999999999966
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.02949999999999997
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,-0.010000000000000009
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.019499999999999962
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.0
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.014500000000000068
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.0014999999999999458
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.016000000000000014
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.01200000000000001
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.010000000000000009
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,-0.0020000000000000018
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.01749999999999996
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.01100000000000001
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.0
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,0.008499999999999952
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.031000000000000028
+Chinese zero-shot | hanzi_structure | aggregate | accuracy,Chinese zero-shot,hanzi_structure,accuracy,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.010499999999999954
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.018999999999999906
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.01750000000000007
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.11490000000000011
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.11639999999999995
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.018000000000000127
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.12740000000000018
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.10940000000000005
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.0022000000000000908
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-0.011699999999999933
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.13559999999999994
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.14949999999999997
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.0029000000000000137
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.11080000000000001
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.1079
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,0.03929999999999989
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.01860000000000006
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,0.022500000000000075
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.010599999999999943
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,0.0019999999999998908
+Chinese zero-shot | zhoblimp | aggregate | accuracy,Chinese zero-shot,zhoblimp,accuracy,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,0.017100000000000004
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,-0.0008905190853145672
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,0.0020521698040629754
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.010872647728310952
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.00792995883893341
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,-0.0006434864413817909
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.010266215870849721
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.00962272942946793
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,0.002623011321626123
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,0.0006229874697910309
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.004925882754709426
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.0069259066065445185
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,0.0005354965832303354
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.006036882740090427
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.006572379323320762
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.004759842836948358
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,0.001186922136653168
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.0012463124300076678
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,-0.0002422601976187766
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.003042410994106126
+CogBench | fmri | aggregate | mean,CogBench,fmri,mean,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.0018634279694939998
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,0.0008505574673712823
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,-0.0010135366576037308
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,0.010152772038551028
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,0.012016866163526041
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,0.0006231645047172218
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,0.008889991991556268
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,0.00951315649627349
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,-0.001715969457986466
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,-8.935450390057387e-05
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,0.007340226354764057
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,0.005713611400678165
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,-0.00041395961824508554
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,0.0075220325038144464
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,0.007108072885569361
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,-0.0037253479174319537
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,-0.0009128022336449826
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,-0.006291874842789702
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,1.1379920058174342e-05
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,-0.0022807617213868037
+CogBench | word_fmri | aggregate | mean,CogBench,word_fmri,mean,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,-0.003317885844349111

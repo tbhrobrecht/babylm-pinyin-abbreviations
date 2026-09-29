@@ -1,0 +1,100 @@
+{
+  "models": [
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_hybrid", "label": "30M GPT2 Hybrid",
+      "architecture": "GPT2", "tokenizer": "Hybrid", "scale": "30M", "cohort": "Original 30M",
+      "official": {"format": "submission", "path": "results_analysis/raw_snapshot/results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_submission.json"},
+      "chinese_path": "results_analysis/raw_snapshot/results/eval/chinese_pipeline/hf_nk_babylm_zho_gpt2_hybrid",
+      "config_path": "results_analysis/raw_snapshot/code/babylm-pinyin-abbreviations/hf_nk_babylm_zho_gpt2_hybrid/config.json",
+      "metadata_path": "results_analysis/raw_snapshot/model_file_metadata.json"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_qwen2_hybrid", "label": "30M Qwen2 Hybrid",
+      "architecture": "Qwen2", "tokenizer": "Hybrid", "scale": "30M", "cohort": "Original 30M",
+      "official": {"format": "submission", "path": "results_analysis/raw_snapshot/results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_submission.json"},
+      "chinese_path": "results_analysis/raw_snapshot/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_hybrid",
+      "config_path": "results_analysis/raw_snapshot/code/babylm-pinyin-abbreviations/hf_nk_babylm_zho_qwen2_hybrid/config.json",
+      "metadata_path": "results_analysis/raw_snapshot/model_file_metadata.json"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_bpe", "label": "30M GPT2 BPE",
+      "architecture": "GPT2", "tokenizer": "BPE", "scale": "30M", "cohort": "Original 30M",
+      "official": {"format": "submission", "path": "results_analysis/raw_snapshot/results/eval/official/hf_nk_babylm_zho_gpt2_bpe_submission.json"},
+      "chinese_path": "results_analysis/raw_snapshot/results/eval/chinese_pipeline/hf_nk_babylm_zho_gpt2_bpe",
+      "config_path": "results_analysis/raw_snapshot/code/babylm-pinyin-abbreviations/hf_nk_babylm_zho_gpt2_bpe/config.json",
+      "metadata_path": "results_analysis/raw_snapshot/model_file_metadata.json"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_qwen2_bpe", "label": "30M Qwen2 BPE",
+      "architecture": "Qwen2", "tokenizer": "BPE", "scale": "30M", "cohort": "Original 30M",
+      "official": {"format": "submission", "path": "results_analysis/raw_snapshot/results/eval/official/hf_nk_babylm_zho_qwen2_bpe_submission.json"},
+      "chinese_path": "results_analysis/raw_snapshot/results/eval/chinese_pipeline/hf_nk_babylm_zho_qwen2_bpe",
+      "config_path": "results_analysis/raw_snapshot/code/babylm-pinyin-abbreviations/hf_nk_babylm_zho_qwen2_bpe/config.json",
+      "metadata_path": "results_analysis/raw_snapshot/model_file_metadata.json"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_hybrid_100m", "label": "100M GPT2 Hybrid",
+      "architecture": "GPT2", "tokenizer": "Hybrid", "scale": "100M", "cohort": "100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m/official"},
+      "chinese_path": "artifacts/evaluations/100m/chinese/chinese_pipeline_100m/hf_nk_babylm_zho_gpt2_hybrid_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_hybrid_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_hybrid_100m"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_qwen2_hybrid_100m", "label": "100M Qwen2 Hybrid",
+      "architecture": "Qwen2", "tokenizer": "Hybrid", "scale": "100M", "cohort": "100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m/official"},
+      "chinese_path": "artifacts/evaluations/100m/chinese/chinese_pipeline_100m/hf_nk_babylm_zho_qwen2_hybrid_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_qwen2_hybrid_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_qwen2_hybrid_100m"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_bpe_100m", "label": "100M GPT2 BPE",
+      "architecture": "GPT2", "tokenizer": "BPE", "scale": "100M", "cohort": "100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m/official"},
+      "chinese_path": "artifacts/evaluations/100m/chinese/chinese_pipeline_100m/hf_nk_babylm_zho_gpt2_bpe_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_bpe_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_bpe_100m"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_qwen2_bpe_100m", "label": "100M Qwen2 BPE",
+      "architecture": "Qwen2", "tokenizer": "BPE", "scale": "100M", "cohort": "100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m/official"},
+      "chinese_path": "artifacts/evaluations/100m/chinese/chinese_pipeline_100m/hf_nk_babylm_zho_qwen2_bpe_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_qwen2_bpe_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_qwen2_bpe_100m"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_atomic_bpe_within", "label": "30M GPT2 Atomic Within",
+      "architecture": "GPT2", "tokenizer": "Atomic BPE within", "scale": "30M", "cohort": "Atomic BPE 30M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/30m_atomic/official"},
+      "chinese_path": "artifacts/evaluations/30m_atomic/chinese/chinese_pipeline_atomic_bpe_30m/hf_nk_babylm_zho_gpt2_atomic_bpe_within",
+      "config_path": "artifacts/models/30m/hf_nk_babylm_zho_gpt2_atomic_bpe_within/config.json",
+      "model_path": "artifacts/models/30m/hf_nk_babylm_zho_gpt2_atomic_bpe_within"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_qwen2_atomic_bpe_within", "label": "30M Qwen2 Atomic Within",
+      "architecture": "Qwen2", "tokenizer": "Atomic BPE within", "scale": "30M", "cohort": "Atomic BPE 30M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/30m_atomic/official"},
+      "chinese_path": "artifacts/evaluations/30m_atomic/chinese/chinese_pipeline_atomic_bpe_30m/hf_nk_babylm_zho_qwen2_atomic_bpe_within",
+      "config_path": "artifacts/models/30m/hf_nk_babylm_zho_qwen2_atomic_bpe_within/config.json",
+      "model_path": "artifacts/models/30m/hf_nk_babylm_zho_qwen2_atomic_bpe_within"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_atomic_bpe_cross", "label": "30M GPT2 Atomic Cross",
+      "architecture": "GPT2", "tokenizer": "Atomic BPE cross", "scale": "30M", "cohort": "Atomic BPE 30M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/30m_atomic/official"},
+      "chinese_path": "artifacts/evaluations/30m_atomic/chinese/chinese_pipeline_atomic_bpe_30m/hf_nk_babylm_zho_gpt2_atomic_bpe_cross",
+      "config_path": "artifacts/models/30m/hf_nk_babylm_zho_gpt2_atomic_bpe_cross/config.json",
+      "model_path": "artifacts/models/30m/hf_nk_babylm_zho_gpt2_atomic_bpe_cross"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_qwen2_atomic_bpe_cross", "label": "30M Qwen2 Atomic Cross",
+      "architecture": "Qwen2", "tokenizer": "Atomic BPE cross", "scale": "30M", "cohort": "Atomic BPE 30M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/30m_atomic/official"},
+      "chinese_path": "artifacts/evaluations/30m_atomic/chinese/chinese_pipeline_atomic_bpe_30m/hf_nk_babylm_zho_qwen2_atomic_bpe_cross",
+      "config_path": "artifacts/models/30m/hf_nk_babylm_zho_qwen2_atomic_bpe_cross/config.json",
+      "model_path": "artifacts/models/30m/hf_nk_babylm_zho_qwen2_atomic_bpe_cross"
+    }
+  ]
+}

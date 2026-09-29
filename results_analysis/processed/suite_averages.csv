@@ -1,0 +1,49 @@
+model_id,model,architecture,tokenizer,scale,cohort,suite,task_count,mean_score
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,Original 30M,BabyLM official Chinese,16,0.44463108311516353
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,Original 30M,Chinese zero-shot,3,0.7466
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,Original 30M,Chinese fine-tune,4,0.6165972453803411
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,Original 30M,CogBench,2,0.32362647921618237
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,Original 30M,BabyLM official Chinese,16,0.44224520501012204
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,Original 30M,Chinese zero-shot,3,0.7681999999999999
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,Original 30M,Chinese fine-tune,4,0.6221986462214741
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,Original 30M,CogBench,2,0.31938388383899224
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,Original 30M,BabyLM official Chinese,16,0.41919091495799665
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,Original 30M,Chinese zero-shot,3,0.6456333333333334
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,Original 30M,Chinese fine-tune,4,0.603726909146226
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,Original 30M,CogBench,2,0.31311376933275137
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,Original 30M,BabyLM official Chinese,16,0.4200535472267284
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,Original 30M,Chinese zero-shot,3,0.6503333333333333
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,Original 30M,Chinese fine-tune,4,0.6109066998178675
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,Original 30M,CogBench,2,0.3132508292842555
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,100M,BabyLM official Chinese,16,0.45121365367747013
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,100M,Chinese zero-shot,3,0.7627666666666667
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,100M,Chinese fine-tune,4,0.6188206049064163
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,100M,CogBench,2,0.32360649840721073
+hf_nk_babylm_zho_qwen2_hybrid_100m,100M Qwen2 Hybrid,Qwen2,Hybrid,100M,100M,BabyLM official Chinese,16,0.4372604104519745
+hf_nk_babylm_zho_qwen2_hybrid_100m,100M Qwen2 Hybrid,Qwen2,Hybrid,100M,100M,Chinese zero-shot,3,0.7637666666666667
+hf_nk_babylm_zho_qwen2_hybrid_100m,100M Qwen2 Hybrid,Qwen2,Hybrid,100M,100M,Chinese fine-tune,4,0.6169520444848081
+hf_nk_babylm_zho_qwen2_hybrid_100m,100M Qwen2 Hybrid,Qwen2,Hybrid,100M,100M,CogBench,2,0.3198374047708121
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,100M,BabyLM official Chinese,16,0.42374909332114674
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,100M,Chinese zero-shot,3,0.6334666666666667
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,100M,Chinese fine-tune,4,0.6101233896610252
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,100M,CogBench,2,0.31363308590598105
+hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,100M,BabyLM official Chinese,16,0.4122252676284078
+hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,100M,Chinese zero-shot,3,0.6342666666666666
+hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,100M,Chinese fine-tune,4,0.6080842605238769
+hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,100M,CogBench,2,0.3135176457672007
+hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,Atomic BPE 30M,BabyLM official Chinese,16,0.44609142442532546
+hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,Atomic BPE 30M,Chinese zero-shot,3,0.7404333333333334
+hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,Atomic BPE 30M,Chinese fine-tune,4,0.6181149667151417
+hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,Atomic BPE 30M,CogBench,2,0.3226918732639544
+hf_nk_babylm_zho_qwen2_atomic_bpe_within,30M Qwen2 Atomic Within,Qwen2,Atomic BPE within,30M,Atomic BPE 30M,BabyLM official Chinese,16,0.4492767182932783
+hf_nk_babylm_zho_qwen2_atomic_bpe_within,30M Qwen2 Atomic Within,Qwen2,Atomic BPE within,30M,Atomic BPE 30M,Chinese zero-shot,3,0.7622666666666666
+hf_nk_babylm_zho_qwen2_atomic_bpe_within,30M Qwen2 Atomic Within,Qwen2,Atomic BPE within,30M,Atomic BPE 30M,Chinese fine-tune,4,0.6160997641082411
+hf_nk_babylm_zho_qwen2_atomic_bpe_within,30M Qwen2 Atomic Within,Qwen2,Atomic BPE within,30M,Atomic BPE 30M,CogBench,2,0.32003028690620794
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross,30M GPT2 Atomic Cross,GPT2,Atomic BPE cross,30M,Atomic BPE 30M,BabyLM official Chinese,16,0.44032157141246214
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross,30M GPT2 Atomic Cross,GPT2,Atomic BPE cross,30M,Atomic BPE 30M,Chinese zero-shot,3,0.7487666666666667
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross,30M GPT2 Atomic Cross,GPT2,Atomic BPE cross,30M,Atomic BPE 30M,Chinese fine-tune,4,0.6084769440349748
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross,30M GPT2 Atomic Cross,GPT2,Atomic BPE cross,30M,Atomic BPE 30M,CogBench,2,0.3226817122956221
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,Atomic BPE 30M,BabyLM official Chinese,16,0.43510692613390706
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,Atomic BPE 30M,Chinese zero-shot,3,0.7587999999999999
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,Atomic BPE 30M,Chinese fine-tune,4,0.6082201407289765
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,Atomic BPE 30M,CogBench,2,0.32009105538870053

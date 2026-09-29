@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Build human-readable BabyLM comparison tables from the LRZ result snapshot.
-
-The script uses only the Python standard library. It never treats hidden-task
-predictions as scored results and keeps source paths on every metric row.
-"""
+"""Build reproducible comparison tables for all Mandarin BabyLM models."""
 
 from __future__ import annotations
 
@@ -13,42 +9,57 @@ import hashlib
 import json
 import math
 import re
-from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 from statistics import fmean
 from typing import Any, Iterable
 
 
-MODELS = {
-    "hf_nk_babylm_zho_gpt2_hybrid": ("GPT2 hybrid", "GPT2", "Hybrid"),
-    "hf_nk_babylm_zho_qwen2_hybrid": ("Qwen2 hybrid", "Qwen2", "Hybrid"),
-    "hf_nk_babylm_zho_gpt2_bpe": ("GPT2 BPE", "GPT2", "BPE"),
-    "hf_nk_babylm_zho_qwen2_bpe": ("Qwen2 BPE", "Qwen2", "BPE"),
-}
+OFFICIAL_ZERO = (
+    "winogrande_zh_mubench", "xstorycloze_zh_mubench",
+    "hellaswag_zh_mubench", "xcomps_zh", "zhoblimp",
+    "global_piqa_parallel_zh", "global_piqa_nonparallel_zh",
+)
+OFFICIAL_FINE = (
+    "pos", "arc", "belebele", "bmlama", "include", "mnli", "sib200",
+    "truthfulqa", "xnli",
+)
+SUITES = (
+    "BabyLM official Chinese", "Chinese zero-shot",
+    "Chinese fine-tune", "CogBench",
+)
 
-MODEL_ORDER = [
-    "GPT2 hybrid",
-    "Qwen2 hybrid",
-    "GPT2 BPE",
-    "Qwen2 BPE",
-]
+
+@dataclass(frozen=True)
+class ModelSpec:
+    model_id: str
+    label: str
+    architecture: str
+    tokenizer: str
+    scale: str
+    cohort: str
+    official_format: str
+    official_path: Path
+    chinese_path: Path
+    config_path: Path
+    model_path: Path | None = None
+    metadata_path: Path | None = None
+
+
+@dataclass(frozen=True)
+class Contrast:
+    name: str
+    category: str
+    minuend: str
+    subtrahend: str
 
 
 def parse_args() -> argparse.Namespace:
     here = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--input",
-        type=Path,
-        default=here / "raw_snapshot",
-        help="Root of the downloaded LRZ snapshot",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=here / "processed",
-        help="Directory for generated CSV and Markdown files",
-    )
+    parser.add_argument("--registry", type=Path, default=here / "models.json")
+    parser.add_argument("--output", type=Path, default=here / "processed")
+    parser.add_argument("--repository-root", type=Path, default=here.parent)
     return parser.parse_args()
 
 
@@ -57,73 +68,162 @@ def read_json(path: Path) -> Any:
         return json.load(handle)
 
 
+def load_registry(path: Path, root: Path) -> list[ModelSpec]:
+    def optional(value: str | None) -> Path | None:
+        return (root / value).resolve() if value else None
+
+    models = []
+    for item in read_json(path)["models"]:
+        official = item["official"]
+        models.append(ModelSpec(
+            model_id=item["model_id"], label=item["label"],
+            architecture=item["architecture"], tokenizer=item["tokenizer"],
+            scale=item["scale"], cohort=item["cohort"],
+            official_format=official["format"],
+            official_path=(root / official["path"]).resolve(),
+            chinese_path=(root / item["chinese_path"]).resolve(),
+            config_path=(root / item["config_path"]).resolve(),
+            model_path=optional(item.get("model_path")),
+            metadata_path=optional(item.get("metadata_path")),
+        ))
+    if len({m.model_id for m in models}) != len(models):
+        raise ValueError("Model registry IDs must be unique")
+    if len({m.label for m in models}) != len(models):
+        raise ValueError("Model registry labels must be unique")
+    return models
+
+
 def write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle, fieldnames=fields, extrasaction="ignore", lineterminator="\n"
+        )
         writer.writeheader()
         writer.writerows(rows)
 
 
-def relpath(path: Path, root: Path) -> str:
-    return path.relative_to(root).as_posix()
+def source_path(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
 
 
-def flatten_single_score(value: Any) -> tuple[str, float]:
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return "aggregate", float(value)
-    if isinstance(value, dict):
-        numeric = [(str(k), float(v)) for k, v in value.items()
-                   if isinstance(v, (int, float)) and not isinstance(v, bool)]
-        if len(numeric) == 1:
-            return numeric[0]
-    raise ValueError(f"Expected one numeric score, received: {value!r}")
-
-
-def base_row(model_id: str) -> dict[str, str]:
-    model, architecture, tokenizer = MODELS[model_id]
+def base_row(model: ModelSpec) -> dict[str, str]:
     return {
-        "model_id": model_id,
-        "model": model,
-        "architecture": architecture,
-        "tokenizer": tokenizer,
+        "model_id": model.model_id, "model": model.label,
+        "architecture": model.architecture, "tokenizer": model.tokenizer,
+        "scale": model.scale, "cohort": model.cohort,
     }
 
 
-def load_official(root: Path) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    official = root / "results" / "eval" / "official"
-    for model_id in MODELS:
-        path = official / f"{model_id}_submission.json"
-        data = read_json(path)
-        for task, value in data.items():
-            subtask, score = flatten_single_score(value)
-            rows.append({
-                **base_row(model_id),
-                "suite": "BabyLM official Chinese",
-                "task": task,
-                "subtask": subtask,
-                "section": "submission",
-                "metric": "score",
-                "score": score,
-                "primary_metric": True,
-                "status": "locally_scored",
-                "temperature": "",
-                "n_result_files": "",
-                "fast": "",
-                "source_file": relpath(path, root),
-            })
+def metric_row(
+    model: ModelSpec, root: Path, path: Path, *, suite: str, task: str,
+    subtask: str, section: str, metric: str, score: float, primary: bool,
+    temperature: float | str = "", n_result_files: int | str = "",
+    fast: bool | str = "",
+) -> dict[str, Any]:
+    return {
+        **base_row(model), "suite": suite, "task": task, "subtask": subtask,
+        "section": section, "metric": metric, "score": float(score),
+        "primary_metric": primary, "status": "locally_scored",
+        "temperature": temperature, "n_result_files": n_result_files,
+        "fast": fast, "source_file": source_path(path, root),
+    }
+
+
+def flatten_score(value: Any) -> tuple[str, float]:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return "aggregate", float(value)
+    if isinstance(value, dict):
+        values = [(str(k), float(v)) for k, v in value.items()
+                  if isinstance(v, (int, float)) and not isinstance(v, bool)]
+        if len(values) == 1:
+            return values[0]
+    raise ValueError(f"Expected one numeric score, received {value!r}")
+
+
+def load_official_submission(model: ModelSpec, root: Path) -> list[dict[str, Any]]:
+    rows = []
+    for task, value in read_json(model.official_path).items():
+        subtask, score = flatten_score(value)
+        rows.append(metric_row(
+            model, root, model.official_path, suite=SUITES[0], task=task,
+            subtask=subtask, section="submission", metric="score", score=score,
+            primary=True,
+        ))
     return rows
 
 
-def parse_zero_shot_report(path: Path, root: Path, model_id: str, task: str) -> list[dict[str, Any]]:
+def official_model_dir(root: Path, section: str, model_id: str) -> Path:
+    section_root = root / section
+    matches = [p for p in section_root.iterdir()
+               if p.is_dir() and p.name.split("__")[-1] == model_id]
+    if len(matches) != 1:
+        raise ValueError(f"Expected one {section} directory for {model_id}; found {len(matches)}")
+    return matches[0]
+
+
+def load_official_raw(model: ModelSpec, root: Path) -> list[dict[str, Any]]:
+    rows = []
+    zero_dir = official_model_dir(model.official_path, "zeroshot", model.model_id)
+    task_data: dict[str, tuple[dict[str, Any], Path]] = {}
+    for path in sorted(zero_dir.glob("results_*.json")):
+        for task, result in read_json(path).get("results", {}).items():
+            task_data[task] = (result, path)
+    for task in OFFICIAL_ZERO:
+        if task not in task_data:
+            raise ValueError(f"Missing official zero-shot result for {model.model_id}/{task}")
+        result, path = task_data[task]
+        key = "acc_norm,none" if task.startswith("global_piqa") else "acc,none"
+        rows.append(metric_row(
+            model, root, path, suite=SUITES[0], task=task, subtask=task,
+            section="submission", metric="score", score=result[key], primary=True,
+        ))
+
+    fine_root = model.official_path / "finetune" / model.model_id
+    for task in OFFICIAL_FINE:
+        if task == "pos":
+            preferred = fine_root / "pos" / "zh" / "eval_results.json"
+            fallback = fine_root / "pos" / "eval_results.json"
+            path = preferred if preferred.is_file() else fallback
+        else:
+            path = fine_root / "zh" / task / "eval_results.json"
+        result = read_json(path)
+        rows.append(metric_row(
+            model, root, path, suite=SUITES[0], task=task, subtask="zh",
+            section="submission", metric="score", score=result["eval_accuracy"],
+            primary=True,
+        ))
+    return rows
+
+
+def load_official(model: ModelSpec, root: Path) -> list[dict[str, Any]]:
+    if model.official_format == "submission":
+        rows = load_official_submission(model, root)
+    elif model.official_format == "raw":
+        rows = load_official_raw(model, root)
+    else:
+        raise ValueError(f"Unknown official format: {model.official_format}")
+    found = {r["task"] for r in rows}
+    expected = set(OFFICIAL_ZERO) | set(OFFICIAL_FINE)
+    if found != expected:
+        raise ValueError(
+            f"Official task mismatch for {model.model_id}: "
+            f"missing={sorted(expected-found)}, extra={sorted(found-expected)}"
+        )
+    return rows
+
+
+def parse_zero_report(path: Path, root: Path, model: ModelSpec, task: str) -> list[dict[str, Any]]:
     text = path.read_text(encoding="utf-8")
-    temperature_match = re.search(r"^TEMPERATURE:\s*([0-9.]+)", text, re.MULTILINE)
-    temperature = float(temperature_match.group(1)) if temperature_match else ""
-    rows: list[dict[str, Any]] = []
+    match = re.search(r"^TEMPERATURE:\s*([0-9.]+)", text, re.MULTILINE)
+    temperature: float | str = float(match.group(1)) if match else ""
+    rows = []
     section = ""
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
+    for raw in text.splitlines():
+        line = raw.strip()
         if not line:
             continue
         if line.startswith("### "):
@@ -132,139 +232,101 @@ def parse_zero_shot_report(path: Path, root: Path, model_id: str, task: str) -> 
         if line.startswith("TEMPERATURE:"):
             continue
         if section == "average_accuracy" and re.fullmatch(r"-?[0-9.]+", line):
-            rows.append({
-                **base_row(model_id),
-                "suite": "Chinese zero-shot",
-                "task": task,
-                "subtask": "aggregate",
-                "section": section,
-                "metric": "accuracy",
-                "score": float(line) / 100.0,
-                "primary_metric": True,
-                "status": "locally_scored",
-                "temperature": temperature,
-                "n_result_files": "",
-                "fast": "",
-                "source_file": relpath(path, root),
-            })
+            rows.append(metric_row(
+                model, root, path, suite=SUITES[1], task=task,
+                subtask="aggregate", section=section, metric="accuracy",
+                score=float(line) / 100.0, primary=True, temperature=temperature,
+            ))
             continue
-        match = re.fullmatch(r"([^:]+):\s*(-?[0-9.]+)", line)
-        if match and section:
-            rows.append({
-                **base_row(model_id),
-                "suite": "Chinese zero-shot",
-                "task": task,
-                "subtask": match.group(1).strip(),
-                "section": section,
-                "metric": "accuracy",
-                "score": float(match.group(2)) / 100.0,
-                "primary_metric": False,
-                "status": "locally_scored",
-                "temperature": temperature,
-                "n_result_files": "",
-                "fast": "",
-                "source_file": relpath(path, root),
-            })
-    averages = [row for row in rows if row["primary_metric"]]
-    if len(averages) != 1:
-        raise ValueError(f"Expected one average accuracy in {path}, found {len(averages)}")
+        item = re.fullmatch(r"([^:]+):\s*(-?[0-9.]+)", line)
+        if item and section:
+            rows.append(metric_row(
+                model, root, path, suite=SUITES[1], task=task,
+                subtask=item.group(1).strip(), section=section, metric="accuracy",
+                score=float(item.group(2)) / 100.0, primary=False,
+                temperature=temperature,
+            ))
+    if sum(bool(r["primary_metric"]) for r in rows) != 1:
+        raise ValueError(f"Expected one average accuracy in {path}")
     return rows
 
 
-def load_chinese(root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def load_chinese(model: ModelSpec, root: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     rows: list[dict[str, Any]] = []
     details: list[dict[str, Any]] = []
-    pipeline = root / "results" / "eval" / "chinese_pipeline"
-    for model_id in MODELS:
-        model_root = pipeline / model_id / "main"
-        for task in ("zhoblimp", "hanzi_structure", "hanzi_pinyin"):
-            report = (model_root / "zero_shot" / "causal" / task / task /
-                      "best_temperature_report.txt")
-            rows.extend(parse_zero_shot_report(report, root, model_id, task))
-
-        for task in ("afqmc", "ocnli", "tnews", "cluewsc2020"):
-            report = model_root / "finetune" / task / "results.txt"
-            text = report.read_text(encoding="utf-8")
-            parsed = re.findall(r"^([A-Za-z0-9_]+):\s*(-?[0-9.eE+\-]+)", text, re.MULTILINE)
-            if not parsed:
-                raise ValueError(f"No metrics found in {report}")
-            for metric, value in parsed:
-                rows.append({
-                    **base_row(model_id),
-                    "suite": "Chinese fine-tune",
-                    "task": task,
-                    "subtask": "zh",
-                    "section": "evaluation",
-                    "metric": metric.lower(),
-                    "score": float(value),
-                    "primary_metric": metric.lower() == "accuracy",
-                    "status": "locally_scored",
-                    "temperature": "",
-                    "n_result_files": "",
-                    "fast": "",
-                    "source_file": relpath(report, root),
-                })
-
-        for task in ("word_fmri", "fmri"):
-            matches = list((model_root / "cogbench" / task).glob("*report.json"))
-            if len(matches) != 1:
-                raise ValueError(f"Expected one CogBench report for {model_id}/{task}")
-            report_path = matches[0]
-            report = read_json(report_path)
-            for metric in ("mean", "min", "max"):
-                rows.append({
-                    **base_row(model_id),
-                    "suite": "CogBench",
-                    "task": task,
-                    "subtask": "aggregate",
-                    "section": "aggregate",
-                    "metric": metric,
-                    "score": float(report[metric]),
-                    "primary_metric": metric == "mean",
-                    "status": "locally_scored",
-                    "temperature": "",
-                    "n_result_files": int(report["n_result_files"]),
-                    "fast": bool(report["fast"]),
-                    "source_file": relpath(report_path, root),
-                })
-            for item in report["files"]:
-                item_path = Path(item["file"])
-                region = item_path.parent.name if task == "fmri" else ""
-                subject = item_path.stem.replace("_score", "").replace("_average", "")
-                details.append({
-                    **base_row(model_id),
-                    "task": task,
-                    "region": region,
-                    "subject": subject,
-                    "result_file": item_path.name,
-                    "score": float(item["value"]),
-                    "source_file": relpath(report_path, root),
-                })
+    model_root = model.chinese_path / "main"
+    for task in ("zhoblimp", "hanzi_structure", "hanzi_pinyin"):
+        report = model_root / "zero_shot" / "causal" / task / task / "best_temperature_report.txt"
+        rows.extend(parse_zero_report(report, root, model, task))
+    for task in ("afqmc", "ocnli", "tnews", "cluewsc2020"):
+        report = model_root / "finetune" / task / "results.txt"
+        parsed = re.findall(
+            r"^([A-Za-z0-9_]+):\s*(-?[0-9.eE+\-]+)",
+            report.read_text(encoding="utf-8"), re.MULTILINE,
+        )
+        if not parsed:
+            raise ValueError(f"No metrics found in {report}")
+        for metric, value in parsed:
+            rows.append(metric_row(
+                model, root, report, suite=SUITES[2], task=task, subtask="zh",
+                section="evaluation", metric=metric.lower(), score=float(value),
+                primary=metric.lower() == "accuracy",
+            ))
+    for task in ("word_fmri", "fmri"):
+        matches = list((model_root / "cogbench" / task).glob("*report.json"))
+        if len(matches) != 1:
+            raise ValueError(f"Expected one CogBench report for {model.model_id}/{task}")
+        path = matches[0]
+        report = read_json(path)
+        for metric in ("mean", "min", "max"):
+            rows.append(metric_row(
+                model, root, path, suite=SUITES[3], task=task,
+                subtask="aggregate", section="aggregate", metric=metric,
+                score=report[metric], primary=metric == "mean",
+                n_result_files=int(report["n_result_files"]), fast=bool(report["fast"]),
+            ))
+        for item in report["files"]:
+            item_path = Path(item["file"])
+            details.append({
+                **base_row(model), "task": task,
+                "region": item_path.parent.name if task == "fmri" else "",
+                "subject": item_path.stem.replace("_score", "").replace("_average", ""),
+                "result_file": item_path.name, "score": float(item["value"]),
+                "source_file": source_path(path, root),
+            })
     return rows, details
 
 
-def load_hidden(root: Path) -> list[dict[str, Any]]:
-    path = root / "hidden_task_manifest.json"
+def safetensors_metadata(path: Path, root: Path) -> dict[str, Any]:
+    with path.open("rb") as handle:
+        size = int.from_bytes(handle.read(8), "little")
+        header = json.loads(handle.read(size))
+    tensors = [value for key, value in header.items() if key != "__metadata__"]
+    return {
+        "stored_tensor_parameters": sum(math.prod(t["shape"]) for t in tensors),
+        "tensor_count": len(tensors), "model_file_bytes": path.stat().st_size,
+        "model_file": source_path(path, root),
+    }
+
+
+def load_metadata(models: list[ModelSpec], root: Path) -> list[dict[str, Any]]:
+    cache: dict[Path, Any] = {}
     rows = []
-    for item in read_json(path):
-        rows.append({**base_row(item["model_id"]), **item})
-    return rows
-
-
-def load_model_metadata(root: Path) -> list[dict[str, Any]]:
-    file_metadata = read_json(root / "model_file_metadata.json")
-    rows: list[dict[str, Any]] = []
-    config_root = root / "code" / "babylm-pinyin-abbreviations"
-    for model_id in MODELS:
-        config_path = config_root / model_id / "config.json"
-        config = read_json(config_path)
-        stored = file_metadata[model_id]
+    for model in models:
+        config = read_json(model.config_path)
+        if model.model_path:
+            stored = safetensors_metadata(model.model_path / "model.safetensors", root)
+        elif model.metadata_path:
+            cache.setdefault(model.metadata_path, read_json(model.metadata_path))
+            stored = cache[model.metadata_path][model.model_id]
+        else:
+            raise ValueError(f"No model metadata for {model.model_id}")
         rows.append({
-            **base_row(model_id),
+            **base_row(model),
             "stored_tensor_parameters": int(stored["stored_tensor_parameters"]),
             "tensor_count": int(stored["tensor_count"]),
             "model_file_bytes": int(stored["model_file_bytes"]),
-            "dtype": config.get("dtype", ""),
+            "dtype": config.get("dtype", config.get("torch_dtype", "")),
             "vocab_size": config.get("vocab_size", ""),
             "hidden_size": config.get("hidden_size", config.get("n_embd", "")),
             "num_hidden_layers": config.get("num_hidden_layers", config.get("n_layer", "")),
@@ -272,9 +334,34 @@ def load_model_metadata(root: Path) -> list[dict[str, Any]]:
             "intermediate_size": config.get("intermediate_size", ""),
             "max_position_embeddings": config.get("max_position_embeddings", ""),
             "tie_word_embeddings": config.get("tie_word_embeddings", ""),
-            "source_file": relpath(config_path, root),
+            "source_file": source_path(model.config_path, root),
             "model_file": stored["model_file"],
         })
+    return rows
+
+
+def verify_manifest(path: Path) -> tuple[int, list[str]]:
+    checked = 0
+    errors = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        expected, relative = line.split(maxsplit=1)
+        source = path.parent / relative.removeprefix("./")
+        if not source.is_file():
+            errors.append(f"missing: {source}")
+        elif hashlib.sha256(source.read_bytes()).hexdigest() != expected:
+            errors.append(f"hash mismatch: {source}")
+        checked += source.is_file()
+    return checked, errors
+
+
+def load_legacy_hidden(models: list[ModelSpec], root: Path) -> list[dict[str, Any]]:
+    """Preserve prediction-only coverage from the original compact snapshot."""
+    by_id = {model.model_id: model for model in models}
+    path = root / "results_analysis/raw_snapshot/hidden_task_manifest.json"
+    rows = []
+    for item in read_json(path):
+        model = by_id[item["model_id"]]
+        rows.append({**base_row(model), **item})
     return rows
 
 
@@ -282,287 +369,237 @@ def comparison_key(row: dict[str, Any]) -> str:
     return " | ".join(str(row[k]) for k in ("suite", "task", "subtask", "metric"))
 
 
-def make_wide(primary_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def make_wide(primary: list[dict[str, Any]], models: list[ModelSpec]) -> list[dict[str, Any]]:
     grouped: dict[str, dict[str, Any]] = {}
-    for row in primary_rows:
+    labels = [m.label for m in models]
+    for row in primary:
         key = comparison_key(row)
         record = grouped.setdefault(key, {
-            "comparison_key": key,
-            "suite": row["suite"],
-            "task": row["task"],
-            "subtask": row["subtask"],
-            "metric": row["metric"],
+            "comparison_key": key, "suite": row["suite"], "task": row["task"],
+            "subtask": row["subtask"], "metric": row["metric"],
         })
+        if row["model"] in record:
+            raise ValueError(f"Duplicate primary metric for {row['model']}: {key}")
         record[row["model"]] = row["score"]
-    wide = list(grouped.values())
-    for row in wide:
-        missing = [model for model in MODEL_ORDER if model not in row]
+    for row in grouped.values():
+        missing = [label for label in labels if label not in row]
         if missing:
             raise ValueError(f"Missing models for {row['comparison_key']}: {missing}")
-        scores = {model: float(row[model]) for model in MODEL_ORDER}
-        maximum = max(scores.values())
-        row["best_score"] = maximum
-        row["winner"] = "; ".join(model for model, score in scores.items()
-                                  if math.isclose(score, maximum, rel_tol=0.0, abs_tol=1e-12))
-    return sorted(wide, key=lambda row: (row["suite"], row["task"], row["metric"]))
+        best = max(float(row[label]) for label in labels)
+        row["best_score"] = best
+        row["winner"] = "; ".join(
+            label for label in labels
+            if math.isclose(float(row[label]), best, rel_tol=0, abs_tol=1e-12)
+        )
+    return sorted(grouped.values(), key=lambda r: (r["suite"], r["task"], r["metric"]))
 
 
-def make_effects(wide: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    effects = []
-    for row in wide:
-        gh = float(row["GPT2 hybrid"])
-        qh = float(row["Qwen2 hybrid"])
-        gb = float(row["GPT2 BPE"])
-        qb = float(row["Qwen2 BPE"])
-        effects.append({
-            "comparison_key": row["comparison_key"],
-            "suite": row["suite"],
-            "task": row["task"],
-            "metric": row["metric"],
-            "gpt2_hybrid_minus_bpe": gh - gb,
-            "qwen2_hybrid_minus_bpe": qh - qb,
-            "qwen2_minus_gpt2_hybrid": qh - gh,
-            "qwen2_minus_gpt2_bpe": qb - gb,
-            "tokenizer_architecture_interaction": (qh - qb) - (gh - gb),
-            "winner": row["winner"],
-        })
-    return effects
+def build_contrasts(models: list[ModelSpec]) -> list[Contrast]:
+    lookup = {(m.scale, m.architecture, m.tokenizer): m for m in models}
+    contrasts: list[Contrast] = []
+
+    def add(name: str, category: str, plus: tuple[str, str, str], minus: tuple[str, str, str]) -> None:
+        contrasts.append(Contrast(name, category, lookup[plus].label, lookup[minus].label))
+
+    for architecture in ("GPT2", "Qwen2"):
+        for tokenizer in ("Hybrid", "BPE"):
+            add(f"{architecture} {tokenizer}: 100M - 30M", "scale",
+                ("100M", architecture, tokenizer), ("30M", architecture, tokenizer))
+        for scale in ("30M", "100M"):
+            add(f"{scale} {architecture}: Hybrid - BPE", "baseline_tokenizer",
+                (scale, architecture, "Hybrid"), (scale, architecture, "BPE"))
+        add(f"30M {architecture}: Atomic cross - within", "boundary_policy",
+            ("30M", architecture, "Atomic BPE cross"),
+            ("30M", architecture, "Atomic BPE within"))
+        for tokenizer in ("Atomic BPE within", "Atomic BPE cross"):
+            add(f"30M {architecture}: {tokenizer} - BPE", "atomic_vs_bpe",
+                ("30M", architecture, tokenizer), ("30M", architecture, "BPE"))
+    for scale, tokenizer in (
+        ("30M", "Hybrid"), ("30M", "BPE"), ("100M", "Hybrid"),
+        ("100M", "BPE"), ("30M", "Atomic BPE within"),
+        ("30M", "Atomic BPE cross"),
+    ):
+        add(f"{scale} {tokenizer}: Qwen2 - GPT2", "architecture",
+            (scale, "Qwen2", tokenizer), (scale, "GPT2", tokenizer))
+    return contrasts
 
 
-def verify_manifest(root: Path) -> tuple[int, list[str]]:
-    manifest = root / "SOURCE_MANIFEST.sha256"
-    errors = []
-    checked = 0
-    for line in manifest.read_text(encoding="utf-8").splitlines():
-        expected, relative = line.split(maxsplit=1)
-        relative = relative.removeprefix("./")
-        path = root / relative
-        if not path.is_file():
-            errors.append(f"missing: {relative}")
-            continue
-        actual = hashlib.sha256(path.read_bytes()).hexdigest()
-        if actual != expected:
-            errors.append(f"hash mismatch: {relative}")
-        checked += 1
-    return checked, errors
+def make_effects(wide: list[dict[str, Any]], contrasts: list[Contrast]) -> list[dict[str, Any]]:
+    return [{
+        "comparison_key": row["comparison_key"], "suite": row["suite"],
+        "task": row["task"], "metric": row["metric"],
+        "contrast": contrast.name, "category": contrast.category,
+        "minuend": contrast.minuend, "subtrahend": contrast.subtrahend,
+        "difference": float(row[contrast.minuend]) - float(row[contrast.subtrahend]),
+    } for row in wide for contrast in contrasts]
+
+
+def make_suite_averages(wide: list[dict[str, Any]], models: list[ModelSpec]) -> list[dict[str, Any]]:
+    rows = []
+    for model in models:
+        for suite in SUITES:
+            matches = [row for row in wide if row["suite"] == suite]
+            rows.append({
+                **base_row(model), "suite": suite, "task_count": len(matches),
+                "mean_score": fmean(float(row[model.label]) for row in matches),
+            })
+    return rows
+
+
+def make_contrast_summary(effects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str, str, str, str], list[float]] = {}
+    for row in effects:
+        key = (row["suite"], row["contrast"], row["category"],
+               row["minuend"], row["subtrahend"])
+        grouped.setdefault(key, []).append(float(row["difference"]))
+    return [{
+        "suite": key[0], "contrast": key[1], "category": key[2],
+        "minuend": key[3], "subtrahend": key[4], "task_count": len(values),
+        "mean_difference": fmean(values),
+    } for key, values in sorted(grouped.items())]
 
 
 def markdown_table(headers: list[str], rows: Iterable[Iterable[Any]]) -> str:
     output = ["| " + " | ".join(headers) + " |",
               "| " + " | ".join("---" for _ in headers) + " |"]
-    for row in rows:
-        output.append("| " + " | ".join(str(value) for value in row) + " |")
+    output.extend("| " + " | ".join(str(v) for v in row) + " |" for row in rows)
     return "\n".join(output)
 
 
 def build_summary(
-    output: Path,
-    metrics: list[dict[str, Any]],
-    wide: list[dict[str, Any]],
-    effects: list[dict[str, Any]],
-    metadata: list[dict[str, Any]],
-    hidden: list[dict[str, Any]],
-    manifest_count: int,
+    output: Path, models: list[ModelSpec], metrics: list[dict[str, Any]],
+    wide: list[dict[str, Any]], metadata: list[dict[str, Any]],
+    averages: list[dict[str, Any]], contrasts: list[dict[str, Any]], checked: int,
 ) -> None:
-    official = [row for row in wide if row["suite"] == "BabyLM official Chinese"]
-    macro = {model: fmean(float(row[model]) for row in official) for model in MODEL_ORDER}
-    official_effects = [row for row in effects if row["suite"] == "BabyLM official Chinese"]
-    avg_effect = {
-        key: fmean(float(row[key]) for row in official_effects)
-        for key in (
-            "gpt2_hybrid_minus_bpe",
-            "qwen2_hybrid_minus_bpe",
-            "qwen2_minus_gpt2_hybrid",
-            "qwen2_minus_gpt2_bpe",
-            "tokenizer_architecture_interaction",
-        )
-    }
-    wins = {model: 0 for model in MODEL_ORDER}
-    for row in official:
-        for model in row["winner"].split("; "):
-            wins[model] += 1
-
-    cog = [row for row in wide if row["suite"] == "CogBench"]
-    chinese_zero = [row for row in wide if row["suite"] == "Chinese zero-shot"]
-    chinese_finetune = [row for row in wide if row["suite"] == "Chinese fine-tune"]
+    mean = {(r["model"], r["suite"]): r["mean_score"] for r in averages}
+    cohorts = list(dict.fromkeys(m.cohort for m in models))
     lines = [
-        "# Mandarin BabyLM model comparison",
-        "",
-        "## Snapshot integrity",
-        "",
-        f"- Verified `{manifest_count}` downloaded source files against `SOURCE_MANIFEST.sha256`.",
-        f"- Parsed `{len(metrics)}` scored metric rows and `{len(wide)}` directly comparable primary metrics.",
-        "- Hidden tasks are listed as `predictions_only`; no hidden score is invented or treated as zero.",
-        "- CogBench reports show `fast=False`, indicating the full configured runs.",
-        "",
-        "## Model metadata",
-        "",
+        "# Mandarin BabyLM 12-model comparison", "", "## Validation and scope", "",
+        f"- Compared `{len(models)}` models across `{len(wide)}` comparable primary metrics.",
+        f"- Parsed `{len(metrics)}` total metric rows, including supplementary metrics.",
+        f"- Verified `{checked}` legacy snapshot files against `SOURCE_MANIFEST.sha256`.",
+        "- Raw official outputs use evaluator collation rules: Global PIQA uses normalized accuracy; other zero-shot tasks use accuracy.",
+        "- Server-scored tasks are excluded from official local scores; Chinese-pipeline Hanzi scores remain a separate local suite.",
+        "", "## Model metadata", "",
         markdown_table(
-            ["Model", "Architecture", "Tokenizer", "Stored tensor parameters", "Layers", "Hidden", "Vocab"],
-            ([row["model"], row["architecture"], row["tokenizer"],
-              f"{row['stored_tensor_parameters']:,}", row["num_hidden_layers"],
-              row["hidden_size"], row["vocab_size"]] for row in metadata),
-        ),
-        "",
-        "`Stored tensor parameters` is counted directly from the safetensors header. It is not an estimate based on file size.",
-        "",
-        "## Official Chinese results",
-        "",
+            ["Model", "Scale", "Architecture", "Tokenizer", "Stored parameters", "Layers", "Hidden", "Vocab"],
+            ([r["model"], r["scale"], r["architecture"], r["tokenizer"],
+              f"{r['stored_tensor_parameters']:,}", r["num_hidden_layers"],
+              r["hidden_size"], r["vocab_size"]] for r in metadata),
+        ), "", "## Suite-level descriptive averages", "",
         markdown_table(
-            ["Model", "Unweighted macro-average", "Task wins (ties count for each)"],
-            ([model, f"{macro[model]:.4f}", wins[model]] for model in MODEL_ORDER),
-        ),
-        "",
-        "The macro-average is descriptive: tasks differ in size, difficulty, and variance.",
-        "",
-        "### Mean paired effects across the 16 official tasks",
-        "",
+            ["Model", "Official (16)", "Chinese zero-shot (3)",
+             "Chinese fine-tune (4)", "CogBench (2)"],
+            ([m.label, *(f"{mean[(m.label, suite)]:.4f}" for suite in SUITES)] for m in models),
+        ), "",
+        "These are unweighted descriptive averages within each suite; do not average across suites because their metrics and scales differ.",
+        "", "## Selected mean paired contrasts", "",
         markdown_table(
-            ["Contrast", "Mean score difference"],
-            [
-                ["GPT2: Hybrid - BPE", f"{avg_effect['gpt2_hybrid_minus_bpe']:+.4f}"],
-                ["Qwen2: Hybrid - BPE", f"{avg_effect['qwen2_hybrid_minus_bpe']:+.4f}"],
-                ["Hybrid: Qwen2 - GPT2", f"{avg_effect['qwen2_minus_gpt2_hybrid']:+.4f}"],
-                ["BPE: Qwen2 - GPT2", f"{avg_effect['qwen2_minus_gpt2_bpe']:+.4f}"],
-                ["Tokenizer x architecture interaction", f"{avg_effect['tokenizer_architecture_interaction']:+.4f}"],
-            ],
-        ),
-        "",
-        "Positive tokenizer effects favor Hybrid. Positive architecture effects favor Qwen2.",
-        "",
-        "### Task-level official scores",
-        "",
-        markdown_table(
-            ["Task", *MODEL_ORDER, "Winner"],
-            ([row["task"], *(f"{float(row[m]):.4f}" for m in MODEL_ORDER), row["winner"]]
-             for row in official),
-        ),
-        "",
-        "## Chinese-pipeline primary metrics",
-        "",
-        "### Zero-shot average accuracy",
-        "",
-        markdown_table(
-            ["Task", *MODEL_ORDER, "Winner"],
-            ([row["task"], *(f"{float(row[m]):.4f}" for m in MODEL_ORDER), row["winner"]]
-             for row in chinese_zero),
-        ),
-        "",
-        "### Fine-tuned accuracy",
-        "",
-        markdown_table(
-            ["Task", *MODEL_ORDER, "Winner"],
-            ([row["task"], *(f"{float(row[m]):.4f}" for m in MODEL_ORDER), row["winner"]]
-             for row in chinese_finetune),
-        ),
-        "",
-        "F1 and MCC are preserved in `metrics_long.csv` as supplementary metrics; they are not mixed into the accuracy comparison.",
-        "",
-        "## CogBench aggregates",
-        "",
-        markdown_table(
-            ["Task", *MODEL_ORDER, "Winner"],
-            ([row["task"], *(f"{float(row[m]):.4f}" for m in MODEL_ORDER), row["winner"]]
-             for row in cog),
-        ),
-        "",
-        "The original CogBench logs emitted ill-conditioned ridge-regression warnings. Outputs were complete, but small differences may be numerically sensitive.",
-        "",
-        "## Hidden tasks",
-        "",
-        f"The snapshot records `{len(hidden)}` model/task prediction manifests covering `hanzi_pinyin`, `hanzi_structure`, and `meco_l1`.",
-        "Authoritative scores require the evaluation server and are intentionally absent here.",
-        "",
-        "## Files produced",
-        "",
-        "- `metrics_long.csv`: every parsed scored metric, including supplementary metrics and zero-shot subsections.",
-        "- `primary_scores_wide.csv`: one comparable row per primary task metric.",
-        "- `pairwise_effects.csv`: tokenizer, architecture, and interaction contrasts.",
-        "- `cogbench_detail.csv`: subject/region-level CogBench values.",
-        "- `model_metadata.csv`: exact exported-model metadata.",
-        "- `hidden_tasks.csv`: predictions-only task coverage and integrity counts.",
-        "",
-        "## Interpretation cautions",
-        "",
-        "1. Do not combine accuracy, F1, MCC, and fMRI correlations into a single inferential statistic.",
-        "2. The descriptive macro-average weights tasks equally, not examples equally.",
-        "3. No confidence intervals are available from aggregate-only files; example-level predictions would be needed for bootstrap testing.",
-        "4. Differences between architectures and tokenizers are based on one trained model per condition, so they should not be presented as seed-robust effects.",
-        "",
+            ["Suite", "Contrast", "Mean difference"],
+            ([r["suite"], r["contrast"], f"{r['mean_difference']:+.4f}"]
+             for r in contrasts if r["category"] in {"scale", "boundary_policy"}),
+        ), "", "Positive values favor the condition before the minus sign.",
+        "", "## Official task scores by cohort", "",
     ]
+    official = [row for row in wide if row["suite"] == SUITES[0]]
+    for cohort in cohorts:
+        labels = [m.label for m in models if m.cohort == cohort]
+        lines.extend([
+            f"### {cohort}", "",
+            markdown_table(
+                ["Task", *labels, "Best in cohort"],
+                ([r["task"], *(f"{float(r[label]):.4f}" for label in labels),
+                  "; ".join(label for label in labels
+                            if math.isclose(float(r[label]), max(float(r[x]) for x in labels),
+                                            rel_tol=0, abs_tol=1e-12))]
+                 for r in official),
+            ), "",
+        ])
+    lines.extend([
+        "## Generated files", "",
+        "- `metrics_long.csv`: every parsed metric with scale and cohort metadata.",
+        "- `primary_scores_wide.csv`: all 12 models side by side for every primary task.",
+        "- `suite_averages.csv`: descriptive per-model means within each suite.",
+        "- `pairwise_effects.csv`: task-level size, tokenizer, boundary, and architecture contrasts.",
+        "- `contrast_summary.csv`: mean paired contrast by suite.",
+        "- `cogbench_detail.csv`: subject/region-level CogBench results.",
+        "- `model_metadata.csv`: configuration and exact stored tensor counts.",
+        "- `hidden_tasks.csv`: archival prediction-only coverage for the original four models.",
+        "", "## Interpretation cautions", "",
+        "1. Do not combine accuracy, F1, MCC, and fMRI correlation into one score.",
+        "2. Suite averages weight tasks equally, not examples equally.",
+        "3. Aggregate files do not provide confidence intervals.",
+        "4. One seed exists per condition, so differences are not seed-robust evidence.",
+        "5. 30M/100M are experiment families; exact stored parameter counts appear above.", "",
+    ])
     (output / "summary.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def main() -> None:
     args = parse_args()
-    root = args.input.resolve()
+    root = args.repository_root.resolve()
     output = args.output.resolve()
+    models = load_registry(args.registry.resolve(), root)
     output.mkdir(parents=True, exist_ok=True)
+    manifest = root / "results_analysis/raw_snapshot/SOURCE_MANIFEST.sha256"
+    checked, errors = verify_manifest(manifest)
+    if errors:
+        raise RuntimeError("Snapshot integrity failure:\n" + "\n".join(errors))
 
-    checked, manifest_errors = verify_manifest(root)
-    if manifest_errors:
-        raise RuntimeError("Snapshot integrity failure:\n" + "\n".join(manifest_errors))
-
-    official = load_official(root)
-    chinese, cogbench_detail = load_chinese(root)
-    metrics = official + chinese
-    hidden = load_hidden(root)
-    metadata = load_model_metadata(root)
-
+    metrics: list[dict[str, Any]] = []
+    cogbench: list[dict[str, Any]] = []
+    for model in models:
+        metrics.extend(load_official(model, root))
+        model_metrics, model_cogbench = load_chinese(model, root)
+        metrics.extend(model_metrics)
+        cogbench.extend(model_cogbench)
+    metadata = load_metadata(models, root)
+    hidden = load_legacy_hidden(models, root)
     for row in metrics:
         if not math.isfinite(float(row["score"])):
             raise ValueError(f"Non-finite metric: {row}")
+    wide = make_wide([r for r in metrics if r["primary_metric"]], models)
+    effects = make_effects(wide, build_contrasts(models))
+    averages = make_suite_averages(wide, models)
+    contrast_summary = make_contrast_summary(effects)
+    labels = [m.label for m in models]
 
-    primary = [row for row in metrics if row["primary_metric"]]
-    wide = make_wide(primary)
-    effects = make_effects(wide)
-
-    metric_fields = [
-        "model_id", "model", "architecture", "tokenizer", "suite", "task",
-        "subtask", "section", "metric", "score", "primary_metric", "status",
-        "temperature", "n_result_files", "fast", "source_file",
-    ]
-    write_csv(output / "metrics_long.csv", metrics, metric_fields)
-    write_csv(
-        output / "primary_scores_wide.csv",
-        wide,
-        ["comparison_key", "suite", "task", "subtask", "metric", *MODEL_ORDER,
-         "best_score", "winner"],
-    )
-    write_csv(
-        output / "pairwise_effects.csv",
-        effects,
-        ["comparison_key", "suite", "task", "metric", "gpt2_hybrid_minus_bpe",
-         "qwen2_hybrid_minus_bpe", "qwen2_minus_gpt2_hybrid",
-         "qwen2_minus_gpt2_bpe", "tokenizer_architecture_interaction", "winner"],
-    )
-    write_csv(
-        output / "cogbench_detail.csv",
-        cogbench_detail,
-        ["model_id", "model", "architecture", "tokenizer", "task", "region",
-         "subject", "result_file", "score", "source_file"],
-    )
-    write_csv(
-        output / "model_metadata.csv",
-        metadata,
-        ["model_id", "model", "architecture", "tokenizer", "stored_tensor_parameters",
-         "tensor_count", "model_file_bytes", "dtype", "vocab_size", "hidden_size",
-         "num_hidden_layers", "num_attention_heads", "intermediate_size",
-         "max_position_embeddings", "tie_word_embeddings", "source_file", "model_file"],
-    )
-    write_csv(
-        output / "hidden_tasks.csv",
-        hidden,
-        ["model_id", "model", "architecture", "tokenizer", "task", "status",
-         "leaf_count", "numeric_count", "all_numeric_finite", "source_file"],
-    )
-    build_summary(output, metrics, wide, effects, metadata, hidden, checked)
-
-    print(f"Verified source files: {checked}")
+    write_csv(output / "metrics_long.csv", metrics,
+              ["model_id", "model", "architecture", "tokenizer", "scale", "cohort",
+               "suite", "task", "subtask", "section", "metric", "score",
+               "primary_metric", "status", "temperature", "n_result_files", "fast", "source_file"])
+    write_csv(output / "primary_scores_wide.csv", wide,
+              ["comparison_key", "suite", "task", "subtask", "metric", *labels,
+               "best_score", "winner"])
+    write_csv(output / "suite_averages.csv", averages,
+              ["model_id", "model", "architecture", "tokenizer", "scale", "cohort",
+               "suite", "task_count", "mean_score"])
+    write_csv(output / "pairwise_effects.csv", effects,
+              ["comparison_key", "suite", "task", "metric", "contrast", "category",
+               "minuend", "subtrahend", "difference"])
+    write_csv(output / "contrast_summary.csv", contrast_summary,
+              ["suite", "contrast", "category", "minuend", "subtrahend",
+               "task_count", "mean_difference"])
+    write_csv(output / "cogbench_detail.csv", cogbench,
+              ["model_id", "model", "architecture", "tokenizer", "scale", "cohort",
+               "task", "region", "subject", "result_file", "score", "source_file"])
+    write_csv(output / "model_metadata.csv", metadata,
+              ["model_id", "model", "architecture", "tokenizer", "scale", "cohort",
+               "stored_tensor_parameters", "tensor_count", "model_file_bytes", "dtype",
+               "vocab_size", "hidden_size", "num_hidden_layers", "num_attention_heads",
+               "intermediate_size", "max_position_embeddings", "tie_word_embeddings",
+               "source_file", "model_file"])
+    write_csv(output / "hidden_tasks.csv", hidden,
+              ["model_id", "model", "architecture", "tokenizer", "scale", "cohort",
+               "task", "status", "leaf_count", "numeric_count", "all_numeric_finite",
+               "source_file"])
+    build_summary(output, models, metrics, wide, metadata, averages, contrast_summary, checked)
+    print(f"Models compared: {len(models)}")
+    print(f"Verified legacy source files: {checked}")
     print(f"Scored metric rows: {len(metrics)}")
     print(f"Primary comparison rows: {len(wide)}")
-    print(f"CogBench detail rows: {len(cogbench_detail)}")
-    print(f"Hidden prediction manifests: {len(hidden)}")
+    print(f"Task-level contrasts: {len(effects)}")
+    print(f"CogBench detail rows: {len(cogbench)}")
     print(f"Output directory: {output}")
 
 

@@ -11,11 +11,11 @@
 
 set -euo pipefail
 
-ROOT="$HOME/babylm-lrz"
+ROOT="${BABYLM_LRZ_ROOT:-$HOME/babylm-lrz}"
 REPO="$ROOT/code/babylm-pinyin-abbreviations"
 
 : "${ARCH:?Submit with ARCH=gpt2 or ARCH=qwen2}"
-: "${TOK:?Submit with TOK=hybrid or TOK=bpe}"
+: "${TOK:?Submit with TOK=atomic_bpe_within or TOK=atomic_bpe_cross}"
 
 case "$ARCH" in
     gpt2)
@@ -23,8 +23,6 @@ case "$ARCH" in
         ARCH_ARGS=()
         ;;
     qwen2)
-        # Keep grouped-query attention (12 query heads / 6 KV heads) while
-        # matching the GPT2 model size as closely as practical.
         EXPECTED_PARAMETERS=97260288
         ARCH_ARGS=(--num-key-value-heads 6 --intermediate-size 2304)
         ;;
@@ -35,31 +33,26 @@ case "$ARCH" in
 esac
 
 case "$TOK" in
-    hybrid)
-        TRAIN_DATASET="data/datasets/nk_babylm_zho_train_hybrid.bin"
-        VALID_DATASET="data/datasets/nk_babylm_zho_valid_hybrid.bin"
-        TOKENIZER_NAME="nk_babylm_zho_hybrid"
-        TOKENIZER_ARTIFACT="tokenizers/nk_babylm_zho_hybrid"
-        ;;
-    bpe)
-        TRAIN_DATASET="data/datasets/nk_babylm_zho_train_spm.bin"
-        VALID_DATASET="data/datasets/nk_babylm_zho_valid_spm.bin"
-        TOKENIZER_NAME="nk_babylm_zho"
-        TOKENIZER_ARTIFACT="tokenizers/nk_babylm_zho.model"
-        ;;
+    atomic_bpe_within|atomic_bpe_cross) ;;
     *)
-        echo "Unsupported TOK=$TOK; expected hybrid or bpe" >&2
+        echo "Unsupported TOK=$TOK; expected atomic_bpe_within or atomic_bpe_cross" >&2
         exit 2
         ;;
 esac
 
+TOKENIZER_NAME="nk_babylm_zho_${TOK}"
+TRAIN_DATASET="data/datasets/nk_babylm_zho_train_${TOK}.bin"
+VALID_DATASET="data/datasets/nk_babylm_zho_valid_${TOK}.bin"
 MODEL_DIR="models/nk_babylm_zho_${ARCH}_${TOK}_100m"
 HF_DIR="artifacts/models/100m/hf_nk_babylm_zho_${ARCH}_${TOK}_100m"
 
 cd "$REPO"
 mkdir -p "$(dirname "$HF_DIR")"
 
-for required in "$TRAIN_DATASET" "$VALID_DATASET" "$TOKENIZER_ARTIFACT"; do
+for required in \
+    "tokenizers/$TOKENIZER_NAME" \
+    "$TRAIN_DATASET" \
+    "$VALID_DATASET"; do
     if [[ ! -e "$required" ]]; then
         echo "Required input does not exist: $required" >&2
         exit 2
@@ -78,34 +71,13 @@ export PYTHONUNBUFFERED=1
 export TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS="$SLURM_CPUS_PER_TASK"
 
-echo "========================================"
-echo "Architecture:        $ARCH"
-echo "Tokenizer:           $TOK"
-echo "Training dataset:    $TRAIN_DATASET"
-echo "Validation dataset:  $VALID_DATASET"
-echo "Tokenizer name:      $TOKENIZER_NAME"
-echo "Model output:        $MODEL_DIR"
-echo "HF output:           $HF_DIR"
-echo "Layers / heads:      12 / 12"
-echo "Hidden size:         768"
-echo "Expected parameters: $EXPECTED_PARAMETERS"
-echo "Node:                $(hostname)"
-echo "========================================"
-
+echo "architecture=$ARCH tokenizer=$TOK expected_parameters=$EXPECTED_PARAMETERS"
+echo "model_output=$MODEL_DIR hf_output=$HF_DIR"
 nvidia-smi
 
-python - <<'PY'
-import torch
-print("PyTorch:", torch.__version__)
-print("CUDA:", torch.version.cuda)
-print("CUDA available:", torch.cuda.is_available())
-if torch.cuda.is_available():
-    print("GPU:", torch.cuda.get_device_name(0))
-    print("BF16 supported:", torch.cuda.is_bf16_supported())
-PY
-
 python scripts/train_babylm_from_scratch.py \
-  --model-name nk_babylm_zho_100m \
+  --model-name "nk_babylm_zho_${ARCH}_${TOK}_100m" \
+  --corpus-name nk_babylm_zho \
   --architecture "$ARCH" \
   --tokenizer-kind "$TOK" \
   --tokenizer-name "$TOKENIZER_NAME" \
@@ -131,5 +103,27 @@ python scripts/train_babylm_from_scratch.py \
   --amp-dtype bfloat16 \
   --tf32 \
   --fused-adamw \
+  --hybrid-permissive \
   --start-at train \
   --stop-after convert
+
+for required in \
+    "$MODEL_DIR/best.pt" \
+    "$MODEL_DIR/last.pt" \
+    "$MODEL_DIR/final.pt" \
+    "$MODEL_DIR/metrics.jsonl" \
+    "$HF_DIR/config.json" \
+    "$HF_DIR/model.safetensors" \
+    "$HF_DIR/tokenizer_config.json"; do
+    if [[ ! -s "$required" ]]; then
+        echo "Training completed without required artifact: $required" >&2
+        exit 1
+    fi
+done
+
+# Interval checkpoints are useful during training but redundant after the
+# validated final/best/last checkpoints and Transformers export exist. Removing
+# them here bounds quota use before the next serialized 100M job starts.
+find "$MODEL_DIR" -maxdepth 1 -type f -name 'chck_*' -print -delete
+
+echo "Validated 100M export and pruned redundant interval checkpoints: $HF_DIR"

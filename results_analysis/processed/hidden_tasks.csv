@@ -1,13 +1,13 @@
-model_id,model,architecture,tokenizer,task,status,leaf_count,numeric_count,all_numeric_finite,source_file
-hf_nk_babylm_zho_gpt2_hybrid,GPT2 hybrid,GPT2,Hybrid,hanzi_structure,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_predictions.json
-hf_nk_babylm_zho_gpt2_hybrid,GPT2 hybrid,GPT2,Hybrid,hanzi_pinyin,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_predictions.json
-hf_nk_babylm_zho_gpt2_hybrid,GPT2 hybrid,GPT2,Hybrid,meco_l1,predictions_only,2081,2081,True,results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_predictions.json
-hf_nk_babylm_zho_qwen2_hybrid,Qwen2 hybrid,Qwen2,Hybrid,hanzi_structure,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_predictions.json
-hf_nk_babylm_zho_qwen2_hybrid,Qwen2 hybrid,Qwen2,Hybrid,hanzi_pinyin,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_predictions.json
-hf_nk_babylm_zho_qwen2_hybrid,Qwen2 hybrid,Qwen2,Hybrid,meco_l1,predictions_only,2081,2081,True,results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_predictions.json
-hf_nk_babylm_zho_gpt2_bpe,GPT2 BPE,GPT2,BPE,hanzi_structure,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_gpt2_bpe_predictions.json
-hf_nk_babylm_zho_gpt2_bpe,GPT2 BPE,GPT2,BPE,hanzi_pinyin,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_gpt2_bpe_predictions.json
-hf_nk_babylm_zho_gpt2_bpe,GPT2 BPE,GPT2,BPE,meco_l1,predictions_only,2081,2081,True,results/eval/official/hf_nk_babylm_zho_gpt2_bpe_predictions.json
-hf_nk_babylm_zho_qwen2_bpe,Qwen2 BPE,Qwen2,BPE,hanzi_structure,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_qwen2_bpe_predictions.json
-hf_nk_babylm_zho_qwen2_bpe,Qwen2 BPE,Qwen2,BPE,hanzi_pinyin,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_qwen2_bpe_predictions.json
-hf_nk_babylm_zho_qwen2_bpe,Qwen2 BPE,Qwen2,BPE,meco_l1,predictions_only,2081,2081,True,results/eval/official/hf_nk_babylm_zho_qwen2_bpe_predictions.json
+model_id,model,architecture,tokenizer,scale,cohort,task,status,leaf_count,numeric_count,all_numeric_finite,source_file
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,Original 30M,hanzi_structure,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_predictions.json
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,Original 30M,hanzi_pinyin,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_predictions.json
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,Original 30M,meco_l1,predictions_only,2081,2081,True,results/eval/official/hf_nk_babylm_zho_gpt2_hybrid_predictions.json
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,Original 30M,hanzi_structure,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_predictions.json
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,Original 30M,hanzi_pinyin,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_predictions.json
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,Original 30M,meco_l1,predictions_only,2081,2081,True,results/eval/official/hf_nk_babylm_zho_qwen2_hybrid_predictions.json
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,Original 30M,hanzi_structure,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_gpt2_bpe_predictions.json
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,Original 30M,hanzi_pinyin,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_gpt2_bpe_predictions.json
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,Original 30M,meco_l1,predictions_only,2081,2081,True,results/eval/official/hf_nk_babylm_zho_gpt2_bpe_predictions.json
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,Original 30M,hanzi_structure,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_qwen2_bpe_predictions.json
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,Original 30M,hanzi_pinyin,predictions_only,6000,4000,True,results/eval/official/hf_nk_babylm_zho_qwen2_bpe_predictions.json
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,Original 30M,meco_l1,predictions_only,2081,2081,True,results/eval/official/hf_nk_babylm_zho_qwen2_bpe_predictions.json

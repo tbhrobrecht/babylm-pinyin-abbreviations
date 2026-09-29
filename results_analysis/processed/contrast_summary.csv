@@ -1,0 +1,81 @@
+suite,contrast,category,minuend,subtrahend,task_count,mean_difference
+BabyLM official Chinese,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,16,-0.011523825692738963
+BabyLM official Chinese,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,16,0.027464560356323404
+BabyLM official Chinese,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,16,-0.01395324322549564
+BabyLM official Chinese,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,16,0.025035142823566725
+BabyLM official Chinese,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,16,-0.005214645278555082
+BabyLM official Chinese,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,16,0.0031852938679528577
+BabyLM official Chinese,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,16,0.0008626322687317282
+BabyLM official Chinese,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,16,0.021130656454465494
+BabyLM official Chinese,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,16,0.026900509467328772
+BabyLM official Chinese,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,16,-0.005769853012863278
+BabyLM official Chinese,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,16,0.025440168157166886
+BabyLM official Chinese,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,16,-0.002385878105041511
+BabyLM official Chinese,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,16,0.015053378907178684
+BabyLM official Chinese,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,16,0.029223171066549904
+BabyLM official Chinese,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,16,-0.014169792159371218
+BabyLM official Chinese,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,16,0.022191657783393645
+BabyLM official Chinese,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,16,0.0045581783631500825
+BabyLM official Chinese,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,16,0.0065825705623066
+BabyLM official Chinese,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,16,-0.007828279598320609
+BabyLM official Chinese,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,16,-0.004984794558147529
+Chinese fine-tune,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,4,-0.002039129137148335
+Chinese fine-tune,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,4,0.008697215245391063
+Chinese fine-tune,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,4,-0.001868560421608212
+Chinese fine-tune,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,4,0.008867783960931186
+Chinese fine-tune,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,4,-0.00025680330599828216
+Chinese fine-tune,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,4,-0.0020152026069005236
+Chinese fine-tune,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,4,0.007179790671641498
+Chinese fine-tune,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,4,0.0047500348887487415
+Chinese fine-tune,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,4,0.014388057568915633
+Chinese fine-tune,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,4,-0.009638022680166891
+Chinese fine-tune,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,4,0.012870336234115085
+Chinese fine-tune,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,4,0.005601400841133003
+Chinese fine-tune,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,4,-0.0026865590888910384
+Chinese fine-tune,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,4,0.005193064290373611
+Chinese fine-tune,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,4,-0.00787962337926465
+Chinese fine-tune,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,4,0.01129194640360659
+Chinese fine-tune,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,4,0.006396480514799241
+Chinese fine-tune,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,4,0.0022233595260752193
+Chinese fine-tune,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,4,-0.002822439293990592
+Chinese fine-tune,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,4,-0.005246601736665996
+Chinese zero-shot,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,3,0.0008000000000000229
+Chinese zero-shot,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,3,0.12929999999999997
+Chinese zero-shot,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,3,0.001000000000000038
+Chinese zero-shot,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,3,0.12949999999999998
+Chinese zero-shot,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,3,0.010033333333333302
+Chinese zero-shot,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,3,0.021833333333333333
+Chinese zero-shot,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,3,0.004699999999999964
+Chinese zero-shot,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,3,0.10313333333333334
+Chinese zero-shot,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,3,0.0948
+Chinese zero-shot,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,3,0.00833333333333334
+Chinese zero-shot,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,3,0.10096666666666669
+Chinese zero-shot,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,3,0.021599999999999953
+Chinese zero-shot,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,3,0.10846666666666667
+Chinese zero-shot,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,3,0.11193333333333337
+Chinese zero-shot,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,3,-0.003466666666666692
+Chinese zero-shot,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,3,0.11786666666666668
+Chinese zero-shot,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,3,-0.012166666666666659
+Chinese zero-shot,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,3,0.016166666666666624
+Chinese zero-shot,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,3,-0.0160666666666666
+Chinese zero-shot,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,3,-0.004433333333333289
+CogBench,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,2,-0.00011544013878030113
+CogBench,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,2,0.009973412501229725
+CogBench,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,2,-0.003769093636398685
+CogBench,100M Qwen2: Hybrid - BPE,baseline_tokenizer,100M Qwen2 Hybrid,100M Qwen2 BPE,2,0.006319759003611342
+CogBench,30M Atomic BPE cross: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Cross,30M GPT2 Atomic Cross,2,-0.0025906569069215554
+CogBench,30M Atomic BPE within: Qwen2 - GPT2,architecture,30M Qwen2 Atomic Within,30M GPT2 Atomic Within,2,-0.002661586357746465
+CogBench,30M BPE: Qwen2 - GPT2,architecture,30M Qwen2 BPE,30M GPT2 BPE,2,0.00013705995150409267
+CogBench,30M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,30M GPT2 Atomic Cross,30M GPT2 BPE,2,0.00956794296287071
+CogBench,30M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,30M GPT2 Atomic Within,30M GPT2 BPE,2,0.009578103931202994
+CogBench,30M GPT2: Atomic cross - within,boundary_policy,30M GPT2 Atomic Cross,30M GPT2 Atomic Within,2,-1.0160968332284526e-05
+CogBench,30M GPT2: Hybrid - BPE,baseline_tokenizer,30M GPT2 Hybrid,30M GPT2 BPE,2,0.01051270988343099
+CogBench,30M Hybrid: Qwen2 - GPT2,architecture,30M Qwen2 Hybrid,30M GPT2 Hybrid,2,-0.004242595377190156
+CogBench,30M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,30M Qwen2 Atomic Cross,30M Qwen2 BPE,2,0.006840226104445062
+CogBench,30M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,30M Qwen2 Atomic Within,30M Qwen2 BPE,2,0.006779457621952437
+CogBench,30M Qwen2: Atomic cross - within,boundary_policy,30M Qwen2 Atomic Cross,30M Qwen2 Atomic Within,2,6.076848249262495e-05
+CogBench,30M Qwen2: Hybrid - BPE,baseline_tokenizer,30M Qwen2 Hybrid,30M Qwen2 BPE,2,0.0061330545547367415
+CogBench,GPT2 BPE: 100M - 30M,scale,100M GPT2 BPE,30M GPT2 BPE,2,0.0005193165732296223
+CogBench,GPT2 Hybrid: 100M - 30M,scale,100M GPT2 Hybrid,30M GPT2 Hybrid,2,-1.998080897164245e-05
+CogBench,Qwen2 BPE: 100M - 30M,scale,100M Qwen2 BPE,30M Qwen2 BPE,2,0.00026681648294522853
+CogBench,Qwen2 Hybrid: 100M - 30M,scale,100M Qwen2 Hybrid,30M Qwen2 Hybrid,2,0.00045352093181982855
