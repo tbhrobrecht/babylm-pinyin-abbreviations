@@ -398,29 +398,63 @@ def build_contrasts(models: list[ModelSpec]) -> list[Contrast]:
     lookup = {(m.scale, m.architecture, m.tokenizer): m for m in models}
     contrasts: list[Contrast] = []
 
-    def add(name: str, category: str, plus: tuple[str, str, str], minus: tuple[str, str, str]) -> None:
-        contrasts.append(Contrast(name, category, lookup[plus].label, lookup[minus].label))
+    def scale_key(value: str) -> tuple[float, str]:
+        numeric = "".join(character for character in value if character.isdigit() or character == ".")
+        return (float(numeric) if numeric else math.inf, value)
 
-    for architecture in ("GPT2", "Qwen2"):
-        for tokenizer in ("Hybrid", "BPE"):
-            add(f"{architecture} {tokenizer}: 100M - 30M", "scale",
-                ("100M", architecture, tokenizer), ("30M", architecture, tokenizer))
-        for scale in ("30M", "100M"):
-            add(f"{scale} {architecture}: Hybrid - BPE", "baseline_tokenizer",
-                (scale, architecture, "Hybrid"), (scale, architecture, "BPE"))
-        add(f"30M {architecture}: Atomic cross - within", "boundary_policy",
-            ("30M", architecture, "Atomic BPE cross"),
-            ("30M", architecture, "Atomic BPE within"))
-        for tokenizer in ("Atomic BPE within", "Atomic BPE cross"):
-            add(f"30M {architecture}: {tokenizer} - BPE", "atomic_vs_bpe",
-                ("30M", architecture, tokenizer), ("30M", architecture, "BPE"))
-    for scale, tokenizer in (
-        ("30M", "Hybrid"), ("30M", "BPE"), ("100M", "Hybrid"),
-        ("100M", "BPE"), ("30M", "Atomic BPE within"),
-        ("30M", "Atomic BPE cross"),
-    ):
-        add(f"{scale} {tokenizer}: Qwen2 - GPT2", "architecture",
-            (scale, "Qwen2", tokenizer), (scale, "GPT2", tokenizer))
+    def add_if_present(
+        name: str, category: str,
+        plus: tuple[str, str, str], minus: tuple[str, str, str],
+    ) -> None:
+        if plus in lookup and minus in lookup:
+            contrasts.append(Contrast(name, category, lookup[plus].label, lookup[minus].label))
+
+    scales = sorted(dict.fromkeys(model.scale for model in models), key=scale_key)
+    architectures = list(dict.fromkeys(model.architecture for model in models))
+    tokenizers = list(dict.fromkeys(model.tokenizer for model in models))
+    reference_scale = scales[0]
+
+    for architecture in architectures:
+        for tokenizer in tokenizers:
+            for scale in scales[1:]:
+                add_if_present(
+                    f"{architecture} {tokenizer}: {scale} - {reference_scale}", "scale",
+                    (scale, architecture, tokenizer),
+                    (reference_scale, architecture, tokenizer),
+                )
+        for scale in scales:
+            add_if_present(
+                f"{scale} {architecture}: Hybrid - BPE", "baseline_tokenizer",
+                (scale, architecture, "Hybrid"), (scale, architecture, "BPE"),
+            )
+        for scale in scales:
+            add_if_present(
+                f"{scale} {architecture}: Atomic cross - within", "boundary_policy",
+                (scale, architecture, "Atomic BPE cross"),
+                (scale, architecture, "Atomic BPE within"),
+            )
+        for scale in scales:
+            for tokenizer in ("Atomic BPE within", "Atomic BPE cross"):
+                add_if_present(
+                    f"{scale} {architecture}: {tokenizer} - BPE", "atomic_vs_bpe",
+                    (scale, architecture, tokenizer), (scale, architecture, "BPE"),
+                )
+
+    if "GPT2" in architectures and "Qwen2" in architectures:
+        for scale in scales:
+            for tokenizer in ("Hybrid", "BPE"):
+                add_if_present(
+                    f"{scale} {tokenizer}: Qwen2 - GPT2", "architecture",
+                    (scale, "Qwen2", tokenizer), (scale, "GPT2", tokenizer),
+                )
+        for scale in scales:
+            for tokenizer in tokenizers:
+                if tokenizer in {"Hybrid", "BPE"}:
+                    continue
+                add_if_present(
+                    f"{scale} {tokenizer}: Qwen2 - GPT2", "architecture",
+                    (scale, "Qwen2", tokenizer), (scale, "GPT2", tokenizer),
+                )
     return contrasts
 
 
@@ -474,7 +508,7 @@ def build_summary(
     mean = {(r["model"], r["suite"]): r["mean_score"] for r in averages}
     cohorts = list(dict.fromkeys(m.cohort for m in models))
     lines = [
-        "# Mandarin BabyLM 12-model comparison", "", "## Validation and scope", "",
+        f"# Mandarin BabyLM {len(models)}-model comparison", "", "## Validation and scope", "",
         f"- Compared `{len(models)}` models across `{len(wide)}` comparable primary metrics.",
         f"- Parsed `{len(metrics)}` total metric rows, including supplementary metrics.",
         f"- Verified `{checked}` legacy snapshot files against `SOURCE_MANIFEST.sha256`.",
@@ -518,7 +552,7 @@ def build_summary(
     lines.extend([
         "## Generated files", "",
         "- `metrics_long.csv`: every parsed metric with scale and cohort metadata.",
-        "- `primary_scores_wide.csv`: all 12 models side by side for every primary task.",
+        "- `primary_scores_wide.csv`: all registered models side by side for every primary task.",
         "- `suite_averages.csv`: descriptive per-model means within each suite.",
         "- `pairwise_effects.csv`: task-level size, tokenizer, boundary, and architecture contrasts.",
         "- `contrast_summary.csv`: mean paired contrast by suite.",

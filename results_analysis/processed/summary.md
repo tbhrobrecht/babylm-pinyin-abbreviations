@@ -143,7 +143,7 @@ Positive values favor the condition before the minus sign.
 ## Generated files
 
 - `metrics_long.csv`: every parsed metric with scale and cohort metadata.
-- `primary_scores_wide.csv`: all 12 models side by side for every primary task.
+- `primary_scores_wide.csv`: all registered models side by side for every primary task.
 - `suite_averages.csv`: descriptive per-model means within each suite.
 - `pairwise_effects.csv`: task-level size, tokenizer, boundary, and architecture contrasts.
 - `contrast_summary.csv`: mean paired contrast by suite.
