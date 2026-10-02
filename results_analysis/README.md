@@ -11,6 +11,7 @@ within-word/cross-word atomic-BPE models at both 30M and 100M scales.
 - `raw_snapshot/SOURCE_MANIFEST.sha256`: hashes calculated on LRZ before transfer.
 - `models.json`: model registry and result/config locations. Add future models here.
 - `build_results_summary.py`: deterministic parser and comparison generator.
+- `build_composite_analysis.py`: normalized cross-task composite and sensitivity analysis.
 - `processed/`: generated readable CSV tables and `summary.md`.
 
 Large raw prediction arrays and model weights are excluded from the legacy
@@ -23,6 +24,7 @@ From the repository root:
 
 ```bash
 python results_analysis/build_results_summary.py
+python results_analysis/build_composite_analysis.py
 ```
 
 To use a different registry or output location:
@@ -49,7 +51,17 @@ metrics. New model and evaluation artifacts remain under gitignored `artifacts/`
 - Use `processed/cogbench_detail.csv` for subject/region-level CogBench analysis.
 - Use `processed/hidden_tasks.csv` for the original snapshot's prediction-only
   hidden-task coverage; it is not part of the scored all-model comparison.
+- Use `processed/composite_summary.md` for the equal-suite normalized ranking,
+  task-composition intervals, variability, and interpretation safeguards.
+- Use `processed/composite_sensitivity.csv` to check whether the ordering is
+  robust to percentile versus z-score normalization and task versus suite weighting.
 
 All unweighted suite averages are descriptive only. The evaluation tasks have
 different sizes and variances, and one trained model is available per condition,
 so small differences should not be interpreted as seed-robust effects.
+
+The composite analysis never averages unlike raw metrics. Its primary score
+percentile-ranks models separately within every task, averages within suites,
+and then weights the four suites equally. Bootstrap intervals resample tasks
+within suites; they describe task-composition sensitivity and are not training-
+seed confidence intervals.

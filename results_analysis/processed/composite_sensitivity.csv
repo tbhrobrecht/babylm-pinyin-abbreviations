@@ -1,0 +1,81 @@
+model_id,model,architecture,tokenizer,scale,scheme,score,rank
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,percentile_equal_suite,59.96527777777778,4.0
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,percentile_equal_suite,61.94444444444444,3.0
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,percentile_equal_suite,28.055555555555554,14.0
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,percentile_equal_suite,30.104166666666664,13.0
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,percentile_equal_suite,72.88194444444444,2.0
+hf_nk_babylm_zho_qwen2_hybrid_100m,100M Qwen2 Hybrid,Qwen2,Hybrid,100M,percentile_equal_suite,55.885416666666664,7.0
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,percentile_equal_suite,26.68402777777778,15.0
+hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,percentile_equal_suite,21.944444444444446,16.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,percentile_equal_suite,53.4375,9.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within,30M Qwen2 Atomic Within,Qwen2,Atomic BPE within,30M,percentile_equal_suite,58.71527777777778,6.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross,30M GPT2 Atomic Cross,GPT2,Atomic BPE cross,30M,percentile_equal_suite,50.90277777777777,10.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,percentile_equal_suite,45.08680555555556,11.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,percentile_equal_suite,75.17361111111111,1.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m,100M Qwen2 Atomic Within,Qwen2,Atomic BPE within,100M,percentile_equal_suite,55.06944444444444,8.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,percentile_equal_suite,59.861111111111114,5.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m,100M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,100M,percentile_equal_suite,44.28819444444444,12.0
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,percentile_equal_task,55.86666666666667,7.0
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,percentile_equal_task,58.4,5.0
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,percentile_equal_task,35.06666666666666,14.0
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,percentile_equal_task,32.93333333333334,15.0
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,percentile_equal_task,72.13333333333333,1.0
+hf_nk_babylm_zho_qwen2_hybrid_100m,100M Qwen2 Hybrid,Qwen2,Hybrid,100M,percentile_equal_task,57.46666666666667,6.0
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,percentile_equal_task,35.2,13.0
+hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,percentile_equal_task,28.266666666666666,16.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,percentile_equal_task,54.13333333333333,8.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within,30M Qwen2 Atomic Within,Qwen2,Atomic BPE within,30M,percentile_equal_task,59.06666666666667,4.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross,30M GPT2 Atomic Cross,GPT2,Atomic BPE cross,30M,percentile_equal_task,47.6,10.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,percentile_equal_task,43.73333333333333,11.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,percentile_equal_task,66.13333333333333,2.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m,100M Qwen2 Atomic Within,Qwen2,Atomic BPE within,100M,percentile_equal_task,59.2,3.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,percentile_equal_task,51.86666666666667,9.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m,100M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,100M,percentile_equal_task,42.93333333333333,12.0
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,zscore_equal_suite,0.36182189809845156,5.0
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,zscore_equal_suite,0.38976860532162283,3.0
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,zscore_equal_suite,-0.9727865118363433,15.0
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,zscore_equal_suite,-0.7787411521112453,13.0
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,zscore_equal_suite,0.6308102183165822,2.0
+hf_nk_babylm_zho_qwen2_hybrid_100m,100M Qwen2 Hybrid,Qwen2,Hybrid,100M,zscore_equal_suite,0.25985920240955346,9.0
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,zscore_equal_suite,-0.8581989565123435,14.0
+hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,zscore_equal_suite,-1.0804617960882037,16.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,zscore_equal_suite,0.273968533154282,8.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within,30M Qwen2 Atomic Within,Qwen2,Atomic BPE within,30M,zscore_equal_suite,0.358909523989515,6.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross,30M GPT2 Atomic Cross,GPT2,Atomic BPE cross,30M,zscore_equal_suite,0.3173454832352229,7.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,zscore_equal_suite,0.012164693361127675,11.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,zscore_equal_suite,0.6513527984121446,1.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m,100M Qwen2 Atomic Within,Qwen2,Atomic BPE within,100M,zscore_equal_suite,0.21313877148114824,10.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,zscore_equal_suite,0.3687372138950068,4.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m,100M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,100M,zscore_equal_suite,-0.14768852512654496,12.0
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,zscore_equal_task,0.2154865533891932,7.0
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,zscore_equal_task,0.282763801126651,4.0
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,zscore_equal_task,-0.6786929255638263,15.0
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,zscore_equal_task,-0.6365406054995792,14.0
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,zscore_equal_task,0.6072171678614559,1.0
+hf_nk_babylm_zho_qwen2_hybrid_100m,100M Qwen2 Hybrid,Qwen2,Hybrid,100M,zscore_equal_task,0.2201931778655454,6.0
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,zscore_equal_task,-0.518854220489333,13.0
+hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,zscore_equal_task,-0.8440645964684339,16.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,zscore_equal_task,0.18904608057872618,8.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within,30M Qwen2 Atomic Within,Qwen2,Atomic BPE within,30M,zscore_equal_task,0.37701889100224867,3.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross,30M GPT2 Atomic Cross,GPT2,Atomic BPE cross,30M,zscore_equal_task,0.13261108029552104,10.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,zscore_equal_task,-0.047809516581132444,11.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,zscore_equal_task,0.4551967669434622,2.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m,100M Qwen2 Atomic Within,Qwen2,Atomic BPE within,100M,zscore_equal_task,0.2799201927026462,5.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,zscore_equal_task,0.1636070678717902,9.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m,100M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,100M,zscore_equal_task,-0.19709891503494809,12.0
+hf_nk_babylm_zho_gpt2_hybrid,30M GPT2 Hybrid,GPT2,Hybrid,30M,percentile_accuracy_only_equal_suite,49.9537037037037,7.0
+hf_nk_babylm_zho_qwen2_hybrid,30M Qwen2 Hybrid,Qwen2,Hybrid,30M,percentile_accuracy_only_equal_suite,68.14814814814815,3.0
+hf_nk_babylm_zho_gpt2_bpe,30M GPT2 BPE,GPT2,BPE,30M,percentile_accuracy_only_equal_suite,34.07407407407407,14.0
+hf_nk_babylm_zho_qwen2_bpe,30M Qwen2 BPE,Qwen2,BPE,30M,percentile_accuracy_only_equal_suite,36.80555555555555,13.0
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,percentile_accuracy_only_equal_suite,69.39814814814814,2.0
+hf_nk_babylm_zho_qwen2_hybrid_100m,100M Qwen2 Hybrid,Qwen2,Hybrid,100M,percentile_accuracy_only_equal_suite,60.069444444444436,6.0
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,percentile_accuracy_only_equal_suite,32.245370370370374,15.0
+hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,percentile_accuracy_only_equal_suite,25.925925925925927,16.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,percentile_accuracy_only_equal_suite,47.916666666666664,9.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within,30M Qwen2 Atomic Within,Qwen2,Atomic BPE within,30M,percentile_accuracy_only_equal_suite,61.620370370370374,5.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross,30M GPT2 Atomic Cross,GPT2,Atomic BPE cross,30M,percentile_accuracy_only_equal_suite,45.64814814814815,10.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,percentile_accuracy_only_equal_suite,44.56018518518519,11.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,percentile_accuracy_only_equal_suite,70.23148148148148,1.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m,100M Qwen2 Atomic Within,Qwen2,Atomic BPE within,100M,percentile_accuracy_only_equal_suite,62.31481481481482,4.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,percentile_accuracy_only_equal_suite,49.81481481481482,8.0
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m,100M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,100M,percentile_accuracy_only_equal_suite,41.273148148148145,12.0

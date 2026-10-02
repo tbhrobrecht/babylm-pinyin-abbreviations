@@ -48,3 +48,16 @@ Task families are defined before aggregation as follows:
 - **Chinese linguistic form:** POS, ZhoBLiMP, Hanzi–pinyin, and Hanzi structure.
 - **Chinese downstream:** AFQMC, CLUE WSC 2020, OCNLI, and TNEWS.
 - **Cognitive alignment:** CogBench fMRI and word-fMRI tasks.
+
+## M5. Composite performance
+
+**Cross-suite performance and consistency.** Primary task scores are converted
+to within-task percentile ranks across models, averaged within each evaluation
+suite, and then averaged with equal weight per suite. Points in panel A show the
+resulting relative composite; bars are 95% intervals from paired resampling of
+tasks within suites. These intervals quantify sensitivity to task composition
+and are not confidence intervals over training seeds. Panel B shows the
+population standard deviation of each model's percentile ranks across the 25
+tasks; lower values indicate more consistent relative placement, not greater
+absolute accuracy. Color denotes tokenizer, shape denotes architecture, and
+point size denotes model scale.

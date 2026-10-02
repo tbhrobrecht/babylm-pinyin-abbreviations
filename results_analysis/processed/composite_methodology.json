@@ -1,0 +1,20 @@
+{
+  "primary_scheme": "percentile_equal_suite",
+  "suite_order": [
+    "BabyLM official Chinese",
+    "Chinese zero-shot",
+    "Chinese fine-tune",
+    "CogBench"
+  ],
+  "task_counts": {
+    "BabyLM official Chinese": 16,
+    "Chinese zero-shot": 3,
+    "Chinese fine-tune": 4,
+    "CogBench": 2
+  },
+  "model_count": 16,
+  "bootstrap_replicates": 10000,
+  "bootstrap_seed": 20261002,
+  "degenerate_tasks_assigned_zero_zscore": [],
+  "interpretation": "Bootstrap intervals quantify sensitivity to resampling the observed tasks within suites; they do not represent uncertainty over training seeds or future benchmark populations."
+}

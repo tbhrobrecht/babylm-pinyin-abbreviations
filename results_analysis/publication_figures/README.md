@@ -26,6 +26,10 @@ UV_CACHE_DIR=/tmp/babylm-uv-cache uv pip install \
 
 /tmp/babylm-figures-venv/bin/python \
   results_analysis/publication_figures/generate_main_figures.py
+
+python results_analysis/build_composite_analysis.py
+/tmp/babylm-figures-venv/bin/python \
+  results_analysis/publication_figures/generate_composite_figures.py
 ```
 
 To additionally render 600-DPI raster copies, append
@@ -95,6 +99,8 @@ pairs. This prevents lines from silently connecting unmatched models.
    for each available scale and architecture.
 4. `M4_task_family_profiles`: mean within-task percentile-rank profiles. Ranking
    within tasks makes the aggregation robust to incompatible metric units.
+5. `M5_composite_performance`: equal-suite normalized performance with paired
+   task-resampling intervals and cross-task performance variability.
 
 See `MAIN_BODY_CAPTIONS.md` for manuscript-ready draft captions and the explicit
 task-family definitions.
@@ -111,6 +117,8 @@ task-family definitions.
    comparisons for every registered architecture and scale on every task.
 5. `05_suite_average_dotplot`: unweighted descriptive means within each suite.
 6. `06_cogbench_region_heatmap`: mean CogBench fMRI score by region and model.
+7. `07_composite_sensitivity`: model-rank stability under five aggregation
+   definitions, alongside normalized suite-level performance.
 
 ## Visual conventions
 

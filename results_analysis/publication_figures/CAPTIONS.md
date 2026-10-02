@@ -36,3 +36,10 @@
    subject-level correlations multiplied by 100. Color gives the deviation from
    the mean across models within each region, emphasizing relative model
    differences while retaining the raw values as annotations.
+
+7. **Robustness of the cross-task model ordering.** Panel A compares model rank
+   under equal-suite and equal-task weighting with percentile-rank and z-score
+   normalization, plus an accuracy-oriented analysis that excludes CogBench.
+   Lines span each model's observed rank range across these five definitions.
+   Panel B shows suite-specific mean within-task percentiles. This analysis does
+   not average incompatible raw accuracy, F1, MCC, and correlation values.
