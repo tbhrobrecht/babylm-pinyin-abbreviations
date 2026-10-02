@@ -642,11 +642,12 @@ def babylm_checkpoint_name(token_target: int) -> str:
 def pending_babylm_checkpoint_targets(
     current_tokens_seen: int,
     saved_targets: set[int],
+    checkpoint_targets: tuple[int, ...] = BABYLM_CHECKPOINT_TARGETS,
 ) -> list[int]:
     """Return unsaved BabyLM checkpoint targets reached by this training run."""
     return [
         target
-        for target in BABYLM_CHECKPOINT_TARGETS
+        for target in checkpoint_targets
         if target <= current_tokens_seen and target not in saved_targets
     ]
 
@@ -936,8 +937,19 @@ def train(args: argparse.Namespace) -> None:
             config,
             device,
         )
+    configured_checkpoint_targets = tuple(
+        getattr(args, "babylm_checkpoint_targets", BABYLM_CHECKPOINT_TARGETS)
+    )
+    if not configured_checkpoint_targets or any(
+        target <= 0 for target in configured_checkpoint_targets
+    ):
+        raise ValueError("BabyLM checkpoint targets must be positive integers.")
+    if tuple(sorted(set(configured_checkpoint_targets))) != configured_checkpoint_targets:
+        raise ValueError("BabyLM checkpoint targets must be unique and increasing.")
     saved_babylm_targets = {
-        target for target in BABYLM_CHECKPOINT_TARGETS if target <= training_tokens_seen
+        target
+        for target in configured_checkpoint_targets
+        if target <= training_tokens_seen
     }
 
     model: nn.Module = raw_model
@@ -1059,6 +1071,7 @@ def train(args: argparse.Namespace) -> None:
                 checkpoint_targets = pending_babylm_checkpoint_targets(
                     training_tokens_seen,
                     saved_babylm_targets,
+                    configured_checkpoint_targets,
                 )
                 if checkpoint_targets:
                     interval_checkpoint = checkpoint_payload(
@@ -1294,6 +1307,17 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="Include optimizer state in checkpoints. Disabled by default to reduce checkpoint I/O.",
+    )
+    parser.add_argument(
+        "--babylm-checkpoint-targets",
+        type=int,
+        nargs="+",
+        default=list(BABYLM_CHECKPOINT_TARGETS),
+        metavar="TOKENS",
+        help=(
+            "Training-token milestones at which to save chck_* artifacts. "
+            "Defaults to the standard 1M-100M BabyLM milestones."
+        ),
     )
     return parser.parse_args()
 

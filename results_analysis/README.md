@@ -1,9 +1,9 @@
 # Results analysis snapshot
 
 This directory contains an integrity-checked evaluation snapshot and a
-standard-library Python processor for comparing all twelve Mandarin BabyLM
+standard-library Python processor for comparing all sixteen Mandarin BabyLM
 models: the original four 30M models, their four 100M counterparts, and the
-four 30M within-word/cross-word atomic-BPE models.
+within-word/cross-word atomic-BPE models at both 30M and 100M scales.
 
 ## Contents
 
@@ -40,7 +40,7 @@ metrics. New model and evaluation artifacts remain under gitignored `artifacts/`
 ## Reading the outputs
 
 - Start with `processed/summary.md` for the main findings and cautions.
-- Use `processed/primary_scores_wide.csv` for direct twelve-model comparisons.
+- Use `processed/primary_scores_wide.csv` for direct comparisons of all registered models.
 - Use `processed/suite_averages.csv` for per-suite descriptive averages.
 - Use `processed/pairwise_effects.csv` for task-level size, tokenizer,
   boundary-policy, and architecture contrasts.
@@ -48,7 +48,7 @@ metrics. New model and evaluation artifacts remain under gitignored `artifacts/`
 - Use `processed/metrics_long.csv` for plotting or further analysis in Python/R.
 - Use `processed/cogbench_detail.csv` for subject/region-level CogBench analysis.
 - Use `processed/hidden_tasks.csv` for the original snapshot's prediction-only
-  hidden-task coverage; it is not a scored twelve-model comparison.
+  hidden-task coverage; it is not part of the scored all-model comparison.
 
 All unweighted suite averages are descriptive only. The evaluation tasks have
 different sizes and variances, and one trained model is available per condition,

@@ -1,9 +1,9 @@
-# Mandarin BabyLM 12-model comparison
+# Mandarin BabyLM 16-model comparison
 
 ## Validation and scope
 
-- Compared `12` models across `25` comparable primary metrics.
-- Parsed `2460` total metric rows, including supplementary metrics.
+- Compared `16` models across `25` comparable primary metrics.
+- Parsed `3280` total metric rows, including supplementary metrics.
 - Verified `46` legacy snapshot files against `SOURCE_MANIFEST.sha256`.
 - Raw official outputs use evaluator collation rules: Global PIQA uses normalized accuracy; other zero-shot tasks use accuracy.
 - Server-scored tasks are excluded from official local scores; Chinese-pipeline Hanzi scores remain a separate local suite.
@@ -24,6 +24,10 @@
 | 30M Qwen2 Atomic Within | 30M | Qwen2 | Atomic BPE within | 31,408,640 | 8 | 512 | 16000 |
 | 30M GPT2 Atomic Cross | 30M | GPT2 | Atomic BPE cross | 33,674,240 | 8 | 512 | 16000 |
 | 30M Qwen2 Atomic Cross | 30M | Qwen2 | Atomic BPE cross | 31,408,640 | 8 | 512 | 16000 |
+| 100M GPT2 Atomic Within | 100M | GPT2 | Atomic BPE within | 97,737,216 | 12 | 768 | 16000 |
+| 100M Qwen2 Atomic Within | 100M | Qwen2 | Atomic BPE within | 97,260,288 | 12 | 768 | 16000 |
+| 100M GPT2 Atomic Cross | 100M | GPT2 | Atomic BPE cross | 97,737,216 | 12 | 768 | 16000 |
+| 100M Qwen2 Atomic Cross | 100M | Qwen2 | Atomic BPE cross | 97,260,288 | 12 | 768 | 16000 |
 
 ## Suite-level descriptive averages
 
@@ -41,6 +45,10 @@
 | 30M Qwen2 Atomic Within | 0.4493 | 0.7623 | 0.6161 | 0.3200 |
 | 30M GPT2 Atomic Cross | 0.4403 | 0.7488 | 0.6085 | 0.3227 |
 | 30M Qwen2 Atomic Cross | 0.4351 | 0.7588 | 0.6082 | 0.3201 |
+| 100M GPT2 Atomic Within | 0.4503 | 0.7609 | 0.6216 | 0.3237 |
+| 100M Qwen2 Atomic Within | 0.4397 | 0.7584 | 0.6217 | 0.3189 |
+| 100M GPT2 Atomic Cross | 0.4375 | 0.7529 | 0.6127 | 0.3241 |
+| 100M Qwen2 Atomic Cross | 0.4278 | 0.7542 | 0.6093 | 0.3206 |
 
 These are unweighted descriptive averages within each suite; do not average across suites because their metrics and scales differ.
 
@@ -48,28 +56,52 @@ These are unweighted descriptive averages within each suite; do not average acro
 
 | Suite | Contrast | Mean difference |
 | --- | --- | --- |
+| BabyLM official Chinese | 100M GPT2: Atomic cross - within | -0.0128 |
+| BabyLM official Chinese | 100M Qwen2: Atomic cross - within | -0.0119 |
 | BabyLM official Chinese | 30M GPT2: Atomic cross - within | -0.0058 |
 | BabyLM official Chinese | 30M Qwen2: Atomic cross - within | -0.0142 |
+| BabyLM official Chinese | GPT2 Atomic BPE cross: 100M - 30M | -0.0029 |
+| BabyLM official Chinese | GPT2 Atomic BPE within: 100M - 30M | +0.0042 |
 | BabyLM official Chinese | GPT2 BPE: 100M - 30M | +0.0046 |
 | BabyLM official Chinese | GPT2 Hybrid: 100M - 30M | +0.0066 |
+| BabyLM official Chinese | Qwen2 Atomic BPE cross: 100M - 30M | -0.0073 |
+| BabyLM official Chinese | Qwen2 Atomic BPE within: 100M - 30M | -0.0096 |
 | BabyLM official Chinese | Qwen2 BPE: 100M - 30M | -0.0078 |
 | BabyLM official Chinese | Qwen2 Hybrid: 100M - 30M | -0.0050 |
+| Chinese fine-tune | 100M GPT2: Atomic cross - within | -0.0089 |
+| Chinese fine-tune | 100M Qwen2: Atomic cross - within | -0.0125 |
 | Chinese fine-tune | 30M GPT2: Atomic cross - within | -0.0096 |
 | Chinese fine-tune | 30M Qwen2: Atomic cross - within | -0.0079 |
+| Chinese fine-tune | GPT2 Atomic BPE cross: 100M - 30M | +0.0042 |
+| Chinese fine-tune | GPT2 Atomic BPE within: 100M - 30M | +0.0034 |
 | Chinese fine-tune | GPT2 BPE: 100M - 30M | +0.0064 |
 | Chinese fine-tune | GPT2 Hybrid: 100M - 30M | +0.0022 |
+| Chinese fine-tune | Qwen2 Atomic BPE cross: 100M - 30M | +0.0010 |
+| Chinese fine-tune | Qwen2 Atomic BPE within: 100M - 30M | +0.0056 |
 | Chinese fine-tune | Qwen2 BPE: 100M - 30M | -0.0028 |
 | Chinese fine-tune | Qwen2 Hybrid: 100M - 30M | -0.0052 |
+| Chinese zero-shot | 100M GPT2: Atomic cross - within | -0.0080 |
+| Chinese zero-shot | 100M Qwen2: Atomic cross - within | -0.0042 |
 | Chinese zero-shot | 30M GPT2: Atomic cross - within | +0.0083 |
 | Chinese zero-shot | 30M Qwen2: Atomic cross - within | -0.0035 |
+| Chinese zero-shot | GPT2 Atomic BPE cross: 100M - 30M | +0.0041 |
+| Chinese zero-shot | GPT2 Atomic BPE within: 100M - 30M | +0.0205 |
 | Chinese zero-shot | GPT2 BPE: 100M - 30M | -0.0122 |
 | Chinese zero-shot | GPT2 Hybrid: 100M - 30M | +0.0162 |
+| Chinese zero-shot | Qwen2 Atomic BPE cross: 100M - 30M | -0.0046 |
+| Chinese zero-shot | Qwen2 Atomic BPE within: 100M - 30M | -0.0039 |
 | Chinese zero-shot | Qwen2 BPE: 100M - 30M | -0.0161 |
 | Chinese zero-shot | Qwen2 Hybrid: 100M - 30M | -0.0044 |
+| CogBench | 100M GPT2: Atomic cross - within | +0.0003 |
+| CogBench | 100M Qwen2: Atomic cross - within | +0.0017 |
 | CogBench | 30M GPT2: Atomic cross - within | -0.0000 |
 | CogBench | 30M Qwen2: Atomic cross - within | +0.0001 |
+| CogBench | GPT2 Atomic BPE cross: 100M - 30M | +0.0014 |
+| CogBench | GPT2 Atomic BPE within: 100M - 30M | +0.0010 |
 | CogBench | GPT2 BPE: 100M - 30M | +0.0005 |
 | CogBench | GPT2 Hybrid: 100M - 30M | -0.0000 |
+| CogBench | Qwen2 Atomic BPE cross: 100M - 30M | +0.0005 |
+| CogBench | Qwen2 Atomic BPE within: 100M - 30M | -0.0011 |
 | CogBench | Qwen2 BPE: 100M - 30M | +0.0003 |
 | CogBench | Qwen2 Hybrid: 100M - 30M | +0.0005 |
 
@@ -139,6 +171,27 @@ Positive values favor the condition before the minus sign.
 | xnli | 0.4705 | 0.4530 | 0.4485 | 0.4695 | 30M GPT2 Atomic Within |
 | xstorycloze_zh_mubench | 0.5015 | 0.5077 | 0.4899 | 0.4946 | 30M Qwen2 Atomic Within |
 | zhoblimp | 0.7535 | 0.7533 | 0.7104 | 0.7307 | 30M GPT2 Atomic Within |
+
+### Atomic BPE 100M
+
+| Task | 100M GPT2 Atomic Within | 100M Qwen2 Atomic Within | 100M GPT2 Atomic Cross | 100M Qwen2 Atomic Cross | Best in cohort |
+| --- | --- | --- | --- | --- | --- |
+| arc | 0.2188 | 0.2354 | 0.2438 | 0.2688 | 100M Qwen2 Atomic Cross |
+| belebele | 0.2386 | 0.1932 | 0.2500 | 0.2159 | 100M GPT2 Atomic Cross |
+| bmlama | 0.1175 | 0.1879 | 0.1598 | 0.1689 | 100M Qwen2 Atomic Within |
+| global_piqa_nonparallel_zh | 0.4600 | 0.5000 | 0.4600 | 0.4800 | 100M Qwen2 Atomic Within |
+| global_piqa_parallel_zh | 0.2621 | 0.2621 | 0.2816 | 0.2524 | 100M GPT2 Atomic Cross |
+| hellaswag_zh_mubench | 0.2705 | 0.2727 | 0.2731 | 0.2726 | 100M GPT2 Atomic Cross |
+| include | 0.2321 | 0.2500 | 0.2054 | 0.1875 | 100M Qwen2 Atomic Within |
+| mnli | 0.5800 | 0.5383 | 0.5484 | 0.4932 | 100M GPT2 Atomic Within |
+| pos | 0.8546 | 0.8512 | 0.8444 | 0.8511 | 100M GPT2 Atomic Within |
+| sib200 | 0.8350 | 0.6950 | 0.8150 | 0.7150 | 100M GPT2 Atomic Within |
+| truthfulqa | 0.3393 | 0.2411 | 0.1786 | 0.2143 | 100M GPT2 Atomic Within |
+| winogrande_zh_mubench | 0.5029 | 0.5120 | 0.4823 | 0.4946 | 100M Qwen2 Atomic Within |
+| xcomps_zh | 0.5339 | 0.5364 | 0.5327 | 0.5350 | 100M Qwen2 Atomic Within |
+| xnli | 0.4965 | 0.4845 | 0.4945 | 0.4470 | 100M GPT2 Atomic Within |
+| xstorycloze_zh_mubench | 0.5101 | 0.5147 | 0.4985 | 0.5031 | 100M Qwen2 Atomic Within |
+| zhoblimp | 0.7522 | 0.7608 | 0.7317 | 0.7450 | 100M Qwen2 Atomic Within |
 
 ## Generated files
 

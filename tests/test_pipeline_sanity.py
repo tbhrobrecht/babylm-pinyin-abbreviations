@@ -468,6 +468,14 @@ class PipelineSanityTests(unittest.TestCase):
             pending_babylm_checkpoint_targets(2_500_000, {1_000_000}),
             [2_000_000],
         )
+        self.assertEqual(
+            pending_babylm_checkpoint_targets(
+                100_000_000,
+                set(),
+                (100_000_000,),
+            ),
+            [100_000_000],
+        )
 
     def test_tiny_model_forward_has_finite_loss(self) -> None:
         model = PinyinCodeLanguageModel(

@@ -6,6 +6,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=10:00:00
+#SBATCH --requeue
 #SBATCH --output=/dss/dsshome1/0D/go56yiq2/babylm-lrz/logs/new_pipeline/%x-%j.out
 #SBATCH --error=/dss/dsshome1/0D/go56yiq2/babylm-lrz/logs/new_pipeline/%x-%j.err
 
@@ -103,6 +104,7 @@ python scripts/train_babylm_from_scratch.py \
   --amp-dtype bfloat16 \
   --tf32 \
   --fused-adamw \
+  --babylm-checkpoint-targets 100000000 \
   --hybrid-permissive \
   --start-at train \
   --stop-after convert

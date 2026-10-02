@@ -95,6 +95,38 @@
       "chinese_path": "artifacts/evaluations/30m_atomic/chinese/chinese_pipeline_atomic_bpe_30m/hf_nk_babylm_zho_qwen2_atomic_bpe_cross",
       "config_path": "artifacts/models/30m/hf_nk_babylm_zho_qwen2_atomic_bpe_cross/config.json",
       "model_path": "artifacts/models/30m/hf_nk_babylm_zho_qwen2_atomic_bpe_cross"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m", "label": "100M GPT2 Atomic Within",
+      "architecture": "GPT2", "tokenizer": "Atomic BPE within", "scale": "100M", "cohort": "Atomic BPE 100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m_atomic/official"},
+      "chinese_path": "artifacts/evaluations/100m_atomic/chinese/chinese_pipeline_atomic_bpe_100m/hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m", "label": "100M Qwen2 Atomic Within",
+      "architecture": "Qwen2", "tokenizer": "Atomic BPE within", "scale": "100M", "cohort": "Atomic BPE 100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m_atomic/official"},
+      "chinese_path": "artifacts/evaluations/100m_atomic/chinese/chinese_pipeline_atomic_bpe_100m/hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m", "label": "100M GPT2 Atomic Cross",
+      "architecture": "GPT2", "tokenizer": "Atomic BPE cross", "scale": "100M", "cohort": "Atomic BPE 100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m_atomic/official"},
+      "chinese_path": "artifacts/evaluations/100m_atomic/chinese/chinese_pipeline_atomic_bpe_100m/hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m", "label": "100M Qwen2 Atomic Cross",
+      "architecture": "Qwen2", "tokenizer": "Atomic BPE cross", "scale": "100M", "cohort": "Atomic BPE 100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m_atomic/official"},
+      "chinese_path": "artifacts/evaluations/100m_atomic/chinese/chinese_pipeline_atomic_bpe_100m/hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m"
     }
   ]
 }

@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-09-29T05:22:39.169078</dc:date>
+    <dc:date>2026-10-02T04:00:02.321646</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -40,7 +40,7 @@ Q 78.957769 94.8348 78.957769 100.0008
 L 78.957769 178.524 
 Q 78.957769 183.69 98.829769 183.69 
 z
-" clip-path="url(#p650fbb708d)" style="fill: #e6f2f8; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
+" clip-path="url(#p8af75b8a62)" style="fill: #e6f2f8; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 257.805769 183.69 
@@ -53,7 +53,7 @@ Q 237.933769 94.8348 237.933769 100.0008
 L 237.933769 178.524 
 Q 237.933769 183.69 257.805769 183.69 
 z
-" clip-path="url(#p650fbb708d)" style="fill: #e7f5ef; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
+" clip-path="url(#p8af75b8a62)" style="fill: #e7f5ef; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 448.576969 183.69 
@@ -66,7 +66,7 @@ Q 428.704969 94.8348 428.704969 100.0008
 L 428.704969 178.524 
 Q 428.704969 183.69 448.576969 183.69 
 z
-" clip-path="url(#p650fbb708d)" style="fill: #fff0e5; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
+" clip-path="url(#p8af75b8a62)" style="fill: #fff0e5; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 607.552969 183.69 
@@ -79,7 +79,7 @@ Q 587.680969 94.8348 587.680969 100.0008
 L 587.680969 178.524 
 Q 587.680969 183.69 607.552969 183.69 
 z
-" clip-path="url(#p650fbb708d)" style="fill: #f4eaf2; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
+" clip-path="url(#p8af75b8a62)" style="fill: #f4eaf2; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 750.631369 183.69 
@@ -92,7 +92,7 @@ Q 730.759369 94.8348 730.759369 100.0008
 L 730.759369 178.524 
 Q 730.759369 183.69 750.631369 183.69 
 z
-" clip-path="url(#p650fbb708d)" style="fill: #f0f0f0; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
+" clip-path="url(#p8af75b8a62)" style="fill: #f0f0f0; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle" x="150.496969" y="127.135842" transform="rotate(-0 150.496969 127.135842)">Training data</text>
@@ -169,7 +169,7 @@ z
 " style="fill: #555555; stroke: #555555; stroke-linecap: round"/>
    </g>
    <g id="text_11">
-    <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #666666" x="472.423369" y="217.797638" transform="rotate(-0 472.423369 217.797638)">12 evaluated cells currently registered; 16 cells in the complete factorial design</text>
+    <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #666666" x="472.423369" y="217.797638" transform="rotate(-0 472.423369 217.797638)">16 evaluated cells currently registered; 16 cells in the complete factorial design</text>
    </g>
    <g id="text_12">
     <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #666666" x="472.423369" y="238.461638" transform="rotate(-0 472.423369 238.461638)">Matched contrasts isolate scale, architecture, tokenizer family, and atomic-BPE boundary policy.</text>
@@ -183,7 +183,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="p650fbb708d">
+  <clipPath id="p8af75b8a62">
    <rect x="74.983369" y="44.208" width="794.88" height="206.64"/>
   </clipPath>
  </defs>

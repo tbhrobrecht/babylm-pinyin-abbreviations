@@ -47,3 +47,19 @@ hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE 
 hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,Atomic BPE 30M,Chinese zero-shot,3,0.7587999999999999
 hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,Atomic BPE 30M,Chinese fine-tune,4,0.6082201407289765
 hf_nk_babylm_zho_qwen2_atomic_bpe_cross,30M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,30M,Atomic BPE 30M,CogBench,2,0.32009105538870053
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,Atomic BPE 100M,BabyLM official Chinese,16,0.4502595190403694
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,Atomic BPE 100M,Chinese zero-shot,3,0.7609
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,Atomic BPE 100M,Chinese fine-tune,4,0.6215575821022372
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,Atomic BPE 100M,CogBench,2,0.32372867325313365
+hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m,100M Qwen2 Atomic Within,Qwen2,Atomic BPE within,100M,Atomic BPE 100M,BabyLM official Chinese,16,0.4397079690963215
+hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m,100M Qwen2 Atomic Within,Qwen2,Atomic BPE within,100M,Atomic BPE 100M,Chinese zero-shot,3,0.7584
+hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m,100M Qwen2 Atomic Within,Qwen2,Atomic BPE within,100M,Atomic BPE 100M,Chinese fine-tune,4,0.6217356152944999
+hf_nk_babylm_zho_qwen2_atomic_bpe_within_100m,100M Qwen2 Atomic Within,Qwen2,Atomic BPE within,100M,Atomic BPE 100M,CogBench,2,0.3189403187701689
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,Atomic BPE 100M,BabyLM official Chinese,16,0.4374707745560889
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,Atomic BPE 100M,Chinese zero-shot,3,0.7529
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,Atomic BPE 100M,Chinese fine-tune,4,0.6126654977971311
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,Atomic BPE 100M,CogBench,2,0.3240651223284965
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m,100M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,100M,Atomic BPE 100M,BabyLM official Chinese,16,0.4277779447633304
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m,100M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,100M,Atomic BPE 100M,Chinese zero-shot,3,0.7541666666666668
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m,100M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,100M,Atomic BPE 100M,Chinese fine-tune,4,0.6092641138836551
+hf_nk_babylm_zho_qwen2_atomic_bpe_cross_100m,100M Qwen2 Atomic Cross,Qwen2,Atomic BPE cross,100M,Atomic BPE 100M,CogBench,2,0.3206321949548742

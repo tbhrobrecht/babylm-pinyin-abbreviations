@@ -16,9 +16,8 @@ count is generated from the current model registry.
 and 100M models with the same architecture and tokenizer. Color denotes
 tokenizer and marker shape denotes architecture. Each point is the unweighted
 mean of the primary task scores within the named suite. Panels use independent
-vertical ranges and should not be compared as a combined overall score. Atomic
-BPE trajectories are added automatically once both scales have complete
-evaluations.
+vertical ranges and should not be compared as a combined overall score. The
+atomic-BPE trajectories include the completed evaluations at both scales.
 
 ## M3. Boundary-policy trajectories
 

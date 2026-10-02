@@ -36,14 +36,14 @@ The generator validates that every registered model occurs in every primary
 metric before drawing anything. Run `results_analysis/build_results_summary.py`
 first whenever evaluation data or the model registry changes.
 
-## Integrating newly completed evaluations
+## Integrating future evaluations
 
 The plotting code does not contain a list of model names. Model ordering,
 architecture, tokenizer, scale, and cohort are read from
 `results_analysis/models.json`; scores and contrasts are read from the processed
-tables. When the final 100M atomic-BPE evaluations arrive:
+tables. To add another completed evaluation cohort:
 
-1. Copy their raw evaluation directories into the repository's artifact layout.
+1. Copy its raw evaluation directories into the repository's artifact layout.
 2. Add one entry per completed model to `results_analysis/models.json`, using
    tokenizer values `Atomic BPE within` or `Atomic BPE cross` and scale `100M`.
 3. Rebuild the processed tables:

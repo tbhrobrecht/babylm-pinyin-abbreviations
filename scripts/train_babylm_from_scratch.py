@@ -456,6 +456,9 @@ def run_training(args: argparse.Namespace) -> None:
         command.append("--compile")
     if args.save_optimizer:
         command.append("--save-optimizer")
+    if args.babylm_checkpoint_targets:
+        command.append("--babylm-checkpoint-targets")
+        command.extend(str(target) for target in args.babylm_checkpoint_targets)
     run_command("Train language model", command, args)
 
 
@@ -717,6 +720,14 @@ def parse_args() -> argparse.Namespace:
     training.add_argument("--fused-adamw", action=argparse.BooleanOptionalAction, default=True)
     training.add_argument("--compile", action="store_true")
     training.add_argument("--save-optimizer", action=argparse.BooleanOptionalAction, default=False)
+    training.add_argument(
+        "--babylm-checkpoint-targets",
+        type=int,
+        nargs="+",
+        default=None,
+        metavar="TOKENS",
+        help="Override the training-token milestones used for chck_* artifacts.",
+    )
     training.add_argument("--seed", type=int, default=1337)
 
     convert = parser.add_argument_group("convert/upload")
