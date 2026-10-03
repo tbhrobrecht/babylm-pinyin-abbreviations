@@ -30,7 +30,7 @@ LABELS = {
 
 PUNCTUATION = set("。，、？！：；.,?!:;()[]{}<>《》【】“”\"'‘’「」『』—-~…/\\")
 CHINESE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]+")
-Transliteration = Literal["pinyin-code", "pinyin-initial", "hanzi"]
+Transliteration = Literal["pinyin-code", "pinyin-initial", "full-pinyin", "hanzi"]
 LATIN_LETTER = r"A-Za-zÀ-ÖØ-öø-ÿĀ-ſƀ-ɏɐ-ʯ"
 LATIN_ALNUM_PATTERN = (
     rf"(?:[{LATIN_LETTER}][{LATIN_LETTER}0-9]*"
@@ -165,6 +165,17 @@ def syllable_to_initial_letter(syllable: str) -> str:
     return plain[:1].lower()
 
 
+def syllable_to_full_pinyin(syllable: str) -> str:
+    """Return lowercase pinyin with an explicit final tone digit.
+
+    ``pypinyin`` omits the digit for neutral tone in ``Style.TONE3``.  Writing
+    it as tone 5 makes every syllable boundary explicit and keeps the corpus
+    ASCII-like apart from ``u-umlaut``.  For example, ``ma`` becomes ``ma5``.
+    """
+    plain, tone = split_tone3_syllable(syllable)
+    return f"{plain.lower()}{tone}" if plain else ""
+
+
 def chinese_word_to_initial_codes(word: str) -> str:
     """Convert one already-segmented Chinese word to one compact code token.
 
@@ -191,12 +202,35 @@ def chinese_word_to_initial_letters(word: str) -> str:
     return "".join(initial for initial in initials if initial)
 
 
+def chinese_word_to_full_pinyin(word: str) -> str:
+    """Convert one Jieba word to tone-number pinyin without losing syllables.
+
+    Tone digits delimit adjacent syllables while Jieba words remain separated
+    by spaces in the processed corpus: ``中国 人`` becomes ``zhong1guo2 ren2``.
+    This mirrors the word-boundary policy used by the Hanzi BPE baseline.
+    """
+    syllables = pinyin(
+        word,
+        style=Style.TONE3,
+        heteronym=False,
+        neutral_tone_with_five=True,
+        v_to_u=True,
+        errors="ignore",
+    )
+    normalized = [
+        syllable_to_full_pinyin(item[0]) for item in syllables if item and item[0]
+    ]
+    return "".join(syllable for syllable in normalized if syllable)
+
+
 def chinese_word_to_transliteration(word: str, transliteration: Transliteration) -> str:
     """Convert one segmented Chinese word using the requested transliteration."""
     if transliteration == "pinyin-code":
         return chinese_word_to_initial_codes(word)
     if transliteration == "pinyin-initial":
         return chinese_word_to_initial_letters(word)
+    if transliteration == "full-pinyin":
+        return chinese_word_to_full_pinyin(word)
     if transliteration == "hanzi":
         return word
     raise ValueError(f"Unsupported transliteration: {transliteration}")
@@ -229,8 +263,8 @@ def process_text(
     Neighbouring ``pinyin-code`` words are written without any separator because
     the encoding itself marks where a word starts. Everything else — special
     markers, punctuation, non-Mandarin words — keeps single-space separation, as
-    do the ``pinyin-initial`` and ``hanzi`` transliterations, which have no
-    self-delimiting property.
+    do the ``pinyin-initial``, ``full-pinyin``, and ``hanzi`` transliterations,
+    which use explicit Jieba-word boundaries.
     """
     self_delimiting = transliteration == "pinyin-code"
     tokens: list[tuple[str, bool]] = []
@@ -357,12 +391,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--preview", type=int, default=3)
     parser.add_argument(
         "--transliteration",
-        choices=("pinyin-code", "pinyin-initial", "hanzi"),
+        choices=("pinyin-code", "pinyin-initial", "full-pinyin", "hanzi"),
         default="pinyin-code",
         help=(
             "Mandarin transliteration to emit: 'pinyin-code' keeps the original "
             "tone/length code, while 'pinyin-initial' emits lowercase pinyin "
-            "first letters only, and 'hanzi' keeps segmented Mandarin as Hanzi."
+            "first letters only, 'full-pinyin' emits complete syllables with "
+            "final tone digits, and 'hanzi' keeps segmented Mandarin as Hanzi."
         ),
     )
     parser.add_argument(

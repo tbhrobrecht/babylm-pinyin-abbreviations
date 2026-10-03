@@ -92,8 +92,8 @@ items have no self-delimiting property:
 已经很晚了，hello  ->  Y63JH77WL6 , hello
 ```
 
-The `pinyin-initial` and `hanzi` transliterations carry no digits, so they stay
-fully space-separated.
+The `pinyin-initial`, `full-pinyin`, and `hanzi` transliterations use explicit
+Jieba-word boundaries, so they stay space-separated.
 
 `preprocessing/encoding.py` holds this grammar (`split_encoded_words`,
 `ENCODED_WORD_RE`, and friends) for the preprocessing and tokenizer-training
@@ -122,6 +122,21 @@ Hanzi instead of pinyin, use:
 ```powershell
 py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\processed\10k_babylm_zho_hanzi.txt --transliteration hanzi
 ```
+
+To create the full-pinyin baseline, use tone numbers at the end of every
+syllable:
+
+```powershell
+py preprocessing\preprocess.py --input data\10k_babylm_zho.jsonl --output data\processed\10k_babylm_zho_full_pinyin.txt --transliteration full-pinyin
+```
+
+This emits forms such as `zhong1guo2 ren2`: syllables within a Jieba word are
+concatenated, their final digits make the syllable boundaries unambiguous, and
+spaces retain the same word boundaries as the Hanzi baseline. Neutral tone is
+written explicitly as `5` (for example, `ma5`), and pinyin `ü` is retained.
+Tone numbers were chosen instead of vowel diacritics to preserve tone while
+avoiding normalization-dependent tokenizer differences; a toneless baseline
+would discard lexical information and answer a different research question.
 
 ## Export statistics as a LaTeX table
 
@@ -672,7 +687,8 @@ tokenizer = AutoTokenizer.from_pretrained(
 Pass the same `--transliteration` value here that you used when preprocessing
 the training corpus. The exported tokenizer stores that value and applies it to
 raw Mandarin/Hanzi benchmark prompts before SentencePiece tokenization, so
-`lm_eval` can evaluate `pinyin-code`, `pinyin-initial`, or `hanzi` models with
+`lm_eval` can evaluate `pinyin-code`, `pinyin-initial`, `full-pinyin`, or
+`hanzi` models with
 the matching input format. Also pass `--no-jieba` when converting a model trained
 on character-level Chinese preprocessing, so benchmark prompts use the same
 segmentation.
@@ -777,6 +793,32 @@ python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho --archite
 This creates new `*_atomic_bpe_within` and `*_atomic_bpe_cross` tokenizer,
 dataset, checkpoint, and Hugging Face export paths. Existing `*_hybrid` and
 `*_bpe` artifacts are neither reused as outputs nor removed.
+
+### Standard Hanzi and full-pinyin controls
+
+The two conventional 100M GPT-2 controls use the same 16k SentencePiece BPE
+family and model hyperparameters as the corresponding pinyin-code BPE run, but
+train independent tokenizers because their surface alphabets differ. Their
+paths are namespaced with `hanzi` and `full_pinyin`, so none of the existing
+pinyin-code, hybrid, or atomic-BPE artifacts are overwritten.
+
+On LRZ, prepare both corpora, tokenizers, and binary datasets and then train the
+two models with:
+
+```bash
+bash jobs/new_pipeline/queue_standard_baselines_100m.sh
+```
+
+The queue script runs preparation first and serializes the two GPU jobs. To run
+the pipeline manually, the Hanzi preparation leg is equivalent to:
+
+```powershell
+python scripts/train_babylm_from_scratch.py --model-name nk_babylm_zho_hanzi_bpe --corpus-name nk_babylm_zho --architecture gpt2 --tokenizer-kind bpe --transliteration hanzi --raw-output data/nk_babylm_zho.jsonl --processed-output data/processed/nk_babylm_zho_hanzi.txt --tokenizer-name nk_babylm_zho_hanzi_bpe --train-dataset data/datasets/nk_babylm_zho_hanzi_train_spm.bin --validation-dataset data/datasets/nk_babylm_zho_hanzi_valid_spm.bin --vocab-size 16000 --block-size 512 --stride 512 --start-at preprocess --stop-after dataset --resume
+```
+
+Replace `hanzi` with `full-pinyin` for `--transliteration`, and use the
+underscore form `full_pinyin` in artifact paths and names, for the full-pinyin
+leg.
 
 To train the hybrid runs with stochastic softmax segmentation on the training
 split while keeping greedy evaluation, add the tokenization flags (they only

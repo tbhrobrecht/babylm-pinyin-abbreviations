@@ -556,7 +556,7 @@ def parse_args() -> argparse.Namespace:
     preprocess.add_argument("--processed-output", type=Path, default=None)
     preprocess.add_argument(
         "--transliteration",
-        choices=("pinyin-code", "pinyin-initial", "hanzi"),
+        choices=("pinyin-code", "pinyin-initial", "full-pinyin", "hanzi"),
         default="pinyin-code",
     )
     preprocess.add_argument("--jieba", action=argparse.BooleanOptionalAction, default=True)

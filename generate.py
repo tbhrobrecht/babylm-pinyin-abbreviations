@@ -239,7 +239,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--transliteration",
-        choices=("pinyin-code", "pinyin-initial", "hanzi"),
+        choices=("pinyin-code", "pinyin-initial", "full-pinyin", "hanzi"),
         default="pinyin-code",
         help="Preprocessing mode to use for raw Mandarin prompts.",
     )

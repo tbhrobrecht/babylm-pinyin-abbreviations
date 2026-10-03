@@ -24,6 +24,24 @@ CHINESE_SPAN_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff]+")
 PINYIN_CODE_TOKEN_RE = re.compile(
     r"(?<![A-Za-z0-9])[A-Za-z]\d(?:\d[A-Za-z]|[A-Za-z]\d)*(?![A-Za-z0-9])"
 )
+# A full-pinyin Jieba word contains one or more complete tone-number syllables,
+# for example ``zhong1guo2``. Restricting the pattern to pinyin-like initials
+# and finals avoids mistaking preserved products such as ``iphone4`` for pinyin.
+FULL_PINYIN_SYLLABLE_PATTERN = (
+    r"(?:zh|ch|sh|[bpmfdtnlgkhjqxrzcsyw])?"
+    r"(?:iang|iong|uang|ueng|iao|ian|ing|ong|uai|uan|ang|eng|"
+    r"üe|üan|ün|ia|ie|iu|in|ua|uo|ue|ui|un|ai|ei|ao|ou|an|en|"
+    r"a|o|e|i|u|ü|er)[1-5]"
+)
+FULL_PINYIN_WORD_RE = re.compile(
+    rf"(?<![A-Za-z\u00fc\u00dc0-9])(?:{FULL_PINYIN_SYLLABLE_PATTERN})+"
+    rf"(?![A-Za-z\u00fc\u00dc0-9])",
+    flags=re.I,
+)
+FULL_PINYIN_SYLLABLE_RE = re.compile(
+    FULL_PINYIN_SYLLABLE_PATTERN,
+    flags=re.I,
+)
 SPECIAL_MARKER_RE = re.compile(r"<[A-Z_]+>")
 PUNCTUATION = set(
     "\u3002\uff0c\u3001\uff1f\uff01\uff1a\uff1b.,?!:;()[]{}<>\u300a\u300b"
@@ -62,6 +80,9 @@ PINYIN_FORMAT_ALIASES = {
     "initial": "pinyin-initial",
     "initials": "pinyin-initial",
     "pinyin-initial": "pinyin-initial",
+    "pinyin": "full-pinyin",
+    "full-pinyin": "full-pinyin",
+    "tone3": "full-pinyin",
     "hanzi": "hanzi",
 }
 
@@ -135,6 +156,8 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         if SPECIAL_MARKER_RE.search(text):
             return True
         if self.transliteration == "pinyin-code" and PINYIN_CODE_TOKEN_RE.search(text):
+            return True
+        if self.transliteration == "full-pinyin" and FULL_PINYIN_WORD_RE.search(text):
             return True
         return False
 
@@ -236,6 +259,10 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
             plain, _ = split_tone3_syllable(syllable)
             return plain[:1].lower()
 
+        def syllable_to_full_pinyin(syllable: str) -> str:
+            plain, tone = split_tone3_syllable(syllable)
+            return f"{plain.lower()}{tone}" if plain else ""
+
         def continuation_form(code: str) -> str:
             """Return the word-internal syllable form: digit before initial."""
             return f"{code[1]}{code[0]}"
@@ -243,7 +270,14 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
         def convert_word(word: str) -> str:
             if self.transliteration == "hanzi":
                 return word
-            syllables = pinyin(word, style=Style.TONE3, heteronym=False, errors="ignore")
+            syllables = pinyin(
+                word,
+                style=Style.TONE3,
+                heteronym=False,
+                neutral_tone_with_five=True,
+                v_to_u=True,
+                errors="ignore",
+            )
             if self.transliteration == "pinyin-code":
                 codes = [
                     syllable_to_initial_code(item[0])
@@ -258,6 +292,13 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
                 return codes[0] + "".join(
                     continuation_form(code) for code in codes[1:]
                 )
+            if self.transliteration == "full-pinyin":
+                full_syllables = [
+                    syllable_to_full_pinyin(item[0])
+                    for item in syllables
+                    if item and item[0]
+                ]
+                return "".join(syllable for syllable in full_syllables if syllable)
             initials = [
                 syllable_to_initial_letter(item[0])
                 for item in syllables
@@ -278,8 +319,8 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
 
         # Adjacent pinyin-code words are concatenated because the encoding
         # marks the boundary itself; every other neighbouring pair keeps a
-        # single space. pinyin-initial and hanzi have no self-delimiting
-        # property, so they stay fully space-separated.
+        # single space. pinyin-initial, full-pinyin, and hanzi preserve explicit
+        # Jieba-word boundaries, so they stay space-separated.
         self_delimiting = self.transliteration == "pinyin-code"
         tokens: list[tuple[str, bool]] = []
         for part in TOKEN_RE.findall(normalize_text(text)):
@@ -384,6 +425,27 @@ class PinyinCodeTokenizer(PreTrainedTokenizer):
                 atom_spans, hanzi_spans
             ):
                 for position in range(encoded_start, encoded_end):
+                    spans[position] = raw_span
+        elif self.transliteration == "full-pinyin":
+            hanzi_spans = [
+                (match.start(), match.end()) for match in CHINESE_RE.finditer(original)
+            ]
+            syllable_spans = [
+                (match.start(), match.end())
+                for word_match in FULL_PINYIN_WORD_RE.finditer(processed)
+                for match in FULL_PINYIN_SYLLABLE_RE.finditer(
+                    processed, word_match.start(), word_match.end()
+                )
+            ]
+            if hanzi_spans and len(syllable_spans) != len(hanzi_spans):
+                raise ValueError(
+                    "Cannot align full-pinyin offsets: "
+                    f"{len(hanzi_spans)} Hanzi produced {len(syllable_spans)} syllables"
+                )
+            for (pinyin_start, pinyin_end), raw_span in zip(
+                syllable_spans, hanzi_spans
+            ):
+                for position in range(pinyin_start, pinyin_end):
                     spans[position] = raw_span
 
         # Literal material (punctuation, Latin tokens, and separators) is

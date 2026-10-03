@@ -18,7 +18,11 @@ from torch.utils.data import TensorDataset
 from create_dataset import iter_chunks, write_dataset
 from generate import prepare_prompt
 from preprocessing.encoding import split_encoded_words
-from preprocessing.preprocess import hanzi_to_encoded, process_text
+from preprocessing.preprocess import (
+    chinese_word_to_full_pinyin,
+    hanzi_to_encoded,
+    process_text,
+)
 from preprocessing.split_long_sentencepiece_lines import split_line_at_whitespace
 from train_hybrid_tokenizer import build_vocab, write_tokenizer_files
 from train_sentencepiece import train_tokenizer
@@ -57,10 +61,12 @@ try:
     from hf.tokenization_pinyin_code import (
         EncodedMandarinTokenizer,
         EncodedMandarinTokenizerFast,
+        PinyinCodeTokenizer,
     )
 except ModuleNotFoundError:
     EncodedMandarinTokenizer = None
     EncodedMandarinTokenizerFast = None
+    PinyinCodeTokenizer = None
     PinyinCodeConfig = None
     PinyinCodeForCausalLM = None
     PinyinCodeForSequenceClassification = None
@@ -96,7 +102,29 @@ class PipelineSanityTests(unittest.TestCase):
 
     def test_non_self_delimiting_transliterations_keep_whitespace(self) -> None:
         self.assertEqual(process_text("我爱北京", "pinyin-initial"), "w a bj")
+        self.assertEqual(process_text("我爱北京", "full-pinyin"), "wo3 ai4 bei3jing1")
         self.assertEqual(process_text("我爱北京", "hanzi"), "我 爱 北京")
+
+    def test_full_pinyin_uses_final_tone_digits_and_explicit_neutral_tone(self) -> None:
+        self.assertEqual(chinese_word_to_full_pinyin("中国"), "zhong1guo2")
+        self.assertEqual(chinese_word_to_full_pinyin("吗"), "ma5")
+        self.assertEqual(chinese_word_to_full_pinyin("女"), "nü3")
+
+    def test_full_pinyin_export_fallback_matches_training_preprocessing(self) -> None:
+        if PinyinCodeTokenizer is None:
+            self.skipTest("transformers or sentencepiece is not installed")
+        tokenizer = object.__new__(PinyinCodeTokenizer)
+        tokenizer.transliteration = "full-pinyin"
+        tokenizer.use_jieba = True
+
+        for text in ("我爱北京", "女儿吗？", "GPT4中国 iPhone12"):
+            with self.subTest(text=text):
+                processed = process_text(text, "full-pinyin")
+                self.assertEqual(tokenizer._fallback_process_text(text), processed)
+                self.assertEqual(
+                    len(tokenizer._processed_char_spans(text, processed)),
+                    len(processed),
+                )
 
     def test_long_encoded_run_splits_at_word_boundaries(self) -> None:
         run = "A12B" * 5
@@ -189,7 +217,12 @@ class PipelineSanityTests(unittest.TestCase):
             self.skipTest("SentencePiece tokenizer model is not available")
 
         texts = ["已经很晚了，我们走吧。", "我爱北京 hello iPhone12 3", "中国的首都是北京。"]
-        for transliteration in ("pinyin-code", "pinyin-initial", "hanzi"):
+        for transliteration in (
+            "pinyin-code",
+            "pinyin-initial",
+            "full-pinyin",
+            "hanzi",
+        ):
             tokenizer = EncodedMandarinTokenizer(
                 vocab_file=str(tokenizer_path),
                 transliteration=transliteration,
