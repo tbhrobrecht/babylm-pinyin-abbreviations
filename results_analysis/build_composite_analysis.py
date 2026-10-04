@@ -327,7 +327,7 @@ def main() -> None:
         )
     markdown.extend([
         "", "## Interpretation safeguards", "",
-        "- The composite is relative to the current 16-model comparison set; it is not an absolute accuracy score.",
+        f"- The composite is relative to the current {len(labels)}-model comparison set; it is not an absolute accuracy score.",
         "- The interval resamples observed tasks within suites. It measures sensitivity to task composition, not training-seed uncertainty or conventional statistical significance.",
         "- Task percentile SD describes consistency of relative placement across tasks; lower is more consistent, not necessarily more accurate.",
         "- One trained seed is available per condition, so small ordering differences must not be described as seed-robust effects.",

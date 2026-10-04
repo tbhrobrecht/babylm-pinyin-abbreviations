@@ -42,6 +42,8 @@ TOKENIZER_COLORS = {
     "BPE": "#7A7A7A",
     "Atomic BPE within": "#009E73",
     "Atomic BPE cross": "#D55E00",
+    "Hanzi BPE": "#CC79A7",
+    "Full-pinyin BPE": "#E69F00",
 }
 ARCH_MARKERS = {"GPT2": "o", "Qwen2": "s"}
 WITHIN_COLOR = "#009E73"
@@ -338,12 +340,13 @@ def paired_effect_forest(data: dict[str, object], output: Path, formats: Iterabl
     panels = [
         ("scale", "Model scale", "100M minus 30M"),
         (("baseline_tokenizer", "atomic_vs_bpe"), "Tokenizer family", "Tokenizer contrast"),
+        ("standard_baseline", "Standard representation controls", "Matched representation contrast"),
         ("boundary_policy", "Boundary policy", "Cross-word minus within-word"),
         ("architecture", "Architecture", "Qwen2 minus GPT2"),
     ]
-    fig, axes = plt.subplots(2, 2, figsize=(14.2, 10.2))
-    fig.subplots_adjust(left=0.17, right=0.985, bottom=0.075, top=0.885,
-                        hspace=0.34, wspace=0.43)
+    fig, axes = plt.subplots(3, 2, figsize=(14.2, 14.8))
+    fig.subplots_adjust(left=0.17, right=0.985, bottom=0.055, top=0.91,
+                        hspace=0.38, wspace=0.43)
     suite_offsets = np.linspace(-0.24, 0.24, len(SUITES))
     for panel_index, (ax, panel) in enumerate(zip(axes.flat, panels)):
         categories, title, xlabel = panel
@@ -372,9 +375,10 @@ def paired_effect_forest(data: dict[str, object], output: Path, formats: Iterabl
         ax.set_xlabel(f"{xlabel} (score-point difference ×100)")
         ax.grid(axis="x")
         panel_label(ax, chr(ord("A") + panel_index))
+    axes.flat[-1].axis("off")
     handles = [Line2D([], [], marker="D", linestyle="", color=SUITE_COLORS[suite],
                       label=SUITE_SHORT[suite], markersize=6) for suite in SUITES]
-    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.948),
+    fig.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, 0.955),
                ncol=4, frameon=False)
     fig.suptitle("Matched evaluation contrasts across tasks", fontweight="bold", y=0.992)
     fig.text(0.5, 0.015,
@@ -390,21 +394,25 @@ def experimental_design(data: dict[str, object], output: Path, formats: Iterable
     tokenizers = tuple(TOKENIZER_COLORS)
     architectures = tuple(ordered_metadata_values(models, "architecture"))
     scales = tuple(sorted(ordered_metadata_values(models, "scale"), key=scale_sort_key))
+    top_row_y = 0.95 + 0.9 * (len(tokenizers) - 1)
+    header_y = top_row_y + 0.60
+    y_max = header_y + 0.30
     fig, axes_array = plt.subplots(
-        1, len(scales), figsize=(5.75 * len(scales), 5.8), constrained_layout=True,
+        1, len(scales), figsize=(5.75 * len(scales), max(5.8, 2.2 + 0.75 * len(tokenizers))),
+        constrained_layout=True,
         squeeze=False,
     )
     axes = axes_array.flat
     for panel_index, (ax, scale) in enumerate(zip(axes, scales)):
         ax.set_xlim(0, len(architectures))
-        ax.set_ylim(0, 4.55)
+        ax.set_ylim(0, y_max)
         ax.axis("off")
         ax.set_title(f"{scale} model family", fontsize=12, fontweight="bold", pad=14)
         for column, architecture in enumerate(architectures):
-            ax.text(column + 0.5, 4.25, architecture, ha="center", va="center",
+            ax.text(column + 0.5, header_y, architecture, ha="center", va="center",
                     fontsize=10, fontweight="bold")
             for row, tokenizer in enumerate(tokenizers):
-                y = 3.65 - row * 0.9
+                y = top_row_y - row * 0.9
                 match = models[(models["scale"] == scale) &
                                (models["architecture"] == architecture) &
                                (models["tokenizer"] == tokenizer)]
@@ -419,22 +427,24 @@ def experimental_design(data: dict[str, object], output: Path, formats: Iterable
                     hatch=None if evaluated else "///",
                 )
                 ax.add_patch(box)
-                status = "evaluated" if evaluated else "training /\nevaluation pending"
-                text_color = "white" if evaluated and tokenizer != "BPE" else "#222222"
+                status = "evaluated" if evaluated else "not evaluated"
+                light_fill = tokenizer in {"BPE", "Full-pinyin BPE"}
+                text_color = "white" if evaluated and not light_fill else "#222222"
                 ax.text(column + 0.5, y + 0.04, tokenizer.replace("Atomic BPE ", "Atomic "),
                         ha="center", va="center", fontsize=8, fontweight="bold",
                         color=text_color)
                 ax.text(column + 0.5, y - 0.16, status, ha="center", va="center",
                         fontsize=6.5, color=text_color if evaluated else NEUTRAL)
         if len(architectures) == 2:
-            ax.annotate("", xy=(0.88, 4.02), xytext=(1.12, 4.02),
+            arrow_y = header_y - 0.23
+            ax.annotate("", xy=(0.88, arrow_y), xytext=(1.12, arrow_y),
                         arrowprops={"arrowstyle": "<->", "color": NEUTRAL, "lw": 0.8})
-            ax.text(1.0, 4.06, "Architecture contrast", ha="center", va="bottom",
+            ax.text(1.0, arrow_y + 0.04, "Architecture contrast", ha="center", va="bottom",
                     fontsize=7, color=NEUTRAL)
         panel_label(ax, chr(ord("A") + panel_index))
     fig.suptitle("Factorial experimental design", fontweight="bold")
     fig.text(0.5, 0.01,
-             "Comparisons isolate model scale, architecture, tokenizer family, and atomic-BPE boundary policy.",
+             "The core factorial is supplemented by targeted 100M GPT2 Hanzi and full-pinyin controls.",
              ha="center", fontsize=8, color=NEUTRAL)
     save_figure(fig, output, "03_experimental_design", formats)
 

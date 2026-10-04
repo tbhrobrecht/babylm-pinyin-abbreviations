@@ -79,7 +79,10 @@ def model_design_overview(
     architectures = common.ordered_metadata_values(models, "architecture")
     tokenizers = list(common.TOKENIZER_COLORS)
     complete = len(models)
-    factorial_total = len(scales) * len(architectures) * len(tokenizers)
+    targeted_tokenizers = {"Hanzi BPE", "Full-pinyin BPE"}
+    factorial_tokenizers = [item for item in tokenizers if item not in targeted_tokenizers]
+    factorial_total = len(scales) * len(architectures) * len(factorial_tokenizers)
+    targeted_total = int(models["tokenizer"].isin(targeted_tokenizers).sum())
 
     fig, ax = plt.subplots(figsize=(11.5, 4.1))
     fig.subplots_adjust(left=0.02, right=0.98, bottom=0.12, top=0.82)
@@ -89,7 +92,7 @@ def model_design_overview(
 
     stages = (
         (0.02, 0.15, "Training data", "Mandarin BabyLM\n100M-word corpus", "#E6F2F8"),
-        (0.22, 0.18, "Tokenizer", "Hybrid · BPE\nAtomic within · Atomic cross", "#E7F5EF"),
+        (0.22, 0.18, "Tokenizer", "Hybrid · encoded BPE\nAtomic within · Atomic cross\nHanzi BPE · full-pinyin BPE", "#E7F5EF"),
         (0.46, 0.15, "Architecture", "GPT2 · Qwen2", "#FFF0E5"),
         (0.66, 0.13, "Model scale", "30M · 100M\nparameters", "#F4EAF2"),
         (0.84, 0.14, "Evaluation", "Official BabyLM · Chinese\nCogBench", "#F0F0F0"),
@@ -113,12 +116,12 @@ def model_design_overview(
 
     ax.text(
         0.5, 0.17,
-        f"{complete} evaluated cells currently registered; {factorial_total} cells in the complete factorial design",
+        f"{complete} evaluated models: {factorial_total} core factorial cells + {targeted_total} targeted controls",
         ha="center", va="center", fontsize=8, color=common.NEUTRAL,
     )
     ax.text(
         0.5, 0.07,
-        "Matched contrasts isolate scale, architecture, tokenizer family, and atomic-BPE boundary policy.",
+        "Matched contrasts include scale, architecture, tokenizer, boundary policy, and standard representation controls.",
         ha="center", va="center", fontsize=8, color=common.NEUTRAL,
     )
     fig.suptitle("Mandarin BabyLM experimental pipeline", fontweight="bold", y=0.96)

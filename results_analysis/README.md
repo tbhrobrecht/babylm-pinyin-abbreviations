@@ -1,9 +1,10 @@
 # Results analysis snapshot
 
 This directory contains an integrity-checked evaluation snapshot and a
-standard-library Python processor for comparing all sixteen Mandarin BabyLM
-models: the original four 30M models, their four 100M counterparts, and the
-within-word/cross-word atomic-BPE models at both 30M and 100M scales.
+standard-library Python processor for comparing all eighteen Mandarin BabyLM
+models: the original four 30M models, their four 100M counterparts, the
+within-word/cross-word atomic-BPE models at both 30M and 100M scales, and the
+targeted 100M GPT2 Hanzi-BPE and tone-number full-pinyin-BPE controls.
 
 ## Contents
 

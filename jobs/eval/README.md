@@ -64,3 +64,13 @@ bash code/babylm-pinyin-abbreviations/jobs/eval/queue_nk_evaluations.sh
 
 Review the IDs in that file before rerunning it after a retraining submission;
 they currently refer to training jobs `5804010` through `5804013`.
+
+## Evaluate the standard 100M baselines
+
+The Hanzi-BPE and tone-number full-pinyin-BPE controls have a dedicated
+launcher. It submits the official Chinese suite, all Chinese-pipeline tasks,
+and the follow-up POS pass for both models:
+
+```bash
+bash code/babylm-pinyin-abbreviations/jobs/eval/queue_standard_baseline_100m_evaluations.sh
+```

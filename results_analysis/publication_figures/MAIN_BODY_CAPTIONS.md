@@ -4,11 +4,12 @@
 
 **Mandarin BabyLM experimental pipeline.** A common Mandarin BabyLM corpus is
 used to train GPT2 and Qwen2 models that cross two parameter scales with four
-tokenizer conditions: hybrid, conventional BPE, within-word atomic BPE, and
-cross-word atomic BPE. Models are assessed with the official BabyLM evaluation,
-Chinese-specific evaluations, and CogBench. Matched contrasts isolate model
-scale, architecture, tokenizer family, and atomic-BPE boundary policy. The cell
-count is generated from the current model registry.
+core tokenizer conditions: hybrid, encoded BPE, within-word atomic BPE, and
+cross-word atomic BPE. Two targeted 100M GPT2 controls use standard Hanzi BPE
+and tone-number full-pinyin BPE. Models are assessed with the official BabyLM
+evaluation, Chinese-specific evaluations, and CogBench. Matched contrasts
+isolate model scale, architecture, tokenizer family, atomic-BPE boundary policy,
+and representation choice. The model count is generated from the registry.
 
 ## M2. Scaling trajectories
 

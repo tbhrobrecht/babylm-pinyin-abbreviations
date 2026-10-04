@@ -6,7 +6,8 @@ The command is deliberately conservative:
 * dry-run is the default;
 * repositories are created one at a time;
 * local files are never deleted;
-* every repository receives raw evaluation outputs and compact processed CSVs;
+* repositories receive raw evaluation outputs and compact processed CSVs unless
+  ``--model-only`` is requested;
 * the remote ``model.safetensors`` SHA-256 is verified after upload.
 
 Authenticate first with ``hf auth login``. See ``--help`` for examples.
@@ -55,6 +56,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--all", action="store_true", help="Upload all completed models serially.")
     parser.add_argument("--namespace", default=DEFAULT_NAMESPACE)
+    parser.add_argument(
+        "--model-only", action="store_true",
+        help="Upload only the model export (weights, config, tokenizer, model card, and metadata).",
+    )
     parser.add_argument(
         "--execute", action="store_true",
         help="Create public repositories and upload. Without this flag, print a dry-run plan.",
@@ -207,16 +212,23 @@ def make_processed_bundle(model: dict[str, object], parent: Path) -> Path:
     return bundle.parent
 
 
-def build_plan(model: dict[str, object], namespace: str, staging_root: Path) -> ModelUpload:
+def build_plan(
+    model: dict[str, object], namespace: str, staging_root: Path, *, model_only: bool,
+) -> ModelUpload:
     model_id = str(model["model_id"])
     model_dir = resolve_model_dir(model)
-    evaluation_bundle = make_processed_bundle(model, staging_root)
-    components = [
-        UploadComponent(model_dir, ".", "folder"),
-        *raw_evaluation_components(model),
-        UploadComponent(evaluation_bundle / "processed", "evaluation_results/processed", "folder"),
-        UploadComponent(evaluation_bundle / "README.md", "evaluation_results/README.md", "file"),
-    ]
+    components = [UploadComponent(model_dir, ".", "folder")]
+    if not model_only:
+        evaluation_bundle = make_processed_bundle(model, staging_root)
+        components.extend((
+            *raw_evaluation_components(model),
+            UploadComponent(
+                evaluation_bundle / "processed", "evaluation_results/processed", "folder"
+            ),
+            UploadComponent(
+                evaluation_bundle / "README.md", "evaluation_results/README.md", "file"
+            ),
+        ))
     return ModelUpload(
         model_id=model_id,
         label=str(model["label"]),
@@ -312,7 +324,10 @@ def main() -> None:
     args = parse_args()
     models = select_models(read_registry(), args.model, args.all)
     with tempfile.TemporaryDirectory(prefix="babylm-hf-upload-", dir="/tmp") as staging:
-        plans = [build_plan(model, args.namespace, Path(staging)) for model in models]
+        plans = [
+            build_plan(model, args.namespace, Path(staging), model_only=args.model_only)
+            for model in models
+        ]
         for plan in plans:
             print_plan(plan)
             if args.execute:

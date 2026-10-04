@@ -5,7 +5,12 @@ BabyLM official Chinese,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M 
 BabyLM official Chinese,100M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,100M GPT2 Atomic Cross,100M GPT2 BPE,16,0.013721681234942162
 BabyLM official Chinese,100M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,100M GPT2 Atomic Within,100M GPT2 BPE,16,0.02651042571922269
 BabyLM official Chinese,100M GPT2: Atomic cross - within,boundary_policy,100M GPT2 Atomic Cross,100M GPT2 Atomic Within,16,-0.012788744484280527
+BabyLM official Chinese,100M GPT2: BPE - Full-pinyin BPE,standard_baseline,100M GPT2 BPE,100M GPT2 Full-pinyin BPE,16,-0.020822640649126915
+BabyLM official Chinese,100M GPT2: BPE - Hanzi BPE,standard_baseline,100M GPT2 BPE,100M GPT2 Hanzi BPE,16,-0.04306830988325889
+BabyLM official Chinese,100M GPT2: Full-pinyin BPE - Hanzi BPE,standard_baseline,100M GPT2 Full-pinyin BPE,100M GPT2 Hanzi BPE,16,-0.02224566923413197
 BabyLM official Chinese,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,16,0.027464560356323404
+BabyLM official Chinese,100M GPT2: Hybrid - Full-pinyin BPE,standard_baseline,100M GPT2 Hybrid,100M GPT2 Full-pinyin BPE,16,0.006641919707196487
+BabyLM official Chinese,100M GPT2: Hybrid - Hanzi BPE,standard_baseline,100M GPT2 Hybrid,100M GPT2 Hanzi BPE,16,-0.015603749526935483
 BabyLM official Chinese,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,16,-0.01395324322549564
 BabyLM official Chinese,100M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,100M Qwen2 Atomic Cross,100M Qwen2 BPE,16,0.015552677134922638
 BabyLM official Chinese,100M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,100M Qwen2 Atomic Within,100M Qwen2 BPE,16,0.02748270146791368
@@ -37,7 +42,12 @@ Chinese fine-tune,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 B
 Chinese fine-tune,100M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,100M GPT2 Atomic Cross,100M GPT2 BPE,4,0.0025421081361057946
 Chinese fine-tune,100M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,100M GPT2 Atomic Within,100M GPT2 BPE,4,0.011434192441212035
 Chinese fine-tune,100M GPT2: Atomic cross - within,boundary_policy,100M GPT2 Atomic Cross,100M GPT2 Atomic Within,4,-0.00889208430510624
+Chinese fine-tune,100M GPT2: BPE - Full-pinyin BPE,standard_baseline,100M GPT2 BPE,100M GPT2 Full-pinyin BPE,4,-0.01903836148133324
+Chinese fine-tune,100M GPT2: BPE - Hanzi BPE,standard_baseline,100M GPT2 BPE,100M GPT2 Hanzi BPE,4,-0.025675080897252636
+Chinese fine-tune,100M GPT2: Full-pinyin BPE - Hanzi BPE,standard_baseline,100M GPT2 Full-pinyin BPE,100M GPT2 Hanzi BPE,4,-0.006636719415919395
 Chinese fine-tune,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,4,0.008697215245391063
+Chinese fine-tune,100M GPT2: Hybrid - Full-pinyin BPE,standard_baseline,100M GPT2 Hybrid,100M GPT2 Full-pinyin BPE,4,-0.010341146235942178
+Chinese fine-tune,100M GPT2: Hybrid - Hanzi BPE,standard_baseline,100M GPT2 Hybrid,100M GPT2 Hanzi BPE,4,-0.016977865651861573
 Chinese fine-tune,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,4,-0.001868560421608212
 Chinese fine-tune,100M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,100M Qwen2 Atomic Cross,100M Qwen2 BPE,4,0.0011798533597782157
 Chinese fine-tune,100M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,100M Qwen2 Atomic Within,100M Qwen2 BPE,4,0.013651354770623014
@@ -69,7 +79,12 @@ Chinese zero-shot,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 B
 Chinese zero-shot,100M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,100M GPT2 Atomic Cross,100M GPT2 BPE,3,0.11943333333333332
 Chinese zero-shot,100M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,100M GPT2 Atomic Within,100M GPT2 BPE,3,0.1274333333333333
 Chinese zero-shot,100M GPT2: Atomic cross - within,boundary_policy,100M GPT2 Atomic Cross,100M GPT2 Atomic Within,3,-0.00799999999999997
+Chinese zero-shot,100M GPT2: BPE - Full-pinyin BPE,standard_baseline,100M GPT2 BPE,100M GPT2 Full-pinyin BPE,3,-0.10286666666666659
+Chinese zero-shot,100M GPT2: BPE - Hanzi BPE,standard_baseline,100M GPT2 BPE,100M GPT2 Hanzi BPE,3,0.005766666666666698
+Chinese zero-shot,100M GPT2: Full-pinyin BPE - Hanzi BPE,standard_baseline,100M GPT2 Full-pinyin BPE,100M GPT2 Hanzi BPE,3,0.10863333333333329
 Chinese zero-shot,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,3,0.12929999999999997
+Chinese zero-shot,100M GPT2: Hybrid - Full-pinyin BPE,standard_baseline,100M GPT2 Hybrid,100M GPT2 Full-pinyin BPE,3,0.02643333333333338
+Chinese zero-shot,100M GPT2: Hybrid - Hanzi BPE,standard_baseline,100M GPT2 Hybrid,100M GPT2 Hanzi BPE,3,0.13506666666666667
 Chinese zero-shot,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,3,0.001000000000000038
 Chinese zero-shot,100M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,100M Qwen2 Atomic Cross,100M Qwen2 BPE,3,0.11989999999999994
 Chinese zero-shot,100M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,100M Qwen2 Atomic Within,100M Qwen2 BPE,3,0.12413333333333325
@@ -101,7 +116,12 @@ CogBench,100M BPE: Qwen2 - GPT2,architecture,100M Qwen2 BPE,100M GPT2 BPE,2,-0.0
 CogBench,100M GPT2: Atomic BPE cross - BPE,atomic_vs_bpe,100M GPT2 Atomic Cross,100M GPT2 BPE,2,0.010432036422515452
 CogBench,100M GPT2: Atomic BPE within - BPE,atomic_vs_bpe,100M GPT2 Atomic Within,100M GPT2 BPE,2,0.010095587347152615
 CogBench,100M GPT2: Atomic cross - within,boundary_policy,100M GPT2 Atomic Cross,100M GPT2 Atomic Within,2,0.0003364490753628366
+CogBench,100M GPT2: BPE - Full-pinyin BPE,standard_baseline,100M GPT2 BPE,100M GPT2 Full-pinyin BPE,2,-0.00044875462824135043
+CogBench,100M GPT2: BPE - Hanzi BPE,standard_baseline,100M GPT2 BPE,100M GPT2 Hanzi BPE,2,-0.009114647740984493
+CogBench,100M GPT2: Full-pinyin BPE - Hanzi BPE,standard_baseline,100M GPT2 Full-pinyin BPE,100M GPT2 Hanzi BPE,2,-0.008665893112743142
 CogBench,100M GPT2: Hybrid - BPE,baseline_tokenizer,100M GPT2 Hybrid,100M GPT2 BPE,2,0.009973412501229725
+CogBench,100M GPT2: Hybrid - Full-pinyin BPE,standard_baseline,100M GPT2 Hybrid,100M GPT2 Full-pinyin BPE,2,0.009524657872988375
+CogBench,100M GPT2: Hybrid - Hanzi BPE,standard_baseline,100M GPT2 Hybrid,100M GPT2 Hanzi BPE,2,0.0008587647602452328
 CogBench,100M Hybrid: Qwen2 - GPT2,architecture,100M Qwen2 Hybrid,100M GPT2 Hybrid,2,-0.003769093636398685
 CogBench,100M Qwen2: Atomic BPE cross - BPE,atomic_vs_bpe,100M Qwen2 Atomic Cross,100M Qwen2 BPE,2,0.0071145491876735065
 CogBench,100M Qwen2: Atomic BPE within - BPE,atomic_vs_bpe,100M Qwen2 Atomic Within,100M Qwen2 BPE,2,0.0054226730029681355

@@ -4,20 +4,24 @@
    raw scores multiplied by 100. Color represents each model's deviation from
    the mean for that task, so color comparisons are meaningful within rows and
    are not dominated by differences in task difficulty. CogBench values are
-   correlation-based. Models are grouped by the original 30M and 100M cohorts
-   and the atomic-BPE cohorts at both scales.
+   correlation-based. Models are grouped by the original 30M and 100M cohorts,
+   the targeted 100M Hanzi/full-pinyin controls, and the atomic-BPE cohorts at
+   both scales.
 
 2. **Matched evaluation contrasts across tasks.** Small translucent points are
    task-level paired score differences and diamonds are unweighted means within
    each evaluation suite. Positive values favor the first condition named on
    each axis or contrast label. Dispersion is descriptive and is not a
    confidence interval because only one trained seed is available per model.
+   The standard-representation panel compares the matched 100M GPT2 encoded
+   BPE and hybrid conditions with Hanzi BPE and tone-number full-pinyin BPE.
 
-3. **Factorial experimental design.** Cells cross parameter scale (30M or
-   100M), architecture (GPT2 or Qwen2), and tokenizer condition (hybrid, BPE,
-   within-word atomic BPE, or cross-word atomic BPE). Filled cells have complete
-   evaluations in the current results registry; hatched cells would indicate
-   any future planned or in-progress condition.
+3. **Experimental design and targeted controls.** The core cells cross parameter
+   scale (30M or 100M), architecture (GPT2 or Qwen2), and tokenizer condition
+   (hybrid, encoded BPE, within-word atomic BPE, or cross-word atomic BPE).
+   Targeted Hanzi-BPE and tone-number full-pinyin-BPE controls are evaluated for
+   100M GPT2 only. Filled cells have complete evaluations; hatching means that
+   the corresponding condition was not evaluated.
 
 4. **Within-word versus cross-word atomic BPE.** Connected markers compare the
    two boundary policies for matched architectures and tasks at the parameter

@@ -65,6 +65,22 @@
       "model_path": "artifacts/models/100m/hf_nk_babylm_zho_qwen2_bpe_100m"
     },
     {
+      "model_id": "hf_nk_babylm_zho_gpt2_hanzi_bpe_100m", "label": "100M GPT2 Hanzi BPE",
+      "architecture": "GPT2", "tokenizer": "Hanzi BPE", "scale": "100M", "cohort": "Standard baselines 100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m/official"},
+      "chinese_path": "artifacts/evaluations/100m/chinese/chinese_pipeline_standard_baselines_100m/hf_nk_babylm_zho_gpt2_hanzi_bpe_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_hanzi_bpe_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_hanzi_bpe_100m"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m", "label": "100M GPT2 Full-pinyin BPE",
+      "architecture": "GPT2", "tokenizer": "Full-pinyin BPE", "scale": "100M", "cohort": "Standard baselines 100M",
+      "official": {"format": "raw", "path": "artifacts/evaluations/100m/official"},
+      "chinese_path": "artifacts/evaluations/100m/chinese/chinese_pipeline_standard_baselines_100m/hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m",
+      "config_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m/config.json",
+      "model_path": "artifacts/models/100m/hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m"
+    },
+    {
       "model_id": "hf_nk_babylm_zho_gpt2_atomic_bpe_within", "label": "30M GPT2 Atomic Within",
       "architecture": "GPT2", "tokenizer": "Atomic BPE within", "scale": "30M", "cohort": "Atomic BPE 30M",
       "official": {"format": "raw", "path": "artifacts/evaluations/30m_atomic/official"},

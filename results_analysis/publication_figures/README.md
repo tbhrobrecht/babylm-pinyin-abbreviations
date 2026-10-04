@@ -48,8 +48,9 @@ architecture, tokenizer, scale, and cohort are read from
 tables. To add another completed evaluation cohort:
 
 1. Copy its raw evaluation directories into the repository's artifact layout.
-2. Add one entry per completed model to `results_analysis/models.json`, using
-   tokenizer values `Atomic BPE within` or `Atomic BPE cross` and scale `100M`.
+2. Add one entry per completed model to `results_analysis/models.json`. If it
+   introduces a tokenizer family, also assign it a color in
+   `generate_figures.py`.
 3. Rebuild the processed tables:
 
    ```bash
@@ -111,8 +112,8 @@ task-family definitions.
    colors. Centering prevents easy tasks from dominating the color scale.
 2. `02_paired_effect_forest`: task-level paired differences and suite means.
    Points are observed tasks, not independent model-training replicates.
-3. `03_experimental_design`: evaluated and pending cells in the factorial
-   size × architecture × tokenizer design.
+3. `03_experimental_design`: evaluated cells in the core factorial design and
+   the targeted Hanzi/full-pinyin control conditions.
 4. `04_within_vs_cross_dumbbell_<scale>`: direct within-word/cross-word
    comparisons for every registered architecture and scale on every task.
 5. `05_suite_average_dotplot`: unweighted descriptive means within each suite.

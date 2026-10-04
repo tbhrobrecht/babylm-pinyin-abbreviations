@@ -12,7 +12,7 @@
     "Chinese fine-tune": 4,
     "CogBench": 2
   },
-  "model_count": 16,
+  "model_count": 18,
   "bootstrap_replicates": 10000,
   "bootstrap_seed": 20261002,
   "degenerate_tasks_assigned_zero_zscore": [],

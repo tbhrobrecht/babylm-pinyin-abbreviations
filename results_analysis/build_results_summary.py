@@ -440,6 +440,22 @@ def build_contrasts(models: list[ModelSpec]) -> list[Contrast]:
                     (scale, architecture, tokenizer), (scale, architecture, "BPE"),
                 )
 
+        for scale in scales:
+            for tokenizer in ("BPE", "Hybrid"):
+                for baseline in ("Hanzi BPE", "Full-pinyin BPE"):
+                    add_if_present(
+                        f"{scale} {architecture}: {tokenizer} - {baseline}",
+                        "standard_baseline",
+                        (scale, architecture, tokenizer),
+                        (scale, architecture, baseline),
+                    )
+            add_if_present(
+                f"{scale} {architecture}: Full-pinyin BPE - Hanzi BPE",
+                "standard_baseline",
+                (scale, architecture, "Full-pinyin BPE"),
+                (scale, architecture, "Hanzi BPE"),
+            )
+
     if "GPT2" in architectures and "Qwen2" in architectures:
         for scale in scales:
             for tokenizer in ("Hybrid", "BPE"):
@@ -531,7 +547,8 @@ def build_summary(
         markdown_table(
             ["Suite", "Contrast", "Mean difference"],
             ([r["suite"], r["contrast"], f"{r['mean_difference']:+.4f}"]
-             for r in contrasts if r["category"] in {"scale", "boundary_policy"}),
+             for r in contrasts
+             if r["category"] in {"scale", "boundary_policy", "standard_baseline"}),
         ), "", "Positive values favor the condition before the minus sign.",
         "", "## Official task scores by cohort", "",
     ]

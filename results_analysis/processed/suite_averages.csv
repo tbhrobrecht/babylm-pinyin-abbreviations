@@ -31,6 +31,14 @@ hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,100M,BabyLM offici
 hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,100M,Chinese zero-shot,3,0.6342666666666666
 hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,100M,Chinese fine-tune,4,0.6080842605238769
 hf_nk_babylm_zho_qwen2_bpe_100m,100M Qwen2 BPE,Qwen2,BPE,100M,100M,CogBench,2,0.3135176457672007
+hf_nk_babylm_zho_gpt2_hanzi_bpe_100m,100M GPT2 Hanzi BPE,GPT2,Hanzi BPE,100M,Standard baselines 100M,BabyLM official Chinese,16,0.4668174032044056
+hf_nk_babylm_zho_gpt2_hanzi_bpe_100m,100M GPT2 Hanzi BPE,GPT2,Hanzi BPE,100M,Standard baselines 100M,Chinese zero-shot,3,0.6277
+hf_nk_babylm_zho_gpt2_hanzi_bpe_100m,100M GPT2 Hanzi BPE,GPT2,Hanzi BPE,100M,Standard baselines 100M,Chinese fine-tune,4,0.6357984705582779
+hf_nk_babylm_zho_gpt2_hanzi_bpe_100m,100M GPT2 Hanzi BPE,GPT2,Hanzi BPE,100M,Standard baselines 100M,CogBench,2,0.3227477336469655
+hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m,100M GPT2 Full-pinyin BPE,GPT2,Full-pinyin BPE,100M,Standard baselines 100M,BabyLM official Chinese,16,0.44457173397027366
+hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m,100M GPT2 Full-pinyin BPE,GPT2,Full-pinyin BPE,100M,Standard baselines 100M,Chinese zero-shot,3,0.7363333333333332
+hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m,100M GPT2 Full-pinyin BPE,GPT2,Full-pinyin BPE,100M,Standard baselines 100M,Chinese fine-tune,4,0.6291617511423585
+hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m,100M GPT2 Full-pinyin BPE,GPT2,Full-pinyin BPE,100M,Standard baselines 100M,CogBench,2,0.3140818405342224
 hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,Atomic BPE 30M,BabyLM official Chinese,16,0.44609142442532546
 hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,Atomic BPE 30M,Chinese zero-shot,3,0.7404333333333334
 hf_nk_babylm_zho_gpt2_atomic_bpe_within,30M GPT2 Atomic Within,GPT2,Atomic BPE within,30M,Atomic BPE 30M,Chinese fine-tune,4,0.6181149667151417
