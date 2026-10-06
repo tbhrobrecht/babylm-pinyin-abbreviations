@@ -1,0 +1,25 @@
+model,suite,mean_within_task_percentile
+100M GPT2 Hybrid,BabyLM official Chinese,69.85294117647058
+100M GPT2 BPE,BabyLM official Chinese,39.52205882352941
+100M GPT2 Atomic Within,BabyLM official Chinese,56.25
+100M GPT2 Atomic Cross,BabyLM official Chinese,46.69117647058823
+100M GPT2 Hanzi BPE,BabyLM official Chinese,70.95588235294117
+100M GPT2 Full-pinyin BPE,BabyLM official Chinese,52.94117647058823
+100M GPT2 Hybrid,Chinese zero-shot,81.37254901960785
+100M GPT2 BPE,Chinese zero-shot,5.88235294117647
+100M GPT2 Atomic Within,Chinese zero-shot,71.5686274509804
+100M GPT2 Atomic Cross,Chinese zero-shot,50.98039215686274
+100M GPT2 Hanzi BPE,Chinese zero-shot,56.86274509803922
+100M GPT2 Full-pinyin BPE,Chinese zero-shot,37.254901960784316
+100M GPT2 Hybrid,Chinese fine-tune,48.529411764705884
+100M GPT2 BPE,Chinese fine-tune,50.0
+100M GPT2 Atomic Within,Chinese fine-tune,72.05882352941177
+100M GPT2 Atomic Cross,Chinese fine-tune,47.05882352941177
+100M GPT2 Hanzi BPE,Chinese fine-tune,87.5
+100M GPT2 Full-pinyin BPE,Chinese fine-tune,77.20588235294117
+100M GPT2 Hybrid,CogBench,82.35294117647058
+100M GPT2 BPE,CogBench,8.823529411764707
+100M GPT2 Atomic Within,CogBench,88.23529411764704
+100M GPT2 Atomic Cross,CogBench,88.23529411764704
+100M GPT2 Hanzi BPE,CogBench,70.58823529411765
+100M GPT2 Full-pinyin BPE,CogBench,20.588235294117645

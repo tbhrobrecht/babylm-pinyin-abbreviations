@@ -1,0 +1,50 @@
+{
+  "description": "Primary paper comparison: four 100M GPT-2 coded-pinyin systems and two standard-representation baselines.",
+  "models": [
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_hybrid_100m",
+      "short_label": "Hybrid",
+      "group": "Coded-pinyin systems",
+      "processed_text": "data/processed/nk_babylm_zho.txt",
+      "train_binary": "data/datasets/nk_babylm_zho_train_hybrid.bin"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_bpe_100m",
+      "short_label": "Encoded BPE",
+      "group": "Coded-pinyin systems",
+      "processed_text": "data/processed/nk_babylm_zho.txt",
+      "train_binary": "data/datasets/nk_babylm_zho_train_spm.bin"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m",
+      "short_label": "Atomic within",
+      "group": "Coded-pinyin systems",
+      "processed_text": "data/processed/nk_babylm_zho.txt",
+      "train_binary": "data/datasets/nk_babylm_zho_train_atomic_bpe_within.bin",
+      "observed_training_seconds": 2969
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m",
+      "short_label": "Atomic cross",
+      "group": "Coded-pinyin systems",
+      "processed_text": "data/processed/nk_babylm_zho.txt",
+      "train_binary": "data/datasets/nk_babylm_zho_train_atomic_bpe_cross.bin"
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_hanzi_bpe_100m",
+      "short_label": "Hanzi BPE",
+      "group": "Standard baselines",
+      "processed_text": "data/processed/nk_babylm_zho_hanzi.txt",
+      "train_binary": "data/datasets/nk_babylm_zho_hanzi_train_spm.bin",
+      "observed_training_seconds": 3295
+    },
+    {
+      "model_id": "hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m",
+      "short_label": "Full-pinyin BPE",
+      "group": "Standard baselines",
+      "processed_text": "data/processed/nk_babylm_zho_full_pinyin.txt",
+      "train_binary": "data/datasets/nk_babylm_zho_full_pinyin_train_spm.bin",
+      "observed_training_seconds": 3066
+    }
+  ]
+}

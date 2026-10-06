@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="840.24pt" height="324.36pt" viewBox="0 0 840.24 324.36" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-06T12:06:55.221148</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>results_analysis/publication_figures/generate_figures.py</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 324.36 
+L 840.24 324.36 
+L 840.24 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 19.5696 222.12 
+L 144.7416 222.12 
+Q 157.2588 222.12 157.2588 217.8 
+L 157.2588 137.16 
+Q 157.2588 132.84 144.7416 132.84 
+L 19.5696 132.84 
+Q 7.0524 132.84 7.0524 137.16 
+L 7.0524 217.8 
+Q 7.0524 222.12 19.5696 222.12 
+z
+" clip-path="url(#p07830799fc)" style="fill: #e6f2f8; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 211.5 158.76 
+L 570.3264 158.76 
+Q 582.8436 158.76 582.8436 154.44 
+L 582.8436 82.44 
+Q 582.8436 78.12 570.3264 78.12 
+L 211.5 78.12 
+Q 198.9828 78.12 198.9828 82.44 
+L 198.9828 154.44 
+Q 198.9828 158.76 211.5 158.76 
+z
+" clip-path="url(#p07830799fc)" style="fill: #e7f5ef; stroke: #666666; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 211.5 279.72 
+L 570.3264 279.72 
+Q 582.8436 279.72 582.8436 275.4 
+L 582.8436 203.4 
+Q 582.8436 199.08 570.3264 199.08 
+L 211.5 199.08 
+Q 198.9828 199.08 198.9828 203.4 
+L 198.9828 275.4 
+Q 198.9828 279.72 211.5 279.72 
+z
+" clip-path="url(#p07830799fc)" style="fill: #fff0e5; stroke: #666666; stroke-width: 0.8; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 645.4296 245.16 
+L 812.3256 245.16 
+Q 824.8428 245.16 824.8428 240.84 
+L 824.8428 114.12 
+Q 824.8428 109.8 812.3256 109.8 
+L 645.4296 109.8 
+Q 632.9124 109.8 632.9124 114.12 
+L 632.9124 240.84 
+Q 632.9124 245.16 645.4296 245.16 
+z
+" clip-path="url(#p07830799fc)" style="fill: #f2f2f2; stroke: #555555; stroke-width: 0.9; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle" x="82.1556" y="160.2" transform="rotate(-0 82.1556 160.2)">Same source corpus</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(41.5306 185.157813)">identical documents</text>
+    <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(64.944975 194.76)">and split</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: start" x="232.362" y="97.738242" transform="rotate(-0 232.362 97.738242)">Coded-pinyin systems</text>
+   </g>
+   <g id="PathCollection_1">
+    <defs>
+     <path id="m8b216305a4" d="M 0 7.245688 
+C 1.921579 7.245688 3.764714 6.482237 5.123475 5.123475 
+C 6.482237 3.764714 7.245688 1.921579 7.245688 0 
+C 7.245688 -1.921579 6.482237 -3.764714 5.123475 -5.123475 
+C 3.764714 -6.482237 1.921579 -7.245688 0 -7.245688 
+C -1.921579 -7.245688 -3.764714 -6.482237 -5.123475 -5.123475 
+C -6.482237 -3.764714 -7.245688 -1.921579 -7.245688 0 
+C -7.245688 1.921579 -6.482237 3.764714 -5.123475 5.123475 
+C -3.764714 6.482237 -1.921579 7.245688 0 7.245688 
+z
+" style="stroke: #ffffff; stroke-width: 0.8"/>
+    </defs>
+    <g clip-path="url(#p07830799fc)">
+     <use xlink:href="#m8b216305a4" x="253.224" y="125.64" style="fill: #0072b2; stroke: #ffffff; stroke-width: 0.8"/>
+    </g>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle" x="253.224" y="150.12675" transform="rotate(-0 253.224 150.12675)">Hybrid</text>
+   </g>
+   <g id="PathCollection_2">
+    <defs>
+     <path id="m97f3e2ec81" d="M 0 7.245688 
+C 1.921579 7.245688 3.764714 6.482237 5.123475 5.123475 
+C 6.482237 3.764714 7.245688 1.921579 7.245688 0 
+C 7.245688 -1.921579 6.482237 -3.764714 5.123475 -5.123475 
+C 3.764714 -6.482237 1.921579 -7.245688 0 -7.245688 
+C -1.921579 -7.245688 -3.764714 -6.482237 -5.123475 -5.123475 
+C -6.482237 -3.764714 -7.245688 -1.921579 -7.245688 0 
+C -7.245688 1.921579 -6.482237 3.764714 -5.123475 5.123475 
+C -3.764714 6.482237 -1.921579 7.245688 0 7.245688 
+z
+" style="stroke: #ffffff; stroke-width: 0.8"/>
+    </defs>
+    <g clip-path="url(#p07830799fc)">
+     <use xlink:href="#m97f3e2ec81" x="345.0168" y="125.64" style="fill: #7a7a7a; stroke: #ffffff; stroke-width: 0.8"/>
+    </g>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(329.492362 150.82425)">Encoded</text>
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(338.101425 158.324625)">BPE</text>
+   </g>
+   <g id="PathCollection_3">
+    <defs>
+     <path id="m573adab566" d="M 0 7.245688 
+C 1.921579 7.245688 3.764714 6.482237 5.123475 5.123475 
+C 6.482237 3.764714 7.245688 1.921579 7.245688 0 
+C 7.245688 -1.921579 6.482237 -3.764714 5.123475 -5.123475 
+C 3.764714 -6.482237 1.921579 -7.245688 0 -7.245688 
+C -1.921579 -7.245688 -3.764714 -6.482237 -5.123475 -5.123475 
+C -6.482237 -3.764714 -7.245688 -1.921579 -7.245688 0 
+C -7.245688 1.921579 -6.482237 3.764714 -5.123475 5.123475 
+C -3.764714 6.482237 -1.921579 7.245688 0 7.245688 
+z
+" style="stroke: #ffffff; stroke-width: 0.8"/>
+    </defs>
+    <g clip-path="url(#p07830799fc)">
+     <use xlink:href="#m573adab566" x="436.8096" y="125.64" style="fill: #009e73; stroke: #ffffff; stroke-width: 0.8"/>
+    </g>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(424.309725 150.82425)">Atomic</text>
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(425.890913 158.435438)">within</text>
+   </g>
+   <g id="PathCollection_4">
+    <defs>
+     <path id="m6c396e2154" d="M 0 7.245688 
+C 1.921579 7.245688 3.764714 6.482237 5.123475 5.123475 
+C 6.482237 3.764714 7.245688 1.921579 7.245688 0 
+C 7.245688 -1.921579 6.482237 -3.764714 5.123475 -5.123475 
+C 3.764714 -6.482237 1.921579 -7.245688 0 -7.245688 
+C -1.921579 -7.245688 -3.764714 -6.482237 -5.123475 -5.123475 
+C -6.482237 -3.764714 -7.245688 -1.921579 -7.245688 0 
+C -7.245688 1.921579 -6.482237 3.764714 -5.123475 5.123475 
+C -3.764714 6.482237 -1.921579 7.245688 0 7.245688 
+z
+" style="stroke: #ffffff; stroke-width: 0.8"/>
+    </defs>
+    <g clip-path="url(#p07830799fc)">
+     <use xlink:href="#m6c396e2154" x="528.6024" y="125.64" style="fill: #d55e00; stroke: #ffffff; stroke-width: 0.8"/>
+    </g>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(516.102525 150.82425)">Atomic</text>
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(519.268838 157.664813)">cross</text>
+   </g>
+   <g id="patch_6">
+    <path d="M 154.37907 175.955713 
+Q 178.119625 147.961386 201.209366 120.734484 
+" style="fill: none; stroke: #666666; stroke-width: 0.9; stroke-linecap: round"/>
+    <path d="M 197.713755 122.22804 
+L 201.209366 120.734484 
+L 200.306844 124.427106 
+z
+" style="fill: #666666; stroke: #666666; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+   <g id="text_8">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: start" x="232.362" y="218.698242" transform="rotate(-0 232.362 218.698242)">Standard baselines</text>
+   </g>
+   <g id="PathCollection_5">
+    <defs>
+     <path id="m840cff3ceb" d="M 0 7.245688 
+C 1.921579 7.245688 3.764714 6.482237 5.123475 5.123475 
+C 6.482237 3.764714 7.245688 1.921579 7.245688 0 
+C 7.245688 -1.921579 6.482237 -3.764714 5.123475 -5.123475 
+C 3.764714 -6.482237 1.921579 -7.245688 0 -7.245688 
+C -1.921579 -7.245688 -3.764714 -6.482237 -5.123475 -5.123475 
+C -6.482237 -3.764714 -7.245688 -1.921579 -7.245688 0 
+C -7.245688 1.921579 -6.482237 3.764714 -5.123475 5.123475 
+C -3.764714 6.482237 -1.921579 7.245688 0 7.245688 
+z
+" style="stroke: #ffffff; stroke-width: 0.8"/>
+    </defs>
+    <g clip-path="url(#p07830799fc)">
+     <use xlink:href="#m840cff3ceb" x="253.224" y="246.6" style="fill: #cc79a7; stroke: #ffffff; stroke-width: 0.8"/>
+    </g>
+   </g>
+   <g id="text_9">
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(243.1395 271.78425)">Hanzi</text>
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(246.308625 279.284625)">BPE</text>
+   </g>
+   <g id="PathCollection_6">
+    <defs>
+     <path id="m1067f383da" d="M 0 7.245688 
+C 1.921579 7.245688 3.764714 6.482237 5.123475 5.123475 
+C 6.482237 3.764714 7.245688 1.921579 7.245688 0 
+C 7.245688 -1.921579 6.482237 -3.764714 5.123475 -5.123475 
+C 3.764714 -6.482237 1.921579 -7.245688 0 -7.245688 
+C -1.921579 -7.245688 -3.764714 -6.482237 -5.123475 -5.123475 
+C -6.482237 -3.764714 -7.245688 -1.921579 -7.245688 0 
+C -7.245688 1.921579 -6.482237 3.764714 -5.123475 5.123475 
+C -3.764714 6.482237 -1.921579 7.245688 0 7.245688 
+z
+" style="stroke: #ffffff; stroke-width: 0.8"/>
+    </defs>
+    <g clip-path="url(#p07830799fc)">
+     <use xlink:href="#m1067f383da" x="528.6024" y="246.6" style="fill: #e69f00; stroke: #ffffff; stroke-width: 0.8"/>
+    </g>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(510.168712 271.08675)">Full-pinyin</text>
+    <text style="font-size: 7.2px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(521.687025 279.284625)">BPE</text>
+   </g>
+   <g id="patch_7">
+    <path d="M 154.342398 179.033291 
+Q 178.118678 208.437376 201.262273 237.059021 
+" style="fill: none; stroke: #666666; stroke-width: 0.9; stroke-linecap: round"/>
+    <path d="M 200.446378 233.346298 
+L 201.262273 237.059021 
+L 197.802558 235.484103 
+z
+" style="fill: #666666; stroke: #666666; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle" x="728.8776" y="140.04" transform="rotate(-0 728.8776 140.04)">Controlled training</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(676.658225 165.936875)">GPT-2 · 97.7M parameters</text>
+    <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(670.28885 176.8075)">16k vocabulary · 512 context</text>
+    <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif" transform="translate(673.13885 187.6075)">5 epochs · one trained seed</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle" x="728.8776" y="217.8" transform="rotate(-0 728.8776 217.8)">Same evaluation</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 8px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle" x="728.8776" y="235.08" transform="rotate(-0 728.8776 235.08)">25 primary metrics · 4 suites</text>
+   </g>
+   <g id="patch_8">
+    <path d="M 580.077704 119.861587 
+Q 607.876666 147.958652 634.96792 175.34042 
+" style="fill: none; stroke: #666666; stroke-width: 0.9; stroke-linecap: round"/>
+    <path d="M 633.785088 171.727816 
+L 634.96792 175.34042 
+L 631.368138 174.119123 
+z
+" style="fill: #666666; stroke: #666666; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 580.042051 237.94686 
+Q 607.876678 208.441402 635.020817 179.667878 
+" style="fill: none; stroke: #666666; stroke-width: 0.9; stroke-linecap: round"/>
+    <path d="M 631.451115 180.974487 
+L 635.020817 179.667878 
+L 633.924283 183.307605 
+z
+" style="fill: #666666; stroke: #666666; stroke-width: 0.9; stroke-linecap: round"/>
+   </g>
+  </g>
+  <g id="text_15">
+   <text style="font-weight: 700; font-size: 12px; font-family: 'DejaVu Sans', 'Arial', 'Liberation Sans', sans-serif; text-anchor: middle" x="420.12" y="11.998125" transform="rotate(-0 420.12 11.998125)">Paper-focused comparison: representation changes, model capacity does not</text>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p07830799fc">
+   <rect x="2.88" y="33.48" width="834.48" height="288"/>
+  </clipPath>
+ </defs>
+</svg>

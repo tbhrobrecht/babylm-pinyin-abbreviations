@@ -1,0 +1,3 @@
+comparison,text_storage_reduction_percent,training_token_reduction_percent,optimizer_step_reduction_percent,observed_time_reduction_percent,fixed_context_coverage_gain_percent,composite_percentile_difference
+Atomic within vs Hanzi BPE,41.38958673033375,9.644255472834873,9.663865546218487,9.893778452200308,10.673649498771344,0.5514705882352899
+Atomic within vs Full-pinyin BPE,52.446182106820494,4.188299395516637,4.204956836535789,3.1637312459230293,4.37138613456638,25.03063725490196

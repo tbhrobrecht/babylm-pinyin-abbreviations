@@ -1,0 +1,25 @@
+model_id,model,architecture,tokenizer,scale,cohort,suite,task_count,mean_score
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,100M,BabyLM official Chinese,16,0.4512136536774701
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,100M,Chinese zero-shot,3,0.7627666666666667
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,100M,Chinese fine-tune,4,0.6188206049064163
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,GPT2,Hybrid,100M,100M,CogBench,2,0.3236064984072107
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,100M,BabyLM official Chinese,16,0.4237490933211467
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,100M,Chinese zero-shot,3,0.6334666666666667
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,100M,Chinese fine-tune,4,0.6101233896610252
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,GPT2,BPE,100M,100M,CogBench,2,0.313633085905981
+hf_nk_babylm_zho_gpt2_hanzi_bpe_100m,100M GPT2 Hanzi BPE,GPT2,Hanzi BPE,100M,Standard baselines 100M,BabyLM official Chinese,16,0.4668174032044056
+hf_nk_babylm_zho_gpt2_hanzi_bpe_100m,100M GPT2 Hanzi BPE,GPT2,Hanzi BPE,100M,Standard baselines 100M,Chinese zero-shot,3,0.6277
+hf_nk_babylm_zho_gpt2_hanzi_bpe_100m,100M GPT2 Hanzi BPE,GPT2,Hanzi BPE,100M,Standard baselines 100M,Chinese fine-tune,4,0.6357984705582779
+hf_nk_babylm_zho_gpt2_hanzi_bpe_100m,100M GPT2 Hanzi BPE,GPT2,Hanzi BPE,100M,Standard baselines 100M,CogBench,2,0.3227477336469655
+hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m,100M GPT2 Full-pinyin BPE,GPT2,Full-pinyin BPE,100M,Standard baselines 100M,BabyLM official Chinese,16,0.4445717339702736
+hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m,100M GPT2 Full-pinyin BPE,GPT2,Full-pinyin BPE,100M,Standard baselines 100M,Chinese zero-shot,3,0.7363333333333332
+hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m,100M GPT2 Full-pinyin BPE,GPT2,Full-pinyin BPE,100M,Standard baselines 100M,Chinese fine-tune,4,0.6291617511423585
+hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m,100M GPT2 Full-pinyin BPE,GPT2,Full-pinyin BPE,100M,Standard baselines 100M,CogBench,2,0.3140818405342224
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,Atomic BPE 100M,BabyLM official Chinese,16,0.4502595190403694
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,Atomic BPE 100M,Chinese zero-shot,3,0.7609
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,Atomic BPE 100M,Chinese fine-tune,4,0.6215575821022372
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,GPT2,Atomic BPE within,100M,Atomic BPE 100M,CogBench,2,0.3237286732531336
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,Atomic BPE 100M,BabyLM official Chinese,16,0.4374707745560889
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,Atomic BPE 100M,Chinese zero-shot,3,0.7529
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,Atomic BPE 100M,Chinese fine-tune,4,0.6126654977971311
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,GPT2,Atomic BPE cross,100M,Atomic BPE 100M,CogBench,2,0.3240651223284965

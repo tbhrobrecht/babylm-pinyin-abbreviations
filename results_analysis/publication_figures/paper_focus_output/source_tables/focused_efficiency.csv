@@ -1,0 +1,7 @@
+model_id,model,short_label,group,processed_text_bytes,train_binary_bytes,train_tokens,epochs,optimizer_steps,validation_loss,observed_training_seconds,composite_percentile,composite_rank
+hf_nk_babylm_zho_gpt2_hybrid_100m,100M GPT2 Hybrid,Hybrid,Coded-pinyin systems,358135045,452139008,113034752,5,17250,4.206638648058917,,70.52696078431373,3.0
+hf_nk_babylm_zho_gpt2_bpe_100m,100M GPT2 BPE,Encoded BPE,Coded-pinyin systems,358135045,409397248,102349312,5,15620,4.900819935968944,,26.05698529411765,17.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_within_100m,100M GPT2 Atomic Within,Atomic within,Coded-pinyin systems,358135045,450885632,112721408,5,17200,4.215622356775644,2969.0,72.0281862745098,1.0
+hf_nk_babylm_zho_gpt2_atomic_bpe_cross_100m,100M GPT2 Atomic Cross,Atomic cross,Coded-pinyin systems,358135045,386478080,96619520,5,14745,5.099534640522124,,58.241421568627445,6.0
+hf_nk_babylm_zho_gpt2_hanzi_bpe_100m,100M GPT2 Hanzi BPE,Hanzi BPE,Standard baselines,611043371,499011584,124752896,5,19040,3.7283830818007972,3295.0,71.47671568627452,2.0
+hf_nk_babylm_zho_gpt2_full_pinyin_bpe_100m,100M GPT2 Full-pinyin BPE,Full-pinyin BPE,Standard baselines,753115230,470595584,117648896,5,17955,3.9721186692232915,3066.0,46.997549019607845,12.0
